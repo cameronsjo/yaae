@@ -1,0 +1,30 @@
+{
+  "name": "yaae",
+  "version": "0.1.0",
+  "description": "Why Author Anywhere Else — an Obsidian plugin",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "node esbuild.config.mjs production",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "version": "node scripts/update-versions.mjs"
+  },
+  "keywords": [
+    "obsidian",
+    "ai",
+    "plugin"
+  ],
+  "author": "Cameron",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.19.7",
+    "@vitest/coverage-v8": "^4.0.16",
+    "builtin-modules": "^4.0.0",
+    "esbuild": "^0.27.2",
+    "obsidian": "^1.7.2",
+    "typescript": "^5.7.2",
+    "vitest": "^4.0.16"
+  }
+}
