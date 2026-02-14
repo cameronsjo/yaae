@@ -1,0 +1,29 @@
+schema: spec-driven
+
+context: |
+  Tech stack: TypeScript, esbuild, Vitest
+  Platform: Obsidian plugin (desktop + mobile)
+  Editor engine: CodeMirror 6 (CM6), extended by HyperMD
+  Registration: Plugin.registerEditorExtension() for CM6 extensions
+  Styling: styles.css auto-loaded by Obsidian; use CSS custom properties from themes
+  Build: esbuild bundles main.ts → main.js; @codemirror/* and @lezer/* must be external
+  Testing: Vitest with obsidian module mock and browser globals mock
+  Conventions: Strict TypeScript, conventional commits, registerEvent() for all event handlers
+  Research docs: docs/readability/ia-writer-reference.md and docs/readability/obsidian-implementation.md
+
+rules:
+  proposal:
+    - Reference the existing research in docs/readability/ — don't repeat it
+    - Scope to what YAAE will implement, not what iA Writer does
+  specs:
+    - Use Given/When/Then for scenarios
+    - Distinguish CSS-only features from CM6 ViewPlugin features
+    - Specify which Obsidian CSS classes (e.g. .cm-formatting-header) are leveraged
+  design:
+    - Reference specific CM6 APIs (ViewPlugin, Decoration.mark/line, Compartment, etc.)
+    - Note the Live Preview fold interaction for each feature
+    - Reference existing plugins as prior art where relevant
+  tasks:
+    - Order by implementation phase (CSS-only first, then CM6 ViewPlugins)
+    - Include a verification step for each task (visual check or test)
+    - Keep tasks to single-responsibility units
