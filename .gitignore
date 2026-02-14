@@ -24,8 +24,9 @@ npm-debug.log*
 # Hot reload marker
 .hotreload
 
-# Claude
-.claude/
+# Claude (keep settings.json for project config)
+.claude/*
+!.claude/settings.json
 
 # Plugin data (local only)
 data.json
@@ -33,7 +34,7 @@ data.json
 # Storage directories (in vault)
 conversations/
 vectors/
-settings.json
+/settings.json
 
 # Test coverage
 coverage/
