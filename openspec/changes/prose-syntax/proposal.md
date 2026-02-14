@@ -5,17 +5,20 @@ Obsidian is a powerful writing environment but lacks prose-aware editing aids. W
 ## What Changes
 
 - Add a CM6 ViewPlugin that color-codes words by part of speech (adjectives, nouns, adverbs, verbs, conjunctions) in the editor
+- Add optional Reading View support via `registerMarkdownPostProcessor()` — wraps words in `<span>` elements with POS classes using DOM TreeWalker
 - Integrate an NLP library (compromise) for POS tagging, running on the main thread with viewport-only processing
-- Add a settings UI to toggle highlighting on/off, enable/disable individual parts of speech, and customize colors
+- Add a settings UI to toggle highlighting on/off, enable/disable individual parts of speech, customize colors, and toggle Reading View highlighting
 - Add a command palette command to toggle prose highlighting
 - Inject dynamic CSS for POS colors so theme changes don't require decoration rebuilds
+- Suppress decorations in print/PDF export via `@media print` and `.print` CSS selectors
 - Skip markdown syntax nodes (code blocks, frontmatter, links, YAML) using CM6's `syntaxTree`
 
 ## Capabilities
 
 ### New Capabilities
-- `pos-highlighting`: Color-code words by part of speech (adjectives, nouns, adverbs, verbs, conjunctions) in the editor using CM6 mark decorations
-- `prose-syntax-settings`: Settings tab for toggling highlighting, per-POS enable/disable, and color customization
+- `pos-highlighting`: Color-code words by part of speech (adjectives, nouns, adverbs, verbs, conjunctions) in the editor using CM6 mark decorations and optionally in Reading View via MarkdownPostProcessor
+- `prose-syntax-settings`: Settings tab for toggling highlighting, per-POS enable/disable, color customization, and Reading View toggle
+- `print-suppression`: Suppress POS decorations in print mode and PDF export by default
 
 ### Modified Capabilities
 
