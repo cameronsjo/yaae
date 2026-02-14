@@ -59,10 +59,20 @@ export const DEFAULT_PROSE_HIGHLIGHT_SETTINGS: ProseHighlightSettings = {
   customWordLists: [],
 };
 
+export type FocusMode = 'off' | 'sentence' | 'paragraph';
+
 export interface YaaeSettings {
   proseHighlight: ProseHighlightSettings;
+  syntaxDimming: boolean;
+  gutteredHeadings: boolean;
+  focusMode: FocusMode;
+  typewriterScroll: boolean;
 }
 
 export const DEFAULT_SETTINGS: YaaeSettings = {
   proseHighlight: DEFAULT_PROSE_HIGHLIGHT_SETTINGS,
+  syntaxDimming: true,
+  gutteredHeadings: true,
+  focusMode: 'off',
+  typewriterScroll: false,
 };

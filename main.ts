@@ -1,11 +1,20 @@
-import { Plugin, PluginSettingTab } from 'obsidian';
+import { Plugin, PluginSettingTab, App, Setting, MarkdownView } from 'obsidian';
+import { Compartment } from '@codemirror/state';
 import type { Extension } from '@codemirror/state';
-import { YaaeSettings, DEFAULT_SETTINGS } from './src/types';
+import { YaaeSettings, DEFAULT_SETTINGS, FocusMode } from './src/types';
 import { POSStyleManager } from './src/prose-highlight/pos-styles';
 import { WordListMatcher } from './src/prose-highlight/word-lists';
 import { createHighlighterExtension } from './src/prose-highlight/highlighter-plugin';
 import { createReadingViewPostProcessor } from './src/prose-highlight/reading-view';
 import { renderProseHighlightSettings } from './src/prose-highlight/settings-tab';
+import { focusExtension } from './src/cm6/focus-mode';
+import { typewriterExtension } from './src/cm6/typewriter-scroll';
+
+const BODY_CLASS_SYNTAX_DIMMING = 'yaae-syntax-dimming';
+const BODY_CLASS_GUTTERED_HEADINGS = 'yaae-guttered-headings';
+
+const focusCompartment = new Compartment();
+const typewriterCompartment = new Compartment();
 
 export default class YaaePlugin extends Plugin {
   settings: YaaeSettings = DEFAULT_SETTINGS;
@@ -21,6 +30,8 @@ export default class YaaePlugin extends Plugin {
 
   async onload() {
     await this.loadSettings();
+
+    // --- Prose Highlight ---
 
     // Dynamic CSS for POS and custom list colors
     this.styleManager.init(this.settings.proseHighlight);
@@ -42,10 +53,25 @@ export default class YaaePlugin extends Plugin {
       createReadingViewPostProcessor(this),
     );
 
-    // Settings tab
-    this.addSettingTab(new YaaeSettingTab(this.app, this));
+    // --- Readability Features ---
 
-    // Command: toggle prose highlighting
+    // CSS features: toggle body classes
+    this.applyBodyClasses();
+
+    // CM6 features: register via Compartment
+    this.registerEditorExtension([
+      focusCompartment.of(
+        this.settings.focusMode !== 'off'
+          ? focusExtension(this.settings.focusMode)
+          : []
+      ),
+      typewriterCompartment.of(
+        this.settings.typewriterScroll ? typewriterExtension() : []
+      ),
+    ]);
+
+    // --- Commands ---
+
     this.addCommand({
       id: 'toggle-prose-highlighting',
       name: 'Toggle prose highlighting',
@@ -56,10 +82,40 @@ export default class YaaePlugin extends Plugin {
         this.toggleHighlighting(this.settings.proseHighlight.enabled);
       },
     });
+
+    this.addCommand({
+      id: 'toggle-syntax-dimming',
+      name: 'Toggle syntax dimming',
+      callback: () => this.toggleSyntaxDimming(),
+    });
+
+    this.addCommand({
+      id: 'toggle-guttered-headings',
+      name: 'Toggle guttered headings',
+      callback: () => this.toggleGutteredHeadings(),
+    });
+
+    this.addCommand({
+      id: 'cycle-focus-mode',
+      name: 'Cycle focus mode',
+      callback: () => this.cycleFocusMode(),
+    });
+
+    this.addCommand({
+      id: 'toggle-typewriter-scroll',
+      name: 'Toggle typewriter scroll',
+      callback: () => this.toggleTypewriterScroll(),
+    });
+
+    // Settings tab
+    this.addSettingTab(new YaaeSettingTab(this.app, this));
   }
 
   onunload() {
     this.styleManager.destroy();
+    document.body.classList.remove(BODY_CLASS_SYNTAX_DIMMING);
+    document.body.classList.remove(BODY_CLASS_GUTTERED_HEADINGS);
+    this.removeTypewriterPadding();
   }
 
   async loadSettings() {
@@ -84,6 +140,8 @@ export default class YaaePlugin extends Plugin {
   async saveSettings() {
     await this.saveData(this.settings);
   }
+
+  // --- Prose Highlight Methods ---
 
   /** Enable or disable the CM6 editor extension */
   toggleHighlighting(enabled: boolean): void {
@@ -113,12 +171,92 @@ export default class YaaePlugin extends Plugin {
       this.settings.proseHighlight.customWordLists,
     );
   }
+
+  // --- Readability Methods ---
+
+  applyBodyClasses() {
+    document.body.classList.toggle(
+      BODY_CLASS_SYNTAX_DIMMING,
+      this.settings.syntaxDimming
+    );
+    document.body.classList.toggle(
+      BODY_CLASS_GUTTERED_HEADINGS,
+      this.settings.gutteredHeadings
+    );
+  }
+
+  reconfigureFocus() {
+    this.app.workspace.iterateAllLeaves((leaf) => {
+      if (leaf.view instanceof MarkdownView) {
+        const cm = (leaf.view.editor as any).cm;
+        if (cm) {
+          cm.dispatch({
+            effects: focusCompartment.reconfigure(
+              this.settings.focusMode !== 'off'
+                ? focusExtension(this.settings.focusMode)
+                : []
+            ),
+          });
+        }
+      }
+    });
+  }
+
+  reconfigureTypewriter() {
+    this.app.workspace.iterateAllLeaves((leaf) => {
+      if (leaf.view instanceof MarkdownView) {
+        const cm = (leaf.view.editor as any).cm;
+        if (cm) {
+          cm.dispatch({
+            effects: typewriterCompartment.reconfigure(
+              this.settings.typewriterScroll ? typewriterExtension() : []
+            ),
+          });
+        }
+      }
+    });
+    if (!this.settings.typewriterScroll) {
+      this.removeTypewriterPadding();
+    }
+  }
+
+  removeTypewriterPadding() {
+    document.querySelectorAll('.cm-sizer').forEach((el) => {
+      (el as HTMLElement).style.paddingBottom = '';
+    });
+  }
+
+  async toggleSyntaxDimming() {
+    this.settings.syntaxDimming = !this.settings.syntaxDimming;
+    this.applyBodyClasses();
+    await this.saveSettings();
+  }
+
+  async toggleGutteredHeadings() {
+    this.settings.gutteredHeadings = !this.settings.gutteredHeadings;
+    this.applyBodyClasses();
+    await this.saveSettings();
+  }
+
+  async cycleFocusMode() {
+    const cycle: FocusMode[] = ['off', 'sentence', 'paragraph'];
+    const idx = cycle.indexOf(this.settings.focusMode);
+    this.settings.focusMode = cycle[(idx + 1) % cycle.length];
+    this.reconfigureFocus();
+    await this.saveSettings();
+  }
+
+  async toggleTypewriterScroll() {
+    this.settings.typewriterScroll = !this.settings.typewriterScroll;
+    this.reconfigureTypewriter();
+    await this.saveSettings();
+  }
 }
 
 class YaaeSettingTab extends PluginSettingTab {
   plugin: YaaePlugin;
 
-  constructor(app: any, plugin: YaaePlugin) {
+  constructor(app: App, plugin: YaaePlugin) {
     super(app, plugin);
     this.plugin = plugin;
   }
@@ -126,6 +264,70 @@ class YaaeSettingTab extends PluginSettingTab {
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
+
+    // Prose highlight settings (from prose-highlight/settings-tab.ts)
     renderProseHighlightSettings(containerEl, this.plugin);
+
+    // Readability settings
+    new Setting(containerEl).setName('Readability').setHeading();
+
+    new Setting(containerEl)
+      .setName('Syntax dimming')
+      .setDesc(
+        'Reduce opacity of markdown formatting characters (**, *, #, etc.) while keeping them visible.'
+      )
+      .addToggle((toggle) =>
+        toggle.setValue(this.plugin.settings.syntaxDimming).onChange(async (value) => {
+          this.plugin.settings.syntaxDimming = value;
+          this.plugin.applyBodyClasses();
+          await this.plugin.saveSettings();
+        })
+      );
+
+    new Setting(containerEl)
+      .setName('Guttered headings')
+      .setDesc(
+        'Outdent # heading markers into the left gutter so heading text aligns with body text.'
+      )
+      .addToggle((toggle) =>
+        toggle.setValue(this.plugin.settings.gutteredHeadings).onChange(async (value) => {
+          this.plugin.settings.gutteredHeadings = value;
+          this.plugin.applyBodyClasses();
+          await this.plugin.saveSettings();
+        })
+      );
+
+    new Setting(containerEl)
+      .setName('Focus mode')
+      .setDesc(
+        'Dim all text except the active sentence or paragraph.'
+      )
+      .addDropdown((dropdown) =>
+        dropdown
+          .addOption('off', 'Off')
+          .addOption('sentence', 'Sentence')
+          .addOption('paragraph', 'Paragraph')
+          .setValue(this.plugin.settings.focusMode)
+          .onChange(async (value) => {
+            this.plugin.settings.focusMode = value as FocusMode;
+            this.plugin.reconfigureFocus();
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName('Typewriter scroll')
+      .setDesc(
+        'Keep the cursor vertically centered in the viewport as you type.'
+      )
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.typewriterScroll)
+          .onChange(async (value) => {
+            this.plugin.settings.typewriterScroll = value;
+            this.plugin.reconfigureTypewriter();
+            await this.plugin.saveSettings();
+          })
+      );
   }
 }
