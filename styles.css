@@ -1,1 +1,17 @@
 /* yaae styles */
+
+/* ===== Print / PDF Export Suppression =====
+ * Hide all prose highlighting decorations when printing or exporting to PDF.
+ * Obsidian wraps PDF export content in a .print container.
+ */
+@media print {
+  [class*="yaae-pos-"],
+  [class*="yaae-list-"] {
+    color: inherit !important;
+  }
+}
+
+.print [class*="yaae-pos-"],
+.print [class*="yaae-list-"] {
+  color: inherit !important;
+}

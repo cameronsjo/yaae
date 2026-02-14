@@ -26,5 +26,8 @@
     "obsidian": "^1.7.2",
     "typescript": "^5.7.2",
     "vitest": "^4.0.16"
+  },
+  "dependencies": {
+    "compromise": "^14.14.5"
   }
 }
