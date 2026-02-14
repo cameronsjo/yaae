@@ -18,6 +18,7 @@ Obsidian is a powerful writing environment but lacks prose-aware editing aids. W
 ### New Capabilities
 - `pos-highlighting`: Color-code words by part of speech (adjectives, nouns, adverbs, verbs, conjunctions) in the editor using CM6 mark decorations and optionally in Reading View via MarkdownPostProcessor
 - `prose-syntax-settings`: Settings tab for toggling highlighting, per-POS enable/disable, color customization, and Reading View toggle
+- `custom-word-lists`: User-defined word lists with custom colors — highlight domain-specific terms (cloud providers, character names, technical jargon, etc.) independently of POS tagging
 - `print-suppression`: Suppress POS decorations in print mode and PDF export by default
 
 ### Modified Capabilities

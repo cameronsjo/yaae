@@ -13,12 +13,16 @@ The goal is to add iA Writer-style prose syntax highlighting: color-code words b
 - Skip markdown syntax so only prose content is highlighted
 - Provide user-configurable toggles and colors via a settings tab
 
+- Support custom user-defined word lists with per-list colors
+- Optional Reading View highlighting via MarkdownPostProcessor
+- Suppress all decorations in print/PDF export by default
+
 **Non-Goals:**
 - Style Check (filler/cliché/redundancy detection) — future work
 - Multi-language NLP support — English only for MVP
 - IPC to external NLP process — future opt-in enhancement
 - Web Worker offloading — unnecessary for compromise's performance profile
-- Custom word overrides / POS corrections — future work
+- POS correction overrides — future work (custom word lists cover the named-entity case)
 
 ## Decisions
 
@@ -115,17 +119,62 @@ The MVP implements `CompromiseTagger`. Future backends (wink-nlp, IPC/spaCy) can
 
 **Rationale:** This is Obsidian's documented pattern for dynamically enabling/disabling editor extensions.
 
+### D9: Custom word lists — dictionary matching via generated regex
+
+**Choice:** Store user-defined word lists as `Array<{ name: string; words: string[]; color: string; enabled: boolean; caseSensitive: boolean }>` in settings. At decoration time, compile each enabled list into a single regex with word boundaries (`\b(AWS|Azure|GCP|Cloudflare)\b`) and match against visible text. No NLP needed.
+
+**Alternatives considered:**
+- **Run words through compromise and check tags** — Wasteful. Dictionary lookup doesn't need NLP.
+- **CM6 `MatchDecorator`** — Built-in CM6 helper for regex-based decorations with automatic incremental updates. Attractive but less flexible: hard to dynamically reconfigure when lists change, and can't share the viewport iteration loop with POS tagging.
+- **Trie / Aho-Corasick** — Optimal for very large dictionaries (10K+ words). Premature for typical list sizes (10-200 words).
+
+**Rationale:** Regex is fast for typical list sizes, trivial to implement, and supports multi-word phrases naturally. The regex is regenerated only when lists change in settings (not per keystroke). Custom list matches are checked during the same line iteration as POS tagging — one pass through visible text produces both POS and custom list decorations.
+
+**Precedence:** When a word matches both a POS category and a custom list, the custom list decoration wins. Custom lists are more specific (user explicitly chose to highlight that word). Implemented by checking custom lists first and skipping POS decoration for those character ranges.
+
+### D10: Reading View support via MarkdownPostProcessor
+
+**Choice:** Register a `MarkdownPostProcessor` that uses `TreeWalker(NodeFilter.SHOW_TEXT)` to find text nodes in each rendered section, runs the same tagger + custom list matching, and wraps matched words in `<span class="yaae-pos-*">` or `<span class="yaae-list-*">` elements.
+
+**Alternatives considered:**
+- **Editor-only (no Reading View)** — This is what nl-syntax-highlighting does. Works, but users who prefer Reading View get nothing.
+- **Render a separate overlay** — Over-engineered for what is just DOM manipulation.
+
+**Rationale:** Reading View is a standard DOM tree. `TreeWalker` + `DocumentFragment` is the standard pattern for wrapping text nodes. Sections are virtualized and cached, so performance is naturally bounded. Gated behind a "Highlight in Reading View" toggle in settings.
+
+**Skipping non-prose nodes:** In the post-processor, skip text nodes inside `<code>`, `<pre>`, `<a>` (href), and `.frontmatter` elements by checking `parentElement.closest()`.
+
+### D11: Print/PDF suppression via CSS
+
+**Choice:** Add `@media print` and `.print` CSS rules to `styles.css` that reset all `yaae-pos-*` and `yaae-list-*` classes to `color: inherit`.
+
+```css
+@media print {
+  [class*="yaae-pos-"], [class*="yaae-list-"] {
+    color: inherit !important;
+  }
+}
+.print [class*="yaae-pos-"], .print [class*="yaae-list-"] {
+  color: inherit !important;
+}
+```
+
+**Rationale:** Pure CSS, zero JS overhead, works for both Obsidian's native PDF export and browser print. No need to detect export programmatically.
+
 ## File Structure
 
 ```
 src/
 ├── prose-highlight/
-│   ├── highlighter-plugin.ts   # CM6 ViewPlugin (decorations, caching, viewport logic)
+│   ├── highlighter-plugin.ts   # CM6 ViewPlugin (POS + custom list decorations, caching)
+│   ├── reading-view.ts         # MarkdownPostProcessor for Reading View highlighting
 │   ├── tagger.ts               # POSTagger interface + CompromiseTagger implementation
-│   ├── pos-styles.ts           # Dynamic CSS injection, color management
-│   └── settings-tab.ts         # SettingTab for prose highlighting options
-├── types.ts                    # Extended YaaeSettings with POS highlight settings
-main.ts                         # registerEditorExtension, addSettingTab, addCommand
+│   ├── word-lists.ts           # Custom word list matching (regex compilation, lookup)
+│   ├── pos-styles.ts           # Dynamic CSS injection (POS + custom list colors)
+│   └── settings-tab.ts         # SettingTab for all prose highlighting options
+├── types.ts                    # Extended YaaeSettings with POS, custom list, reading view settings
+styles.css                      # Print/PDF suppression rules (@media print, .print)
+main.ts                         # registerEditorExtension, registerMarkdownPostProcessor, etc.
 ```
 
 ## Risks / Trade-offs
