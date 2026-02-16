@@ -15,3 +15,49 @@
 .print [class*="yaae-list-"] {
   color: inherit !important;
 }
+
+/* ==========================================================================
+   Syntax Dimming
+   Reduce opacity of markdown formatting characters while keeping them visible.
+   Scoped to body.yaae-syntax-dimming so it can be toggled via body class.
+   ========================================================================== */
+
+body.yaae-syntax-dimming .cm-formatting {
+  opacity: 0.3;
+  transition: opacity 0.15s ease;
+}
+
+body.yaae-syntax-dimming .cm-active .cm-formatting {
+  opacity: 0.7;
+}
+
+/* ==========================================================================
+   Guttered Headings
+   Push # heading markers into the left gutter so heading text aligns
+   with body text. Uses negative margin on the formatting span.
+   Scoped to body.yaae-guttered-headings.
+   ========================================================================== */
+
+body.yaae-guttered-headings .cm-content .cm-line {
+  padding-left: 40px;
+}
+
+body.yaae-guttered-headings .cm-content .cm-line .cm-formatting-header {
+  display: inline-block;
+  width: 40px;
+  margin-left: -40px;
+  text-align: right;
+  padding-right: 0.5em;
+  box-sizing: border-box;
+}
+
+/* ==========================================================================
+   Focus Mode
+   Dim text outside the active sentence or paragraph.
+   Applied via CM6 Decoration.mark() with class "yaae-dimmed".
+   ========================================================================== */
+
+.yaae-dimmed {
+  color: var(--text-faint);
+  transition: color 0.15s ease;
+}

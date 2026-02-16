@@ -101,6 +101,14 @@ export class ItemView {
   }
 }
 
+export class MarkdownView extends ItemView {
+  editor: any = {};
+
+  getViewType(): string {
+    return 'markdown';
+  }
+}
+
 export class Plugin {
   app: App = {} as App;
   manifest: any = {};
@@ -113,6 +121,8 @@ export class Plugin {
   }
   addSettingTab(tab: any): void {}
   registerView(type: string, factory: () => ItemView): void {}
+  registerEditorExtension(extension: any): void {}
+  registerEvent(event: any): void {}
   loadData(): Promise<any> { return Promise.resolve(null); }
   saveData(data: any): Promise<void> { return Promise.resolve(); }
 }
