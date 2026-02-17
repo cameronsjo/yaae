@@ -144,36 +144,28 @@ describe('POSStyleManager', () => {
     expect(dom.styleEl.remove).toHaveBeenCalled();
   });
 
-  it('updateListColors should preserve body {} variable block', () => {
-    manager.init(DEFAULT_PROSE_HIGHLIGHT_SETTINGS);
-    manager.updateListColors([
-      { name: 'New List', words: ['x'], color: '#123456', enabled: true, caseSensitive: false },
-    ]);
-    const css = dom.styleEl.textContent;
-
-    // Variable block preserved
-    expect(css).toContain('--yaae-pos-adjective-color');
-    // New list rule added
-    expect(css).toContain('.yaae-list-new-list');
-    expect(css).toContain('#123456');
-  });
-
-  it('updateListColors should replace old list rules', () => {
-    const settings: ProseHighlightSettings = {
+  it('update() should replace old list rules with new ones', () => {
+    manager.init({
       ...DEFAULT_PROSE_HIGHLIGHT_SETTINGS,
       customWordLists: [
         { name: 'Old', words: ['x'], color: '#111', enabled: true, caseSensitive: false },
       ],
-    };
-    manager.init(settings);
+    });
 
-    manager.updateListColors([
-      { name: 'New', words: ['y'], color: '#222', enabled: true, caseSensitive: false },
-    ]);
+    manager.update({
+      ...DEFAULT_PROSE_HIGHLIGHT_SETTINGS,
+      customWordLists: [
+        { name: 'New', words: ['y'], color: '#222', enabled: true, caseSensitive: false },
+      ],
+    });
     const css = dom.styleEl.textContent;
 
+    // POS variables still present
+    expect(css).toContain('--yaae-pos-adjective-color');
+    // Old list gone, new list present
     expect(css).not.toContain('.yaae-list-old');
     expect(css).toContain('.yaae-list-new');
+    expect(css).toContain('#222');
   });
 
   // --- Unhappy paths ---
@@ -185,12 +177,6 @@ describe('POSStyleManager', () => {
     expect(dom.styleEl.textContent).toBe('');
   });
 
-  it('updateListColors() before init() should be a no-op', () => {
-    manager.updateListColors([
-      { name: 'Test', words: ['x'], color: '#fff', enabled: true, caseSensitive: false },
-    ]);
-    expect(dom.styleEl.textContent).toBe('');
-  });
 
   it('destroy() before init() should not throw', () => {
     expect(() => manager.destroy()).not.toThrow();

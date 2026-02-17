@@ -1,4 +1,4 @@
-import type { ProseHighlightSettings, CustomWordList } from '../types';
+import type { ProseHighlightSettings } from '../types';
 import { POS_CATEGORIES } from '../types';
 import { sanitizeListName } from './word-lists';
 
@@ -44,36 +44,6 @@ export class POSStyleManager {
     }
 
     this.styleEl.textContent = rules.join('\n');
-  }
-
-  /** Convenience: update only POS colors */
-  updateColors(settings: ProseHighlightSettings): void {
-    this.update(settings);
-  }
-
-  /** Convenience: update only custom list colors */
-  updateListColors(lists: CustomWordList[]): void {
-    // Full update is cheap — just regenerate all rules
-    // Caller should pass the full settings, but we accept lists for the interface
-    if (!this.styleEl) return;
-
-    // We need the full settings to generate POS rules too.
-    // This method appends list rules. For simplicity, callers should use update().
-    const existingRules = this.styleEl.textContent || '';
-    const listRules: string[] = [];
-    for (const list of lists) {
-      const cls = sanitizeListName(list.name);
-      if (cls) {
-        listRules.push(`.yaae-list-${cls} { color: ${list.color}; }`);
-      }
-    }
-
-    // Replace list rules section — keep the body{} variable block, swap list rules
-    this.styleEl.textContent = existingRules
-      .split('\n')
-      .filter((line) => !line.startsWith('.yaae-list-'))
-      .concat(listRules)
-      .join('\n');
   }
 
   /** Remove the <style> element from the DOM */
