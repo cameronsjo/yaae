@@ -7,11 +7,8 @@ An Obsidian plugin. Uses TypeScript, esbuild, Vitest, and pnpm workspaces.
 ```bash
 pnpm install             # Install all workspace dependencies
 pnpm run dev             # Watch mode (hot reload)
-pnpm run build           # Build schemas + production plugin bundle
-pnpm run build:schemas   # Build @doc-forge/schemas only
-pnpm test                # Run plugin tests
-pnpm run test:schemas    # Run schemas package tests
-pnpm run test:all        # Run all tests (plugin + schemas)
+pnpm run build           # Production plugin bundle
+pnpm test                # Run all tests
 pnpm run test:watch      # Watch mode tests
 pnpm run test:coverage   # Coverage report
 ```
@@ -22,31 +19,29 @@ pnpm run test:coverage   # Coverage report
 ├── main.ts                          # Plugin entry point
 ├── src/                             # Plugin source code
 │   ├── types.ts                     # Shared types and defaults
-│   ├── doc-forge/                   # Doc Forge integration
-│   │   ├── settings.ts              # Doc Forge settings interface
+│   ├── schemas/                     # Zod frontmatter schemas
+│   │   ├── classification.ts        # Classification taxonomy (4 levels)
+│   │   ├── watermark.ts             # Watermark levels (5 presets)
+│   │   ├── schema.ts                # Core + specialized Zod schemas
+│   │   ├── validation.ts            # validateMarkdown(), extractFrontmatter()
+│   │   ├── css-bridge.ts            # deriveCssClasses()
+│   │   └── index.ts                 # Public exports
+│   ├── document/                    # Document management integration
+│   │   ├── settings.ts              # Document settings interface
 │   │   ├── toc-generator.ts         # Table of contents generation
 │   │   ├── classification-banner.ts # Reading view classification banner
-│   │   └── settings-tab.ts          # Doc Forge settings UI
+│   │   └── settings-tab.ts          # Document settings UI
 │   ├── prose-highlight/             # iA Writer-style prose highlighting
 │   └── cm6/                         # CodeMirror 6 extensions
 ├── packages/                        # pnpm workspace packages
-│   ├── doc-schemas/                 # @doc-forge/schemas — Zod frontmatter schemas
-│   │   ├── src/
-│   │   │   ├── classification.ts    # Classification taxonomy (4 levels)
-│   │   │   ├── watermark.ts         # Watermark levels (5 presets)
-│   │   │   ├── schema.ts            # Core + specialized Zod schemas
-│   │   │   ├── validation.ts        # validateMarkdown(), extractFrontmatter()
-│   │   │   ├── css-bridge.ts        # deriveCssClasses()
-│   │   │   └── index.ts             # Public exports
-│   │   └── tests/
-│   └── print-styles/                # @doc-forge/print-styles — PDF export CSS
+│   └── print-styles/                # @yaae/print-styles — PDF export CSS
 │       └── src/
 │           ├── presets/             # classification.css, watermark.css, typography.css
 │           └── components/          # toc, links, code, page-break, page-numbers, images
 ├── templates/                       # Document templates
 │   ├── notes/                       # threat-model, adr, one-pager
 │   └── slides/                      # tech-talk
-├── tests/                           # Plugin Vitest tests
+├── tests/                           # Vitest tests
 ├── styles.css                       # Plugin styles
 ├── manifest.json                    # Obsidian plugin manifest
 ├── pnpm-workspace.yaml              # Workspace config
@@ -61,9 +56,9 @@ pnpm run test:coverage   # Coverage report
 - Type guard `TAbstractFile` before file operations
 - Conventional commits: `feat:`, `fix:`, `chore:`, etc.
 - Build artifacts (`main.js`, `packages/*/dist/`) are gitignored — CI builds them
-- `@doc-forge/schemas` is a workspace dependency (`workspace:*`) bundled by esbuild
+- Schemas live in `src/schemas/` and are bundled directly by esbuild
 
-## Doc Forge
+## Document Management
 
 Frontmatter-driven document management integrated into the plugin:
 

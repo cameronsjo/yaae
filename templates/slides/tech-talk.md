@@ -6,11 +6,11 @@ author: "{{author}}"
 tags: [docs/slides]
 created: "{{date}}"
 marp: true
-theme: doc-forge
+theme: yaae
 paginate: true
 export:
   slides:
-    theme: doc-forge
+    theme: yaae
     paginate: true
     size: "16:9"
 ---

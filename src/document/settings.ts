@@ -1,6 +1,6 @@
-import type { ClassificationLevel, WatermarkLevel } from '@doc-forge/schemas';
+import type { ClassificationLevel, WatermarkLevel } from '../schemas';
 
-export interface DocForgeSettings {
+export interface DocumentSettings {
   defaultClassification: ClassificationLevel;
   defaultWatermarkForDrafts: WatermarkLevel;
   defaultHeaderLeft: string;
@@ -16,7 +16,7 @@ export interface DocForgeSettings {
   bannerPosition: 'top' | 'both';
 }
 
-export const DEFAULT_DOC_FORGE_SETTINGS: DocForgeSettings = {
+export const DEFAULT_DOCUMENT_SETTINGS: DocumentSettings = {
   defaultClassification: 'internal',
   defaultWatermarkForDrafts: 'heads-up',
   defaultHeaderLeft: '',

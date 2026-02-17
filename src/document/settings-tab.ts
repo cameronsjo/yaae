@@ -2,13 +2,13 @@ import { Setting } from 'obsidian';
 import type YaaePlugin from '../../main';
 
 /**
- * Render the Doc Forge settings section into the plugin settings tab.
+ * Render the Document settings section into the plugin settings tab.
  */
-export function renderDocForgeSettings(
+export function renderDocumentSettings(
   containerEl: HTMLElement,
   plugin: YaaePlugin,
 ): void {
-  new Setting(containerEl).setName('Doc Forge').setHeading();
+  new Setting(containerEl).setName('Document').setHeading();
 
   // --- Classification ---
   new Setting(containerEl)
@@ -20,9 +20,9 @@ export function renderDocForgeSettings(
         .addOption('internal', 'Internal')
         .addOption('confidential', 'Confidential')
         .addOption('restricted', 'Restricted')
-        .setValue(plugin.settings.docForge.defaultClassification)
+        .setValue(plugin.settings.document.defaultClassification)
         .onChange(async (value) => {
-          plugin.settings.docForge.defaultClassification = value as any;
+          plugin.settings.document.defaultClassification = value as any;
           await plugin.saveSettings();
         }),
     );
@@ -32,9 +32,9 @@ export function renderDocForgeSettings(
     .setDesc('Display a classification banner in reading view.')
     .addToggle((toggle) =>
       toggle
-        .setValue(plugin.settings.docForge.showClassificationBanner)
+        .setValue(plugin.settings.document.showClassificationBanner)
         .onChange(async (value) => {
-          plugin.settings.docForge.showClassificationBanner = value;
+          plugin.settings.document.showClassificationBanner = value;
           await plugin.saveSettings();
         }),
     );
@@ -46,9 +46,9 @@ export function renderDocForgeSettings(
       dropdown
         .addOption('top', 'Top only')
         .addOption('both', 'Top and bottom')
-        .setValue(plugin.settings.docForge.bannerPosition)
+        .setValue(plugin.settings.document.bannerPosition)
         .onChange(async (value) => {
-          plugin.settings.docForge.bannerPosition = value as 'top' | 'both';
+          plugin.settings.document.bannerPosition = value as 'top' | 'both';
           await plugin.saveSettings();
         }),
     );
@@ -64,9 +64,9 @@ export function renderDocForgeSettings(
         .addOption('heads-up', 'Heads Up')
         .addOption('loud', 'Loud')
         .addOption('screaming', 'Screaming')
-        .setValue(plugin.settings.docForge.defaultWatermarkForDrafts)
+        .setValue(plugin.settings.document.defaultWatermarkForDrafts)
         .onChange(async (value) => {
-          plugin.settings.docForge.defaultWatermarkForDrafts = value as any;
+          plugin.settings.document.defaultWatermarkForDrafts = value as any;
           await plugin.saveSettings();
         }),
     );
@@ -78,9 +78,9 @@ export function renderDocForgeSettings(
     .addText((text) =>
       text
         .setPlaceholder('e.g., Company Name')
-        .setValue(plugin.settings.docForge.defaultHeaderLeft)
+        .setValue(plugin.settings.document.defaultHeaderLeft)
         .onChange(async (value) => {
-          plugin.settings.docForge.defaultHeaderLeft = value;
+          plugin.settings.document.defaultHeaderLeft = value;
           await plugin.saveSettings();
         }),
     );
@@ -91,9 +91,9 @@ export function renderDocForgeSettings(
     .addText((text) =>
       text
         .setPlaceholder('e.g., Department')
-        .setValue(plugin.settings.docForge.defaultHeaderRight)
+        .setValue(plugin.settings.document.defaultHeaderRight)
         .onChange(async (value) => {
-          plugin.settings.docForge.defaultHeaderRight = value;
+          plugin.settings.document.defaultHeaderRight = value;
           await plugin.saveSettings();
         }),
     );
@@ -103,9 +103,9 @@ export function renderDocForgeSettings(
     .addText((text) =>
       text
         .setPlaceholder('')
-        .setValue(plugin.settings.docForge.defaultFooterLeft)
+        .setValue(plugin.settings.document.defaultFooterLeft)
         .onChange(async (value) => {
-          plugin.settings.docForge.defaultFooterLeft = value;
+          plugin.settings.document.defaultFooterLeft = value;
           await plugin.saveSettings();
         }),
     );
@@ -115,9 +115,9 @@ export function renderDocForgeSettings(
     .addText((text) =>
       text
         .setPlaceholder('')
-        .setValue(plugin.settings.docForge.defaultFooterRight)
+        .setValue(plugin.settings.document.defaultFooterRight)
         .onChange(async (value) => {
-          plugin.settings.docForge.defaultFooterRight = value;
+          plugin.settings.document.defaultFooterRight = value;
           await plugin.saveSettings();
         }),
     );
@@ -129,10 +129,10 @@ export function renderDocForgeSettings(
     .addSlider((slider) =>
       slider
         .setLimits(1, 6, 1)
-        .setValue(plugin.settings.docForge.tocDepth)
+        .setValue(plugin.settings.document.tocDepth)
         .setDynamicTooltip()
         .onChange(async (value) => {
-          plugin.settings.docForge.tocDepth = value;
+          plugin.settings.document.tocDepth = value;
           await plugin.saveSettings();
         }),
     );
@@ -143,9 +143,9 @@ export function renderDocForgeSettings(
     .setDesc('Automatically validate frontmatter when files are saved (warnings to console only).')
     .addToggle((toggle) =>
       toggle
-        .setValue(plugin.settings.docForge.validateOnSave)
+        .setValue(plugin.settings.document.validateOnSave)
         .onChange(async (value) => {
-          plugin.settings.docForge.validateOnSave = value;
+          plugin.settings.document.validateOnSave = value;
           await plugin.saveSettings();
         }),
     );

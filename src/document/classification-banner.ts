@@ -2,7 +2,7 @@ import { MarkdownPostProcessorContext } from 'obsidian';
 import {
   CLASSIFICATION_TAXONOMY,
   type ClassificationLevel,
-} from '@doc-forge/schemas';
+} from '../schemas';
 
 /**
  * MarkdownPostProcessor that injects a classification banner into reading view.
@@ -24,7 +24,7 @@ export function classificationBannerProcessor(
   const meta = CLASSIFICATION_TAXONOMY[classification];
 
   const banner = document.createElement('div');
-  banner.className = `doc-forge-classification-banner doc-forge-${classification}`;
+  banner.className = `yaae-classification-banner yaae-${classification}`;
   banner.textContent = meta.label;
   banner.style.cssText = [
     `background: ${meta.background}`,

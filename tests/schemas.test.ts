@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateMarkdown, extractFrontmatter, deriveCssClasses } from '../src';
+import { validateMarkdown, extractFrontmatter, deriveCssClasses } from '../src/schemas';
 
 const wrap = (yaml: string, body = '') =>
   `---\n${yaml}\n---\n${body}`;
@@ -115,13 +115,13 @@ export:
     headerLeft: "Acme Corp"
     footerRight: "Page {page}"
   slides:
-    theme: doc-forge
+    theme: yaae
     paginate: true
     size: "4:3"`;
     const result = validateMarkdown(wrap(yaml));
     expect(result.valid).toBe(true);
     expect(result.data?.export?.pdf?.watermark).toBe('loud');
-    expect(result.data?.export?.slides?.theme).toBe('doc-forge');
+    expect(result.data?.export?.slides?.theme).toBe('yaae');
   });
 });
 

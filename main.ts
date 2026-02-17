@@ -9,11 +9,11 @@ import { createReadingViewPostProcessor } from './src/prose-highlight/reading-vi
 import { renderProseHighlightSettings } from './src/prose-highlight/settings-tab';
 import { focusExtension } from './src/cm6/focus-mode';
 import { typewriterExtension } from './src/cm6/typewriter-scroll';
-import { validateMarkdown, deriveCssClasses } from '@doc-forge/schemas';
-import { generateToc } from './src/doc-forge/toc-generator';
-import { classificationBannerProcessor } from './src/doc-forge/classification-banner';
-import { renderDocForgeSettings } from './src/doc-forge/settings-tab';
-import { DEFAULT_DOC_FORGE_SETTINGS } from './src/doc-forge/settings';
+import { validateMarkdown, deriveCssClasses } from './src/schemas';
+import { generateToc } from './src/document/toc-generator';
+import { classificationBannerProcessor } from './src/document/classification-banner';
+import { renderDocumentSettings } from './src/document/settings-tab';
+import { DEFAULT_DOCUMENT_SETTINGS } from './src/document/settings';
 
 const BODY_CLASS_SYNTAX_DIMMING = 'yaae-syntax-dimming';
 const BODY_CLASS_GUTTERED_HEADINGS = 'yaae-guttered-headings';
@@ -112,10 +112,10 @@ export default class YaaePlugin extends Plugin {
       callback: () => this.toggleTypewriterScroll(),
     });
 
-    // --- Doc Forge Commands ---
+    // --- Document Commands ---
 
     this.addCommand({
-      id: 'doc-forge-validate',
+      id: 'yaae-validate',
       name: 'Validate frontmatter',
       checkCallback: (checking) => {
         const file = this.app.workspace.getActiveFile();
@@ -127,7 +127,7 @@ export default class YaaePlugin extends Plugin {
     });
 
     this.addCommand({
-      id: 'doc-forge-generate-toc',
+      id: 'yaae-generate-toc',
       name: 'Generate table of contents',
       editorCheckCallback: (checking, editor) => {
         if (checking) return true;
@@ -137,7 +137,7 @@ export default class YaaePlugin extends Plugin {
     });
 
     this.addCommand({
-      id: 'doc-forge-apply-css-classes',
+      id: 'yaae-apply-css-classes',
       name: 'Apply CSS classes from frontmatter',
       checkCallback: (checking) => {
         const file = this.app.workspace.getActiveFile();
@@ -148,15 +148,15 @@ export default class YaaePlugin extends Plugin {
       },
     });
 
-    // --- Doc Forge Auto-Behaviors ---
+    // --- Document Auto-Behaviors ---
 
     // Classification banner in reading view
-    if (this.settings.docForge.showClassificationBanner) {
+    if (this.settings.document.showClassificationBanner) {
       this.registerMarkdownPostProcessor(classificationBannerProcessor);
     }
 
     // Validate on save
-    if (this.settings.docForge.validateOnSave) {
+    if (this.settings.document.validateOnSave) {
       this.registerEvent(
         this.app.vault.on('modify', (file) => {
           if (file instanceof TFile && file.extension === 'md') {
@@ -194,10 +194,10 @@ export default class YaaePlugin extends Plugin {
       DEFAULT_SETTINGS.proseHighlight.categories,
       this.settings.proseHighlight.categories,
     );
-    this.settings.docForge = Object.assign(
+    this.settings.document = Object.assign(
       {},
-      DEFAULT_DOC_FORGE_SETTINGS,
-      this.settings.docForge,
+      DEFAULT_DOCUMENT_SETTINGS,
+      this.settings.document,
     );
   }
 
@@ -316,7 +316,7 @@ export default class YaaePlugin extends Plugin {
     await this.saveSettings();
   }
 
-  // --- Doc Forge Methods ---
+  // --- Document Methods ---
 
   async validateCurrentFile() {
     const file = this.app.workspace.getActiveFile();
@@ -342,9 +342,9 @@ export default class YaaePlugin extends Plugin {
     const content = await this.app.vault.read(file);
     const result = validateMarkdown(content);
     if (!result.valid) {
-      console.warn(`[doc-forge] ${file.path}: validation errors`, result.errors?.issues);
+      console.warn(`[yaae] ${file.path}: validation errors`, result.errors?.issues);
     } else if (result.warnings.length > 0) {
-      console.warn(`[doc-forge] ${file.path}: warnings`, result.warnings);
+      console.warn(`[yaae] ${file.path}: warnings`, result.warnings);
     }
   }
 
@@ -355,7 +355,7 @@ export default class YaaePlugin extends Plugin {
 
     // Get TOC depth from frontmatter or settings
     const fmResult = validateMarkdown(content);
-    const depth = fmResult.data?.export?.pdf?.tocDepth ?? this.settings.docForge.tocDepth;
+    const depth = fmResult.data?.export?.pdf?.tocDepth ?? this.settings.document.tocDepth;
 
     const { content: updated, entryCount } = generateToc(content, depth);
     await this.app.vault.modify(file, updated);
@@ -460,7 +460,7 @@ class YaaeSettingTab extends PluginSettingTab {
           })
       );
 
-    // Doc Forge settings
-    renderDocForgeSettings(containerEl, this.plugin);
+    // Document settings
+    renderDocumentSettings(containerEl, this.plugin);
   }
 }

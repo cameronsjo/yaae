@@ -1,5 +1,5 @@
 {
-  "name": "@doc-forge/print-styles",
+  "name": "@yaae/print-styles",
   "version": "0.1.0",
   "description": "CSS snippets for Obsidian PDF export with classification banners, watermarks, and typography",
   "files": ["src/**/*.css"],

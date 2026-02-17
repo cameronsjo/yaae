@@ -61,8 +61,8 @@ export const DEFAULT_PROSE_HIGHLIGHT_SETTINGS: ProseHighlightSettings = {
 
 export type FocusMode = 'off' | 'sentence' | 'paragraph';
 
-import type { DocForgeSettings } from './doc-forge/settings';
-import { DEFAULT_DOC_FORGE_SETTINGS } from './doc-forge/settings';
+import type { DocumentSettings } from './document/settings';
+import { DEFAULT_DOCUMENT_SETTINGS } from './document/settings';
 
 export interface YaaeSettings {
   proseHighlight: ProseHighlightSettings;
@@ -70,7 +70,7 @@ export interface YaaeSettings {
   gutteredHeadings: boolean;
   focusMode: FocusMode;
   typewriterScroll: boolean;
-  docForge: DocForgeSettings;
+  document: DocumentSettings;
 }
 
 export const DEFAULT_SETTINGS: YaaeSettings = {
@@ -79,5 +79,5 @@ export const DEFAULT_SETTINGS: YaaeSettings = {
   gutteredHeadings: true,
   focusMode: 'off',
   typewriterScroll: false,
-  docForge: DEFAULT_DOC_FORGE_SETTINGS,
+  document: DEFAULT_DOCUMENT_SETTINGS,
 };
