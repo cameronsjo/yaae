@@ -145,6 +145,29 @@ body {
     color: inherit !important;
   }
 
+  /* Prevent content from overflowing off the printed page */
+  * {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  pre, code {
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+  table {
+    table-layout: fixed;
+    width: 100%;
+    word-break: break-word;
+  }
+
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+
   /* Strip all link styling — render as plain text in PDF */
   .pdf-plain-links a,
   .pdf-plain-links a.external-link,

@@ -31,6 +31,33 @@
     break-inside: avoid;
   }
 
+  /* Prevent horizontal overflow */
+  * {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  pre, code {
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+  table {
+    table-layout: fixed;
+    width: 100%;
+    word-break: break-word;
+  }
+
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+
+  a {
+    word-break: break-all;
+  }
+
   /* Print-optimized sizes via CSS variables */
   :root {
     --print-font-size: 11pt;
