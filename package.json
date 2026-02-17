@@ -18,6 +18,7 @@
   ],
   "author": "Cameron",
   "license": "MIT",
+  "packageManager": "pnpm@10.29.3",
   "devDependencies": {
     "@types/node": "^22.19.7",
     "@vitest/coverage-v8": "^4.0.16",
