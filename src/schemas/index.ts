@@ -1,8 +1,12 @@
 // Classification taxonomy
 export {
   type ClassificationLevel,
+  type BuiltinClassificationLevel,
   type ClassificationMeta,
+  type CustomClassification,
   CLASSIFICATION_TAXONOMY,
+  getClassificationMeta,
+  getAllClassificationIds,
 } from './classification';
 
 // Watermark levels

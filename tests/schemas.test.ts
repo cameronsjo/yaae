@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { validateMarkdown, extractFrontmatter, deriveCssClasses } from '../src/schemas';
+import {
+  validateMarkdown,
+  extractFrontmatter,
+  deriveCssClasses,
+  getClassificationMeta,
+  getAllClassificationIds,
+  CLASSIFICATION_TAXONOMY,
+} from '../src/schemas';
+import type { CustomClassification } from '../src/schemas';
 
 const wrap = (yaml: string, body = '') =>
   `---\n${yaml}\n---\n${body}`;
@@ -94,13 +102,13 @@ export:
     expect(result.schema).toBe('none');
   });
 
-  it('rejects invalid classification enum value', () => {
+  it('accepts custom classification string values', () => {
     const yaml = `title: Test
 created: 2024-01-01
-classification: top-secret`;
+classification: non-sensitive`;
     const result = validateMarkdown(wrap(yaml));
-    expect(result.valid).toBe(false);
-    expect(result.schema).toBe('base');
+    expect(result.valid).toBe(true);
+    expect(result.data?.classification).toBe('non-sensitive');
   });
 
   it('rejects invalid status enum value', () => {
@@ -501,5 +509,83 @@ status: ${status}`;
       const classes = deriveCssClasses(result.data!);
       expect(classes).toContain(`pdf-${status}`);
     }
+  });
+
+  it('derives CSS class for custom classification', () => {
+    const yaml = `title: Test
+created: 2024-01-01
+classification: non-sensitive`;
+    const result = validateMarkdown(wrap(yaml));
+    const classes = deriveCssClasses(result.data!);
+    expect(classes).toContain('pdf-non-sensitive');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getClassificationMeta
+// ---------------------------------------------------------------------------
+
+describe('getClassificationMeta', () => {
+  it('returns built-in classification metadata', () => {
+    const meta = getClassificationMeta('internal');
+    expect(meta).not.toBeNull();
+    expect(meta!.label).toBe('INTERNAL — DO NOT DISTRIBUTE');
+    expect(meta!.color).toBe('#b8860b');
+  });
+
+  it('returns null for unknown classification with no custom list', () => {
+    const meta = getClassificationMeta('non-sensitive');
+    expect(meta).toBeNull();
+  });
+
+  it('returns custom classification metadata', () => {
+    const customs: CustomClassification[] = [
+      { id: 'non-sensitive', label: 'NON-SENSITIVE', color: '#2d7d2d', background: '#f0faf0' },
+    ];
+    const meta = getClassificationMeta('non-sensitive', customs);
+    expect(meta).not.toBeNull();
+    expect(meta!.label).toBe('NON-SENSITIVE');
+    expect(meta!.level).toBe('non-sensitive');
+  });
+
+  it('custom classification overrides built-in with same ID', () => {
+    const customs: CustomClassification[] = [
+      { id: 'public', label: 'UNCLASSIFIED', color: '#333333', background: '#eeeeee' },
+    ];
+    const meta = getClassificationMeta('public', customs);
+    expect(meta).not.toBeNull();
+    expect(meta!.label).toBe('UNCLASSIFIED');
+    expect(meta!.color).toBe('#333333');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getAllClassificationIds
+// ---------------------------------------------------------------------------
+
+describe('getAllClassificationIds', () => {
+  it('returns built-in IDs when no custom classifications', () => {
+    const ids = getAllClassificationIds();
+    expect(ids).toEqual(['public', 'internal', 'confidential', 'restricted']);
+  });
+
+  it('includes custom IDs alongside built-in', () => {
+    const customs: CustomClassification[] = [
+      { id: 'non-sensitive', label: 'NON-SENSITIVE', color: '#2d7d2d', background: '#f0faf0' },
+      { id: 'sensitive', label: 'SENSITIVE', color: '#b8860b', background: '#fff8e7' },
+    ];
+    const ids = getAllClassificationIds(customs);
+    expect(ids).toContain('public');
+    expect(ids).toContain('non-sensitive');
+    expect(ids).toContain('sensitive');
+  });
+
+  it('deduplicates when custom ID matches built-in', () => {
+    const customs: CustomClassification[] = [
+      { id: 'public', label: 'UNCLASSIFIED', color: '#333', background: '#eee' },
+    ];
+    const ids = getAllClassificationIds(customs);
+    const publicCount = ids.filter((id) => id === 'public').length;
+    expect(publicCount).toBe(1);
   });
 });

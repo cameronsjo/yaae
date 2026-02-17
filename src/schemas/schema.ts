@@ -1,6 +1,4 @@
 import { z } from 'zod';
-import type { ClassificationLevel } from './classification';
-import type { WatermarkLevel } from './watermark';
 
 const coercedDate = z.coerce.date();
 
@@ -36,7 +34,7 @@ export const docFrontmatterSchema = z.object({
   title: z.string().min(1),
 
   // Classification & Status
-  classification: z.enum(['public', 'internal', 'confidential', 'restricted']).default('internal'),
+  classification: z.string().default('internal'),
   status: z.enum(['draft', 'review', 'final', 'archived']).default('draft'),
 
   // Metadata

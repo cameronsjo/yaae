@@ -1,7 +1,8 @@
-import type { ClassificationLevel, WatermarkLevel } from '../schemas';
+import type { WatermarkLevel } from '../schemas';
+import type { CustomClassification } from '../schemas/classification';
 
 export interface DocumentSettings {
-  defaultClassification: ClassificationLevel;
+  defaultClassification: string;
   defaultWatermarkForDrafts: WatermarkLevel;
   defaultHeaderLeft: string;
   defaultHeaderRight: string;
@@ -14,6 +15,7 @@ export interface DocumentSettings {
   validateOnSave: boolean;
   showClassificationBanner: boolean;
   bannerPosition: 'top' | 'both';
+  customClassifications: CustomClassification[];
 }
 
 export const DEFAULT_DOCUMENT_SETTINGS: DocumentSettings = {
@@ -30,4 +32,5 @@ export const DEFAULT_DOCUMENT_SETTINGS: DocumentSettings = {
   validateOnSave: true,
   showClassificationBanner: true,
   bannerPosition: 'top',
+  customClassifications: [],
 };

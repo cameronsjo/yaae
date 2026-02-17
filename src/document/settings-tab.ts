@@ -1,5 +1,9 @@
 import { Setting } from 'obsidian';
 import type YaaePlugin from '../../main';
+import {
+  getAllClassificationIds,
+  getClassificationMeta,
+} from '../schemas';
 
 /**
  * Render the Document settings section into the plugin settings tab.
@@ -11,21 +15,25 @@ export function renderDocumentSettings(
   new Setting(containerEl).setName('Document').setHeading();
 
   // --- Classification ---
+
+  // Build dropdown options from built-in + custom
+  const allIds = getAllClassificationIds(plugin.settings.document.customClassifications);
+
   new Setting(containerEl)
     .setName('Default classification')
     .setDesc('Classification level applied to new documents.')
-    .addDropdown((dropdown) =>
+    .addDropdown((dropdown) => {
+      for (const id of allIds) {
+        const meta = getClassificationMeta(id, plugin.settings.document.customClassifications);
+        dropdown.addOption(id, meta?.label ?? id);
+      }
       dropdown
-        .addOption('public', 'Public')
-        .addOption('internal', 'Internal')
-        .addOption('confidential', 'Confidential')
-        .addOption('restricted', 'Restricted')
         .setValue(plugin.settings.document.defaultClassification)
         .onChange(async (value) => {
-          plugin.settings.document.defaultClassification = value as any;
+          plugin.settings.document.defaultClassification = value;
           await plugin.saveSettings();
-        }),
-    );
+        });
+    });
 
   new Setting(containerEl)
     .setName('Show classification banner')
@@ -52,6 +60,91 @@ export function renderDocumentSettings(
           await plugin.saveSettings();
         }),
     );
+
+  // --- Custom Classifications ---
+
+  new Setting(containerEl)
+    .setName('Custom classifications')
+    .setDesc(
+      'Define custom classification levels. These override built-in levels with the same ID. ' +
+      'Use the ID in frontmatter (e.g., classification: non-sensitive).',
+    )
+    .setHeading();
+
+  const customListEl = containerEl.createDiv('yaae-custom-classifications');
+
+  function renderCustomClassifications() {
+    customListEl.empty();
+    const customs = plugin.settings.document.customClassifications;
+
+    for (let i = 0; i < customs.length; i++) {
+      const entry = customs[i];
+
+      const row = new Setting(customListEl)
+        .setName(entry.label || entry.id || 'New classification')
+        .setDesc(entry.id ? `Frontmatter value: ${entry.id}` : '');
+
+      row.addText((text) =>
+        text
+          .setPlaceholder('ID (e.g., non-sensitive)')
+          .setValue(entry.id)
+          .onChange(async (value) => {
+            entry.id = value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+            row.setDesc(entry.id ? `Frontmatter value: ${entry.id}` : '');
+            await plugin.saveSettings();
+          }),
+      );
+
+      row.addText((text) =>
+        text
+          .setPlaceholder('Label (e.g., NON-SENSITIVE)')
+          .setValue(entry.label)
+          .onChange(async (value) => {
+            entry.label = value;
+            row.setName(value || entry.id || 'New classification');
+            await plugin.saveSettings();
+          }),
+      );
+
+      row.addColorPicker((picker) =>
+        picker.setValue(entry.color).onChange(async (value) => {
+          entry.color = value;
+          await plugin.saveSettings();
+        }),
+      );
+
+      row.addColorPicker((picker) =>
+        picker.setValue(entry.background).onChange(async (value) => {
+          entry.background = value;
+          await plugin.saveSettings();
+        }),
+      );
+
+      row.addExtraButton((btn) =>
+        btn.setIcon('trash').setTooltip('Remove').onClick(async () => {
+          customs.splice(i, 1);
+          await plugin.saveSettings();
+          renderCustomClassifications();
+        }),
+      );
+    }
+
+    // Add button
+    new Setting(customListEl).addButton((btn) =>
+      btn.setButtonText('Add classification').onClick(async () => {
+        customs.push({
+          id: '',
+          label: '',
+          color: '#666666',
+          background: '#f5f5f5',
+        });
+        await plugin.saveSettings();
+        renderCustomClassifications();
+      }),
+    );
+  }
+
+  renderCustomClassifications();
 
   // --- Watermark ---
   new Setting(containerEl)

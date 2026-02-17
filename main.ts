@@ -11,7 +11,7 @@ import { focusExtension } from './src/cm6/focus-mode';
 import { typewriterExtension } from './src/cm6/typewriter-scroll';
 import { validateMarkdown, deriveCssClasses } from './src/schemas';
 import { generateToc } from './src/document/toc-generator';
-import { classificationBannerProcessor } from './src/document/classification-banner';
+import { createClassificationBannerProcessor } from './src/document/classification-banner';
 import { renderDocumentSettings } from './src/document/settings-tab';
 import { DEFAULT_DOCUMENT_SETTINGS } from './src/document/settings';
 
@@ -32,6 +32,10 @@ export default class YaaePlugin extends Plugin {
 
   /** Mutable array for CM6 editor extension toggle */
   private editorExtensions: Extension[] = [];
+
+  /** Status bar elements for quick toggles */
+  private focusModeStatusEl: HTMLElement | null = null;
+  private syntaxDimmingStatusEl: HTMLElement | null = null;
 
   async onload() {
     await this.loadSettings();
@@ -148,11 +152,29 @@ export default class YaaePlugin extends Plugin {
       },
     });
 
+    // --- Status Bar Toggles ---
+
+    this.focusModeStatusEl = this.addStatusBarItem();
+    this.focusModeStatusEl.addClass('yaae-statusbar-toggle');
+    this.updateFocusModeStatus();
+    this.registerDomEvent(this.focusModeStatusEl, 'click', () => {
+      this.cycleFocusMode();
+    });
+
+    this.syntaxDimmingStatusEl = this.addStatusBarItem();
+    this.syntaxDimmingStatusEl.addClass('yaae-statusbar-toggle');
+    this.updateSyntaxDimmingStatus();
+    this.registerDomEvent(this.syntaxDimmingStatusEl, 'click', () => {
+      this.toggleSyntaxDimming();
+    });
+
     // --- Document Auto-Behaviors ---
 
     // Classification banner in reading view
     if (this.settings.document.showClassificationBanner) {
-      this.registerMarkdownPostProcessor(classificationBannerProcessor);
+      this.registerMarkdownPostProcessor(
+        createClassificationBannerProcessor(this.settings.document.customClassifications),
+      );
     }
 
     // Validate on save
@@ -293,6 +315,7 @@ export default class YaaePlugin extends Plugin {
   async toggleSyntaxDimming() {
     this.settings.syntaxDimming = !this.settings.syntaxDimming;
     this.applyBodyClasses();
+    this.updateSyntaxDimmingStatus();
     await this.saveSettings();
   }
 
@@ -307,6 +330,7 @@ export default class YaaePlugin extends Plugin {
     const idx = cycle.indexOf(this.settings.focusMode);
     this.settings.focusMode = cycle[(idx + 1) % cycle.length];
     this.reconfigureFocus();
+    this.updateFocusModeStatus();
     await this.saveSettings();
   }
 
@@ -314,6 +338,27 @@ export default class YaaePlugin extends Plugin {
     this.settings.typewriterScroll = !this.settings.typewriterScroll;
     this.reconfigureTypewriter();
     await this.saveSettings();
+  }
+
+  // --- Status Bar Methods ---
+
+  updateFocusModeStatus() {
+    if (!this.focusModeStatusEl) return;
+    const labels: Record<FocusMode, string> = {
+      off: 'Focus: Off',
+      sentence: 'Focus: Sentence',
+      paragraph: 'Focus: Paragraph',
+    };
+    this.focusModeStatusEl.setText(labels[this.settings.focusMode]);
+    this.focusModeStatusEl.ariaLabel = 'Click to cycle focus mode';
+  }
+
+  updateSyntaxDimmingStatus() {
+    if (!this.syntaxDimmingStatusEl) return;
+    this.syntaxDimmingStatusEl.setText(
+      this.settings.syntaxDimming ? 'Syntax: Dim' : 'Syntax: Off',
+    );
+    this.syntaxDimmingStatusEl.ariaLabel = 'Click to toggle syntax dimming';
   }
 
   // --- Document Methods ---
@@ -410,6 +455,7 @@ class YaaeSettingTab extends PluginSettingTab {
         toggle.setValue(this.plugin.settings.syntaxDimming).onChange(async (value) => {
           this.plugin.settings.syntaxDimming = value;
           this.plugin.applyBodyClasses();
+          this.plugin.updateSyntaxDimmingStatus();
           await this.plugin.saveSettings();
         })
       );
@@ -441,6 +487,7 @@ class YaaeSettingTab extends PluginSettingTab {
           .onChange(async (value) => {
             this.plugin.settings.focusMode = value as FocusMode;
             this.plugin.reconfigureFocus();
+            this.plugin.updateFocusModeStatus();
             await this.plugin.saveSettings();
           })
       );

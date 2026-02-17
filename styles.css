@@ -196,3 +196,16 @@ body.yaae-guttered-headings .cm-content .cm-line .cm-formatting-header {
   color: var(--yaae-dimmed-color);
   transition: color var(--yaae-dimmed-transition) ease;
 }
+
+/* ==========================================================================
+   Status Bar Toggles
+   Clickable status bar items for quick feature toggling.
+   ========================================================================== */
+
+.yaae-statusbar-toggle {
+  cursor: pointer;
+}
+
+.yaae-statusbar-toggle:hover {
+  color: var(--text-accent);
+}
