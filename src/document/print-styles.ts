@@ -1,6 +1,8 @@
 import type { CustomClassification } from '../schemas/classification';
+import type { DocumentSettings } from './settings';
 
 const STYLE_ID = 'yaae-custom-classification-print-styles';
+const HEADER_FOOTER_STYLE_ID = 'yaae-header-footer-print-styles';
 
 /**
  * Generate and inject dynamic @media print CSS rules for custom
@@ -94,6 +96,108 @@ export class ClassificationPrintStyleManager {
       rules.push(`  .pdf-${c.id} .markdown-preview-sizer::after {
     border-bottom: none;
     border-top: 2px solid ${c.color};
+  }`);
+    }
+
+    rules.push('}');
+    this.styleEl.textContent = rules.join('\n');
+  }
+
+  destroy(): void {
+    if (this.styleEl) {
+      this.styleEl.remove();
+      this.styleEl = null;
+    }
+  }
+}
+
+/**
+ * Base styles shared by all header/footer pseudo-elements.
+ */
+const HEADER_FOOTER_BASE = `
+    font-size: 9px;
+    color: #888;
+    z-index: 9998;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;`;
+
+/**
+ * Generate and inject dynamic @media print CSS rules for page headers
+ * and footers. Uses fixed-positioned pseudo-elements that repeat on
+ * every printed page.
+ *
+ * Pseudo-element allocation (avoiding conflicts with existing features):
+ *   - Header left:  .print::before     (fixed top-left)
+ *   - Header right: .markdown-preview-view::after (fixed top-right)
+ *   - Footer left:  .markdown-preview-sizer::before (fixed bottom-left)
+ *   - Footer right: .print::after      (fixed bottom-right)
+ */
+export class HeaderFooterPrintStyleManager {
+  private styleEl: HTMLStyleElement | null = null;
+
+  init(settings: DocumentSettings): void {
+    this.styleEl = document.createElement('style');
+    this.styleEl.id = HEADER_FOOTER_STYLE_ID;
+    document.head.appendChild(this.styleEl);
+    this.update(settings);
+  }
+
+  update(settings: DocumentSettings): void {
+    if (!this.styleEl) return;
+
+    const {
+      defaultHeaderLeft,
+      defaultHeaderRight,
+      defaultFooterLeft,
+      defaultFooterRight,
+    } = settings;
+
+    const hasAny = defaultHeaderLeft || defaultHeaderRight || defaultFooterLeft || defaultFooterRight;
+
+    if (!hasAny) {
+      this.styleEl.textContent = '';
+      return;
+    }
+
+    const rules: string[] = ['@media print {'];
+
+    if (defaultHeaderLeft) {
+      const escaped = defaultHeaderLeft.replace(/"/g, '\\"');
+      rules.push(`  .print::before {
+    content: "${escaped}";
+    position: fixed;
+    top: 6px;
+    left: 16px;${HEADER_FOOTER_BASE}
+  }`);
+    }
+
+    if (defaultHeaderRight) {
+      const escaped = defaultHeaderRight.replace(/"/g, '\\"');
+      rules.push(`  .markdown-preview-view::after {
+    content: "${escaped}";
+    position: fixed;
+    top: 6px;
+    right: 16px;${HEADER_FOOTER_BASE}
+  }`);
+    }
+
+    if (defaultFooterLeft) {
+      const escaped = defaultFooterLeft.replace(/"/g, '\\"');
+      rules.push(`  .markdown-preview-sizer::before {
+    content: "${escaped}";
+    position: fixed;
+    bottom: 6px;
+    left: 16px;${HEADER_FOOTER_BASE}
+  }`);
+    }
+
+    if (defaultFooterRight) {
+      const escaped = defaultFooterRight.replace(/"/g, '\\"');
+      rules.push(`  .print::after {
+    content: "${escaped}";
+    position: fixed;
+    bottom: 6px;
+    right: 16px;${HEADER_FOOTER_BASE}
   }`);
     }
 

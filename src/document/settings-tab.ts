@@ -188,41 +188,48 @@ export function renderDocumentSettings(
     );
 
   // --- Headers & Footers ---
+
+  async function saveAndRefreshHeaderFooter() {
+    await plugin.saveSettings();
+    plugin.headerFooterPrintStyles.update(plugin.settings.document);
+  }
+
   new Setting(containerEl)
     .setName('Default header (left)')
-    .setDesc('Default left header text for PDF export.')
+    .setDesc('Default left header text for PDF export. Appears on every printed page.')
     .addText((text) =>
       text
         .setPlaceholder('e.g., Company Name')
         .setValue(plugin.settings.document.defaultHeaderLeft)
         .onChange(async (value) => {
           plugin.settings.document.defaultHeaderLeft = value;
-          await plugin.saveSettings();
+          await saveAndRefreshHeaderFooter();
         }),
     );
 
   new Setting(containerEl)
     .setName('Default header (right)')
-    .setDesc('Default right header text for PDF export.')
+    .setDesc('Default right header text for PDF export. Appears on every printed page.')
     .addText((text) =>
       text
         .setPlaceholder('e.g., Department')
         .setValue(plugin.settings.document.defaultHeaderRight)
         .onChange(async (value) => {
           plugin.settings.document.defaultHeaderRight = value;
-          await plugin.saveSettings();
+          await saveAndRefreshHeaderFooter();
         }),
     );
 
   new Setting(containerEl)
     .setName('Default footer (left)')
+    .setDesc('Default left footer text for PDF export.')
     .addText((text) =>
       text
         .setPlaceholder('')
         .setValue(plugin.settings.document.defaultFooterLeft)
         .onChange(async (value) => {
           plugin.settings.document.defaultFooterLeft = value;
-          await plugin.saveSettings();
+          await saveAndRefreshHeaderFooter();
         }),
     );
 
@@ -234,7 +241,7 @@ export function renderDocumentSettings(
         .setValue(plugin.settings.document.defaultFooterRight)
         .onChange(async (value) => {
           plugin.settings.document.defaultFooterRight = value;
-          await plugin.saveSettings();
+          await saveAndRefreshHeaderFooter();
         }),
     );
 
