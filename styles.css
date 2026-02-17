@@ -245,3 +245,36 @@ body.yaae-guttered-headings .cm-content .cm-line .cm-formatting-header {
 .yaae-statusbar-toggle:hover {
   color: var(--text-accent);
 }
+
+/* ==========================================================================
+   Settings Panel — Tabbed Navigation
+   ========================================================================== */
+
+.yaae-settings-nav {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  margin-bottom: 16px;
+}
+
+.yaae-settings-tab {
+  padding: 8px 16px;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: var(--font-ui-small);
+  font-weight: 500;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.yaae-settings-tab:hover {
+  color: var(--text-normal);
+}
+
+.yaae-settings-tab.is-active {
+  color: var(--text-accent);
+  border-bottom-color: var(--text-accent);
+}

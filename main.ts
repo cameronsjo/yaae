@@ -441,8 +441,11 @@ export default class YaaePlugin extends Plugin {
   }
 }
 
+type SettingsTab = 'writing' | 'document' | 'about';
+
 class YaaeSettingTab extends PluginSettingTab {
   plugin: YaaePlugin;
+  private activeTab: SettingsTab = 'writing';
 
   constructor(app: App, plugin: YaaePlugin) {
     super(app, plugin);
@@ -452,8 +455,45 @@ class YaaeSettingTab extends PluginSettingTab {
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
+    containerEl.addClass('yaae-settings');
 
-    // Prose highlight settings (from prose-highlight/settings-tab.ts)
+    // --- Tab Navigation ---
+    const nav = containerEl.createDiv('yaae-settings-nav');
+    const tabs: { id: SettingsTab; label: string }[] = [
+      { id: 'writing', label: 'Writing' },
+      { id: 'document', label: 'Document' },
+      { id: 'about', label: 'About' },
+    ];
+
+    for (const tab of tabs) {
+      const btn = nav.createEl('button', {
+        text: tab.label,
+        cls: `yaae-settings-tab${this.activeTab === tab.id ? ' is-active' : ''}`,
+      });
+      btn.addEventListener('click', () => {
+        this.activeTab = tab.id;
+        this.display();
+      });
+    }
+
+    // --- Tab Content ---
+    const content = containerEl.createDiv('yaae-settings-content');
+
+    switch (this.activeTab) {
+      case 'writing':
+        this.renderWritingTab(content);
+        break;
+      case 'document':
+        renderDocumentSettings(content, this.plugin);
+        break;
+      case 'about':
+        this.renderAboutTab(content);
+        break;
+    }
+  }
+
+  private renderWritingTab(containerEl: HTMLElement): void {
+    // Prose highlight settings
     renderProseHighlightSettings(containerEl, this.plugin);
 
     // Readability settings
@@ -519,8 +559,35 @@ class YaaeSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           })
       );
+  }
 
-    // Document settings
-    renderDocumentSettings(containerEl, this.plugin);
+  private renderAboutTab(containerEl: HTMLElement): void {
+    containerEl.createEl('h2', { text: 'YAAE' });
+    containerEl.createEl('p', {
+      text: 'Why Author Anywhere Else',
+      cls: 'setting-item-description',
+    });
+
+    new Setting(containerEl)
+      .setName('Version')
+      .setDesc(this.plugin.manifest.version);
+
+    new Setting(containerEl)
+      .setName('Author')
+      .setDesc(this.plugin.manifest.author);
+
+    if (this.plugin.manifest.authorUrl) {
+      new Setting(containerEl)
+        .setName('GitHub')
+        .addButton((btn) =>
+          btn.setButtonText('Open').onClick(() => {
+            window.open(this.plugin.manifest.authorUrl!, '_blank');
+          }),
+        );
+    }
+
+    new Setting(containerEl)
+      .setName('Description')
+      .setDesc(this.plugin.manifest.description);
   }
 }
