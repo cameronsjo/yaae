@@ -61,12 +61,16 @@ export const DEFAULT_PROSE_HIGHLIGHT_SETTINGS: ProseHighlightSettings = {
 
 export type FocusMode = 'off' | 'sentence' | 'paragraph';
 
+import type { DocumentSettings } from './document/settings';
+import { DEFAULT_DOCUMENT_SETTINGS } from './document/settings';
+
 export interface YaaeSettings {
   proseHighlight: ProseHighlightSettings;
   syntaxDimming: boolean;
   gutteredHeadings: boolean;
   focusMode: FocusMode;
   typewriterScroll: boolean;
+  document: DocumentSettings;
 }
 
 export const DEFAULT_SETTINGS: YaaeSettings = {
@@ -75,4 +79,5 @@ export const DEFAULT_SETTINGS: YaaeSettings = {
   gutteredHeadings: true,
   focusMode: 'off',
   typewriterScroll: false,
+  document: DEFAULT_DOCUMENT_SETTINGS,
 };

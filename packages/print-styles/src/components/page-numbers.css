@@ -1,0 +1,27 @@
+@media print {
+  /* Initialize counter on the print container */
+  .print {
+    counter-reset: page-number;
+  }
+
+  /* Increment on each page div */
+  .print > div {
+    counter-increment: page-number;
+    position: relative;
+  }
+
+  /* Page number display */
+  .print > div::after {
+    content: "Page " counter(page-number);
+    position: absolute;
+    bottom: 12px;
+    right: 16px;
+    font-size: 9px;
+    color: #888;
+  }
+
+  /* Hide page number on cover page */
+  .pdf-skip-cover .print > div:first-child::after {
+    opacity: 0;
+  }
+}

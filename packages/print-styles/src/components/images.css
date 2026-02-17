@@ -1,0 +1,12 @@
+@media print {
+  img {
+    max-width: 100%;
+    height: auto;
+    break-inside: avoid;
+  }
+
+  .image-embed {
+    text-align: center;
+    break-inside: avoid;
+  }
+}
