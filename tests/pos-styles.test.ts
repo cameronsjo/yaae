@@ -41,15 +41,15 @@ describe('POSStyleManager', () => {
     expect(dom.headAppendChild).toHaveBeenCalled();
   });
 
-  it('should generate CSS rules for all POS categories', () => {
+  it('should set CSS custom properties for all POS categories', () => {
     manager.init(DEFAULT_PROSE_HIGHLIGHT_SETTINGS);
     const css = dom.styleEl.textContent;
 
-    expect(css).toContain('.yaae-pos-adjective');
-    expect(css).toContain('.yaae-pos-noun');
-    expect(css).toContain('.yaae-pos-adverb');
-    expect(css).toContain('.yaae-pos-verb');
-    expect(css).toContain('.yaae-pos-conjunction');
+    expect(css).toContain('--yaae-pos-adjective-color');
+    expect(css).toContain('--yaae-pos-noun-color');
+    expect(css).toContain('--yaae-pos-adverb-color');
+    expect(css).toContain('--yaae-pos-verb-color');
+    expect(css).toContain('--yaae-pos-conjunction-color');
   });
 
   it('should use default iA Writer colors', () => {

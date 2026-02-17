@@ -25,13 +25,17 @@ export class POSStyleManager {
 
     const rules: string[] = [];
 
-    // POS category colors
+    // POS category colors — set CSS custom properties so the static
+    // class rules in styles.css (`.yaae-pos-adjective { color: var(--…) }`)
+    // pick up user overrides from the plugin settings UI.
+    const varDecls: string[] = [];
     for (const cat of POS_CATEGORIES) {
       const catSettings = settings.categories[cat];
-      rules.push(`.yaae-pos-${cat} { color: ${catSettings.color}; }`);
+      varDecls.push(`--yaae-pos-${cat}-color: ${catSettings.color};`);
     }
+    rules.push(`body { ${varDecls.join(' ')} }`);
 
-    // Custom word list colors
+    // Custom word list colors (fully dynamic — no static rules)
     for (const list of settings.customWordLists) {
       const cls = sanitizeListName(list.name);
       if (cls) {
@@ -64,8 +68,7 @@ export class POSStyleManager {
       }
     }
 
-    // Replace list rules section — find and replace or just do full update
-    // Simplest: callers should use update() with full settings
+    // Replace list rules section — keep the body{} variable block, swap list rules
     this.styleEl.textContent = existingRules
       .split('\n')
       .filter((line) => !line.startsWith('.yaae-list-'))

@@ -1,4 +1,139 @@
-/* yaae styles */
+/* @settings
+
+name: YAAE — Why Author Anywhere Else
+id: yaae
+settings:
+  -
+    id: yaae-prose-heading
+    title: Prose Highlighting
+    type: heading
+    level: 1
+    collapsed: true
+  -
+    id: yaae-pos-adjective-color
+    title: Adjective color
+    type: variable-color
+    format: hex
+    default: '#b97a0a'
+  -
+    id: yaae-pos-noun-color
+    title: Noun color
+    type: variable-color
+    format: hex
+    default: '#ce4924'
+  -
+    id: yaae-pos-adverb-color
+    title: Adverb color
+    type: variable-color
+    format: hex
+    default: '#c333a7'
+  -
+    id: yaae-pos-verb-color
+    title: Verb color
+    type: variable-color
+    format: hex
+    default: '#177eB8'
+  -
+    id: yaae-pos-conjunction-color
+    title: Conjunction color
+    type: variable-color
+    format: hex
+    default: '#01934e'
+  -
+    id: yaae-syntax-heading
+    title: Syntax Dimming
+    type: heading
+    level: 1
+    collapsed: true
+  -
+    id: yaae-syntax-dimming-opacity
+    title: Dimmed opacity
+    description: Opacity of markdown formatting characters (**, #, etc.)
+    type: variable-number-slider
+    default: 0.3
+    min: 0
+    max: 1
+    step: 0.05
+  -
+    id: yaae-syntax-dimming-active-opacity
+    title: Active line opacity
+    description: Opacity of formatting characters on the active line
+    type: variable-number-slider
+    default: 0.7
+    min: 0
+    max: 1
+    step: 0.05
+  -
+    id: yaae-focus-heading
+    title: Focus Mode
+    type: heading
+    level: 1
+    collapsed: true
+  -
+    id: yaae-dimmed-color
+    title: Dimmed text color
+    description: Color applied to unfocused text (defaults to --text-faint)
+    type: variable-color
+    format: hex
+    default: '#'
+  -
+    id: yaae-dimmed-transition
+    title: Fade transition
+    description: Transition duration for focus dimming
+    type: variable-text
+    default: 0.15s
+  -
+    id: yaae-gutter-heading
+    title: Guttered Headings
+    type: heading
+    level: 1
+    collapsed: true
+  -
+    id: yaae-gutter-width
+    title: Gutter width
+    description: Width reserved for heading markers in the gutter
+    type: variable-number-slider
+    default: 40
+    min: 20
+    max: 80
+    step: 4
+    format: px
+
+*/
+
+/* ==========================================================================
+   Custom Properties — defaults for all tunables
+   ========================================================================== */
+
+body {
+  /* Prose highlighting — default iA Writer palette */
+  --yaae-pos-adjective-color: #b97a0a;
+  --yaae-pos-noun-color: #ce4924;
+  --yaae-pos-adverb-color: #c333a7;
+  --yaae-pos-verb-color: #177eB8;
+  --yaae-pos-conjunction-color: #01934e;
+
+  /* Syntax dimming */
+  --yaae-syntax-dimming-opacity: 0.3;
+  --yaae-syntax-dimming-active-opacity: 0.7;
+
+  /* Focus mode */
+  --yaae-dimmed-color: var(--text-faint);
+  --yaae-dimmed-transition: 0.15s;
+
+  /* Guttered headings */
+  --yaae-gutter-width: 40px;
+}
+
+/* ==========================================================================
+   Prose Highlighting — POS category and custom list class rules
+   ========================================================================== */
+
+.yaae-pos-adjective { color: var(--yaae-pos-adjective-color); }
+.yaae-pos-noun { color: var(--yaae-pos-noun-color); }
+.yaae-pos-adverb { color: var(--yaae-pos-adverb-color); }
+.yaae-pos-verb { color: var(--yaae-pos-verb-color); }
+.yaae-pos-conjunction { color: var(--yaae-pos-conjunction-color); }
 
 /* ===== Print / PDF Export Suppression =====
  * Hide all prose highlighting decorations when printing or exporting to PDF.
@@ -23,12 +158,12 @@
    ========================================================================== */
 
 body.yaae-syntax-dimming .cm-formatting {
-  opacity: 0.3;
+  opacity: var(--yaae-syntax-dimming-opacity);
   transition: opacity 0.15s ease;
 }
 
 body.yaae-syntax-dimming .cm-active .cm-formatting {
-  opacity: 0.7;
+  opacity: var(--yaae-syntax-dimming-active-opacity);
 }
 
 /* ==========================================================================
@@ -39,13 +174,13 @@ body.yaae-syntax-dimming .cm-active .cm-formatting {
    ========================================================================== */
 
 body.yaae-guttered-headings .cm-content .cm-line {
-  padding-left: 40px;
+  padding-left: var(--yaae-gutter-width);
 }
 
 body.yaae-guttered-headings .cm-content .cm-line .cm-formatting-header {
   display: inline-block;
-  width: 40px;
-  margin-left: -40px;
+  width: var(--yaae-gutter-width);
+  margin-left: calc(-1 * var(--yaae-gutter-width));
   text-align: right;
   padding-right: 0.5em;
   box-sizing: border-box;
@@ -58,6 +193,6 @@ body.yaae-guttered-headings .cm-content .cm-line .cm-formatting-header {
    ========================================================================== */
 
 .yaae-dimmed {
-  color: var(--text-faint);
-  transition: color 0.15s ease;
+  color: var(--yaae-dimmed-color);
+  transition: color var(--yaae-dimmed-transition) ease;
 }
