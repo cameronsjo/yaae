@@ -1,0 +1,45 @@
+@media print {
+  /* Prevent orphaned headings */
+  h1, h2, h3, h4 {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
+  /* Keep headings with following content */
+  h1 + *, h2 + *, h3 + *, h4 + * {
+    break-before: avoid;
+  }
+
+  /* Prevent breaking inside block elements */
+  pre, blockquote, table, img, .callout {
+    break-inside: avoid;
+  }
+
+  /* Widow and orphan control */
+  p {
+    widows: 3;
+    orphans: 3;
+  }
+
+  /* Repeat table headers across pages */
+  thead {
+    display: table-header-group;
+  }
+
+  /* Prevent row splitting */
+  table tr {
+    break-inside: avoid;
+  }
+
+  /* Print-optimized sizes via CSS variables */
+  :root {
+    --print-font-size: 11pt;
+    --print-line-height: 1.6;
+    --print-heading-scale: 1.2;
+  }
+
+  body {
+    font-size: var(--print-font-size);
+    line-height: var(--print-line-height);
+  }
+}

@@ -1,0 +1,15 @@
+@media print {
+  /* Show URLs after external links */
+  a.external-link::after {
+    content: " [" attr(href) "]";
+    font-size: 0.8em;
+    font-style: italic;
+    color: #666;
+    word-break: break-all;
+  }
+
+  /* Suppress URL expansion when pdf-no-links is set */
+  .pdf-no-links a.external-link::after {
+    content: none;
+  }
+}

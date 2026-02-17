@@ -1,0 +1,103 @@
+@media print {
+  /* --- Classification Banner: Top (::before on .markdown-preview-view) --- */
+  .pdf-public .markdown-preview-view::before,
+  .pdf-internal .markdown-preview-view::before,
+  .pdf-confidential .markdown-preview-view::before,
+  .pdf-restricted .markdown-preview-view::before {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: block;
+    text-align: center;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 2px 0;
+    z-index: 9999;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* --- Classification Banner: Bottom (::after on .markdown-preview-sizer) --- */
+  .pdf-public .markdown-preview-sizer::after,
+  .pdf-internal .markdown-preview-sizer::after,
+  .pdf-confidential .markdown-preview-sizer::after,
+  .pdf-restricted .markdown-preview-sizer::after {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: block;
+    text-align: center;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 2px 0;
+    z-index: 9999;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* PUBLIC */
+  .pdf-public .markdown-preview-view::before,
+  .pdf-public .markdown-preview-sizer::after {
+    content: "PUBLIC";
+    color: #2d7d2d;
+    background: #f0faf0;
+    border-bottom: 2px solid #2d7d2d;
+  }
+  .pdf-public .markdown-preview-sizer::after {
+    border-bottom: none;
+    border-top: 2px solid #2d7d2d;
+  }
+
+  /* INTERNAL */
+  .pdf-internal .markdown-preview-view::before,
+  .pdf-internal .markdown-preview-sizer::after {
+    content: "INTERNAL — DO NOT DISTRIBUTE";
+    color: #b8860b;
+    background: #fff8e7;
+    border-bottom: 2px solid #b8860b;
+  }
+  .pdf-internal .markdown-preview-sizer::after {
+    border-bottom: none;
+    border-top: 2px solid #b8860b;
+  }
+
+  /* CONFIDENTIAL */
+  .pdf-confidential .markdown-preview-view::before,
+  .pdf-confidential .markdown-preview-sizer::after {
+    content: "CONFIDENTIAL";
+    color: #c41e1e;
+    background: #fff5f5;
+    border-bottom: 2px solid #c41e1e;
+  }
+  .pdf-confidential .markdown-preview-sizer::after {
+    border-bottom: none;
+    border-top: 2px solid #c41e1e;
+  }
+
+  /* RESTRICTED */
+  .pdf-restricted .markdown-preview-view::before,
+  .pdf-restricted .markdown-preview-sizer::after {
+    content: "RESTRICTED — AUTHORIZED PERSONNEL ONLY";
+    color: #8b0000;
+    background: #ffe0e0;
+    border-bottom: 2px solid #8b0000;
+  }
+  .pdf-restricted .markdown-preview-sizer::after {
+    border-bottom: none;
+    border-top: 2px solid #8b0000;
+  }
+
+  /* Suppress banners */
+  .pdf-no-header .markdown-preview-view::before {
+    display: none !important;
+  }
+  .pdf-no-footer .markdown-preview-sizer::after {
+    display: none !important;
+  }
+}

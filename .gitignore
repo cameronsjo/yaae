@@ -1,5 +1,6 @@
 # Build output
 main.js
+packages/*/dist/
 
 # Dependencies
 node_modules/

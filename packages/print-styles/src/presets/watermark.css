@@ -1,0 +1,46 @@
+@media print {
+  /* Base watermark layer on each page div */
+  .pdf-watermark-whisper .print > div::before,
+  .pdf-watermark-heads-up .print > div::before,
+  .pdf-watermark-loud .print > div::before,
+  .pdf-watermark-screaming .print > div::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 9998;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* WHISPER: opacity 0.04, font-size 48, weight 500, gap 400, rotation -30 */
+  .pdf-watermark-whisper .print > div::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dominant-baseline='middle' font-family='sans-serif' font-size='48' font-weight='500' fill='rgba(0,0,0,0.04)' transform='rotate(-30,200,200)'%3EDRAFT%3C/text%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 400px 400px;
+  }
+
+  /* HEADS-UP: opacity 0.08, font-size 80, weight 700, gap 300, rotation -35 */
+  .pdf-watermark-heads-up .print > div::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dominant-baseline='middle' font-family='sans-serif' font-size='80' font-weight='700' fill='rgba(0,0,0,0.08)' transform='rotate(-35,150,150)'%3EDRAFT%3C/text%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 300px 300px;
+  }
+
+  /* LOUD: opacity 0.14, font-size 110, weight 800, gap 220, rotation -40 */
+  .pdf-watermark-loud .print > div::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dominant-baseline='middle' font-family='sans-serif' font-size='110' font-weight='800' fill='rgba(0,0,0,0.14)' transform='rotate(-40,110,110)'%3EDRAFT%3C/text%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 220px 220px;
+  }
+
+  /* SCREAMING: opacity 0.22, font-size 140, weight 900, gap 150, rotation -45 */
+  .pdf-watermark-screaming .print > div::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dominant-baseline='middle' font-family='sans-serif' font-size='140' font-weight='900' fill='rgba(0,0,0,0.22)' transform='rotate(-45,75,75)'%3EDRAFT%3C/text%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 150px 150px;
+  }
+}

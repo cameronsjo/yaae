@@ -5,10 +5,13 @@
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
-    "build": "node esbuild.config.mjs production",
+    "build": "pnpm --filter @doc-forge/schemas build && node esbuild.config.mjs production",
+    "build:schemas": "pnpm --filter @doc-forge/schemas build",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:schemas": "pnpm --filter @doc-forge/schemas test",
+    "test:all": "vitest run && pnpm --filter @doc-forge/schemas test",
     "version": "node scripts/update-versions.mjs"
   },
   "keywords": [
@@ -28,6 +31,9 @@
     "vitest": "^4.0.16"
   },
   "dependencies": {
-    "compromise": "^14.14.5"
+    "@doc-forge/schemas": "workspace:*",
+    "compromise": "^14.14.5",
+    "gray-matter": "^4.0.3",
+    "zod": "^3.24.0"
   }
 }

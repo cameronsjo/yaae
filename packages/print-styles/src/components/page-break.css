@@ -1,0 +1,19 @@
+@media print {
+  /* Explicit page break — use <div class="page-break"></div> in markdown */
+  .page-break {
+    page-break-before: always;
+    break-before: page;
+    height: 0;
+    margin: 0;
+    padding: 0;
+    border: none;
+  }
+
+  /* Optional: uncomment to use <hr> as page break */
+  /* hr { page-break-before: always; break-before: page; visibility: hidden; } */
+
+  /* Hide elements from PDF output */
+  .no-print {
+    display: none !important;
+  }
+}
