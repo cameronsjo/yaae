@@ -12,4 +12,17 @@
   .pdf-no-links a.external-link::after {
     content: none;
   }
+
+  /* Strip all link styling — render as plain text */
+  .pdf-plain-links a,
+  .pdf-plain-links a.external-link,
+  .pdf-plain-links a.internal-link {
+    color: inherit !important;
+    text-decoration: none !important;
+    pointer-events: none;
+  }
+
+  .pdf-plain-links a.external-link::after {
+    content: none;
+  }
 }

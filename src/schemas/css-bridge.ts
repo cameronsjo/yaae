@@ -24,6 +24,11 @@ export function deriveCssClasses(frontmatter: DocFrontmatter): string[] {
     classes.push('pdf-no-links');
   }
 
+  // Plain links (strip link styling in print)
+  if (frontmatter.export?.pdf?.plainLinks) {
+    classes.push('pdf-plain-links');
+  }
+
   // Skip cover page number
   if (frontmatter.export?.pdf?.skipCover) {
     classes.push('pdf-skip-cover');

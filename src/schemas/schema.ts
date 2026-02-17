@@ -5,6 +5,7 @@ const coercedDate = z.coerce.date();
 const pdfExportSchema = z.object({
   watermark: z.enum(['off', 'whisper', 'heads-up', 'loud', 'screaming']).default('off'),
   expandLinks: z.boolean().default(true),
+  plainLinks: z.boolean().default(false),
   toc: z.boolean().default(false),
   tocDepth: z.number().int().min(1).max(6).default(3),
   skipCover: z.boolean().default(false),

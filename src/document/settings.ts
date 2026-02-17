@@ -11,6 +11,7 @@ export interface DocumentSettings {
   autoToc: boolean;
   tocDepth: number;
   expandLinks: boolean;
+  plainLinks: boolean;
   pageNumbers: boolean;
   validateOnSave: boolean;
   showClassificationBanner: boolean;
@@ -28,6 +29,7 @@ export const DEFAULT_DOCUMENT_SETTINGS: DocumentSettings = {
   autoToc: false,
   tocDepth: 3,
   expandLinks: true,
+  plainLinks: false,
   pageNumbers: true,
   validateOnSave: true,
   showClassificationBanner: true,

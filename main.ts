@@ -14,6 +14,7 @@ import { generateToc } from './src/document/toc-generator';
 import { createClassificationBannerProcessor } from './src/document/classification-banner';
 import { renderDocumentSettings } from './src/document/settings-tab';
 import { DEFAULT_DOCUMENT_SETTINGS } from './src/document/settings';
+import { ClassificationPrintStyleManager } from './src/document/print-styles';
 
 const BODY_CLASS_SYNTAX_DIMMING = 'yaae-syntax-dimming';
 const BODY_CLASS_GUTTERED_HEADINGS = 'yaae-guttered-headings';
@@ -32,6 +33,9 @@ export default class YaaePlugin extends Plugin {
 
   /** Mutable array for CM6 editor extension toggle */
   private editorExtensions: Extension[] = [];
+
+  /** Dynamic print style manager for custom classification banners */
+  classificationPrintStyles = new ClassificationPrintStyleManager();
 
   /** Status bar elements for quick toggles */
   private focusModeStatusEl: HTMLElement | null = null;
@@ -170,6 +174,9 @@ export default class YaaePlugin extends Plugin {
 
     // --- Document Auto-Behaviors ---
 
+    // Dynamic print CSS for custom classification banners
+    this.classificationPrintStyles.init(this.settings.document.customClassifications);
+
     // Classification banner in reading view
     if (this.settings.document.showClassificationBanner) {
       this.registerMarkdownPostProcessor(
@@ -194,6 +201,7 @@ export default class YaaePlugin extends Plugin {
 
   onunload() {
     this.styleManager.destroy();
+    this.classificationPrintStyles.destroy();
     document.body.classList.remove(BODY_CLASS_SYNTAX_DIMMING);
     document.body.classList.remove(BODY_CLASS_GUTTERED_HEADINGS);
     this.removeTypewriterPadding();

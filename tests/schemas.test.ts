@@ -467,6 +467,25 @@ created: 2024-01-01`;
     expect(classes).not.toContain('pdf-no-links');
   });
 
+  it('includes pdf-plain-links when plainLinks is true', () => {
+    const yaml = `title: Test
+created: 2024-01-01
+export:
+  pdf:
+    plainLinks: true`;
+    const result = validateMarkdown(wrap(yaml));
+    const classes = deriveCssClasses(result.data!);
+    expect(classes).toContain('pdf-plain-links');
+  });
+
+  it('excludes pdf-plain-links by default', () => {
+    const yaml = `title: Test
+created: 2024-01-01`;
+    const result = validateMarkdown(wrap(yaml));
+    const classes = deriveCssClasses(result.data!);
+    expect(classes).not.toContain('pdf-plain-links');
+  });
+
   it('includes pdf-skip-cover when set', () => {
     const yaml = `title: Test
 created: 2024-01-01

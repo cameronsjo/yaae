@@ -73,6 +73,11 @@ export function renderDocumentSettings(
 
   const customListEl = containerEl.createDiv('yaae-custom-classifications');
 
+  async function saveAndRefreshPrintStyles() {
+    await plugin.saveSettings();
+    plugin.classificationPrintStyles.update(plugin.settings.document.customClassifications);
+  }
+
   function renderCustomClassifications() {
     customListEl.empty();
     const customs = plugin.settings.document.customClassifications;
@@ -91,7 +96,7 @@ export function renderDocumentSettings(
           .onChange(async (value) => {
             entry.id = value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
             row.setDesc(entry.id ? `Frontmatter value: ${entry.id}` : '');
-            await plugin.saveSettings();
+            await saveAndRefreshPrintStyles();
           }),
       );
 
@@ -102,28 +107,28 @@ export function renderDocumentSettings(
           .onChange(async (value) => {
             entry.label = value;
             row.setName(value || entry.id || 'New classification');
-            await plugin.saveSettings();
+            await saveAndRefreshPrintStyles();
           }),
       );
 
       row.addColorPicker((picker) =>
         picker.setValue(entry.color).onChange(async (value) => {
           entry.color = value;
-          await plugin.saveSettings();
+          await saveAndRefreshPrintStyles();
         }),
       );
 
       row.addColorPicker((picker) =>
         picker.setValue(entry.background).onChange(async (value) => {
           entry.background = value;
-          await plugin.saveSettings();
+          await saveAndRefreshPrintStyles();
         }),
       );
 
       row.addExtraButton((btn) =>
         btn.setIcon('trash').setTooltip('Remove').onClick(async () => {
           customs.splice(i, 1);
-          await plugin.saveSettings();
+          await saveAndRefreshPrintStyles();
           renderCustomClassifications();
         }),
       );
@@ -145,6 +150,24 @@ export function renderDocumentSettings(
   }
 
   renderCustomClassifications();
+
+  // --- PDF Export ---
+  new Setting(containerEl).setName('PDF export').setHeading();
+
+  new Setting(containerEl)
+    .setName('Plain links in PDF')
+    .setDesc(
+      'Strip link colors and underlines in PDF export. Links render as plain text. ' +
+      'Can also be set per-document via export.pdf.plainLinks in frontmatter.',
+    )
+    .addToggle((toggle) =>
+      toggle
+        .setValue(plugin.settings.document.plainLinks)
+        .onChange(async (value) => {
+          plugin.settings.document.plainLinks = value;
+          await plugin.saveSettings();
+        }),
+    );
 
   // --- Watermark ---
   new Setting(containerEl)
