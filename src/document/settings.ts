@@ -1,6 +1,10 @@
 import type { WatermarkLevel } from '../schemas';
 import type { CustomClassification } from '../schemas/classification';
 
+export type LinksMode = 'expand' | 'styled' | 'plain' | 'stripped';
+export type ThemeMode = 'light' | 'dark' | 'auto';
+export type FontPreset = 'sans' | 'serif' | 'mono' | 'system';
+
 export interface DocumentSettings {
   defaultClassification: string;
   defaultWatermarkForDrafts: WatermarkLevel;
@@ -10,13 +14,20 @@ export interface DocumentSettings {
   defaultFooterRight: string;
   autoToc: boolean;
   tocDepth: number;
-  expandLinks: boolean;
-  plainLinks: boolean;
+  links: LinksMode;
+  theme: ThemeMode;
+  fontFamily: FontPreset | string;
+  fontSize: number;
+  copyPasteSafe: boolean;
+  compactTables: boolean;
   pageNumbers: boolean;
   validateOnSave: boolean;
   showClassificationBanner: boolean;
   bannerPosition: 'top' | 'both';
   customClassifications: CustomClassification[];
+  // Deprecated: use `links` instead
+  expandLinks: boolean;
+  plainLinks: boolean;
 }
 
 export const DEFAULT_DOCUMENT_SETTINGS: DocumentSettings = {
@@ -28,11 +39,17 @@ export const DEFAULT_DOCUMENT_SETTINGS: DocumentSettings = {
   defaultFooterRight: '',
   autoToc: false,
   tocDepth: 3,
-  expandLinks: true,
-  plainLinks: false,
+  links: 'expand',
+  theme: 'light',
+  fontFamily: 'sans',
+  fontSize: 11,
+  copyPasteSafe: true,
+  compactTables: true,
   pageNumbers: true,
   validateOnSave: true,
   showClassificationBanner: true,
   bannerPosition: 'top',
   customClassifications: [],
+  expandLinks: true,
+  plainLinks: false,
 };

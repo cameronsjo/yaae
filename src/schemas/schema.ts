@@ -4,8 +4,13 @@ const coercedDate = z.coerce.date();
 
 const pdfExportSchema = z.object({
   watermark: z.enum(['off', 'whisper', 'heads-up', 'loud', 'screaming']).default('off'),
-  expandLinks: z.boolean().default(true),
-  plainLinks: z.boolean().default(false),
+  links: z.enum(['expand', 'styled', 'plain', 'stripped']).default('expand'),
+  theme: z.enum(['light', 'dark', 'auto']).default('light'),
+  fontFamily: z.union([z.enum(['sans', 'serif', 'mono', 'system']), z.string()]).default('sans'),
+  fontSize: z.number().min(6).max(24).default(11),
+  copyPasteSafe: z.boolean().default(true),
+  compactTables: z.boolean().default(true),
+  landscape: z.boolean().default(false),
   toc: z.boolean().default(false),
   tocDepth: z.number().int().min(1).max(6).default(3),
   skipCover: z.boolean().default(false),
@@ -14,6 +19,9 @@ const pdfExportSchema = z.object({
   headerRight: z.string().optional(),
   footerLeft: z.string().optional(),
   footerRight: z.string().optional(),
+  // Deprecated: use `links` enum instead
+  expandLinks: z.boolean().default(true),
+  plainLinks: z.boolean().default(false),
 }).default({});
 
 const slidesExportSchema = z.object({

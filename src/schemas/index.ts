@@ -38,4 +38,4 @@ export {
 } from './validation';
 
 // CSS bridge
-export { deriveCssClasses } from './css-bridge';
+export { deriveCssClasses, resolveLinksMode } from './css-bridge';

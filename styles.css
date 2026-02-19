@@ -168,18 +168,6 @@ body {
     height: auto;
   }
 
-  /* Strip all link styling — render as plain text in PDF */
-  .pdf-plain-links a,
-  .pdf-plain-links a.external-link,
-  .pdf-plain-links a.internal-link {
-    color: inherit !important;
-    text-decoration: none !important;
-    pointer-events: none;
-  }
-
-  .pdf-plain-links a.external-link::after {
-    content: none;
-  }
 }
 
 .print [class*="yaae-pos-"],

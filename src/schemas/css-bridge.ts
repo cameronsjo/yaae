@@ -1,5 +1,31 @@
 import type { DocFrontmatter } from './schema';
 
+type LinksMode = 'expand' | 'styled' | 'plain' | 'stripped';
+
+/**
+ * Resolve the effective links mode from frontmatter.
+ * The `links` enum takes precedence. If it's at default ('expand'),
+ * fall back to deprecated boolean fields for backwards compatibility.
+ */
+export function resolveLinksMode(pdf: DocFrontmatter['export']['pdf']): LinksMode {
+  // If links is explicitly set to a non-default value, use it
+  if (pdf.links && pdf.links !== 'expand') {
+    return pdf.links;
+  }
+
+  // Fall back to deprecated booleans
+  if (pdf.plainLinks) {
+    console.debug('[yaae] Resolved links mode from deprecated plainLinks boolean → plain');
+    return 'plain';
+  }
+  if (pdf.expandLinks === false) {
+    console.debug('[yaae] Resolved links mode from deprecated expandLinks boolean → styled');
+    return 'styled';
+  }
+
+  return pdf.links ?? 'expand';
+}
+
 export function deriveCssClasses(frontmatter: DocFrontmatter): string[] {
   const classes: string[] = [];
 
@@ -19,24 +45,37 @@ export function deriveCssClasses(frontmatter: DocFrontmatter): string[] {
     classes.push(`pdf-watermark-${watermark}`);
   }
 
-  // Link expansion
-  if (frontmatter.export?.pdf?.expandLinks === false) {
-    classes.push('pdf-no-links');
-  }
+  const pdf = frontmatter.export?.pdf;
+  if (pdf) {
+    // Links
+    const linksMode = resolveLinksMode(pdf);
+    if (linksMode === 'styled') classes.push('pdf-links-styled');
+    if (linksMode === 'plain') classes.push('pdf-links-plain');
+    if (linksMode === 'stripped') classes.push('pdf-links-stripped');
 
-  // Plain links (strip link styling in print)
-  if (frontmatter.export?.pdf?.plainLinks) {
-    classes.push('pdf-plain-links');
-  }
+    // Theme
+    if (pdf.theme === 'dark') classes.push('pdf-theme-dark');
+    if (pdf.theme === 'auto') classes.push('pdf-theme-auto');
 
-  // Skip cover page number
-  if (frontmatter.export?.pdf?.skipCover) {
-    classes.push('pdf-skip-cover');
-  }
+    // Font family (only named presets get classes; custom strings use dynamic styles)
+    if (pdf.fontFamily === 'sans') classes.push('pdf-font-sans');
+    if (pdf.fontFamily === 'serif') classes.push('pdf-font-serif');
+    if (pdf.fontFamily === 'mono') classes.push('pdf-font-mono');
 
-  // TOC
-  if (frontmatter.export?.pdf?.toc) {
-    classes.push('pdf-toc');
+    // Copy-paste safe (default true, so class is present by default)
+    if (pdf.copyPasteSafe !== false) classes.push('pdf-copy-safe');
+
+    // Compact tables (default true, so class is present by default)
+    if (pdf.compactTables !== false) classes.push('pdf-compact-tables');
+
+    // Landscape
+    if (pdf.landscape) classes.push('pdf-landscape');
+
+    // Skip cover page number
+    if (pdf.skipCover) classes.push('pdf-skip-cover');
+
+    // TOC
+    if (pdf.toc) classes.push('pdf-toc');
   }
 
   return classes;

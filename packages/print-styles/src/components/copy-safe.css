@@ -1,0 +1,9 @@
+@media print {
+  /* Disable ligatures for copy-paste safety.
+   * Ligatures like fi, fl, ffi can copy as garbled characters
+   * in many PDF viewers. Disabling them preserves fidelity. */
+  .pdf-copy-safe {
+    font-variant-ligatures: no-common-ligatures;
+    font-feature-settings: "liga" 0, "clig" 0;
+  }
+}

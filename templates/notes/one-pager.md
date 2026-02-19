@@ -8,7 +8,7 @@ created: "{{date}}"
 export:
   pdf:
     watermark: heads-up
-    expandLinks: false
+    links: styled
 ---
 
 ## Problem

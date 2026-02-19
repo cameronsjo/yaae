@@ -4,6 +4,7 @@ import {
   getAllClassificationIds,
   getClassificationMeta,
 } from '../schemas';
+import type { LinksMode, ThemeMode } from './settings';
 
 /**
  * Render the Document settings section into the plugin settings tab.
@@ -12,11 +13,11 @@ export function renderDocumentSettings(
   containerEl: HTMLElement,
   plugin: YaaePlugin,
 ): void {
-  new Setting(containerEl).setName('Document').setHeading();
+  // =================================================================
+  // Classification
+  // =================================================================
+  new Setting(containerEl).setName('Classification').setHeading();
 
-  // --- Classification ---
-
-  // Build dropdown options from built-in + custom
   const allIds = getAllClassificationIds(plugin.settings.document.customClassifications);
 
   new Setting(containerEl)
@@ -151,25 +152,148 @@ export function renderDocumentSettings(
 
   renderCustomClassifications();
 
-  // --- PDF Export ---
-  new Setting(containerEl).setName('PDF export').setHeading();
+  // =================================================================
+  // PDF Appearance
+  // =================================================================
+  new Setting(containerEl).setName('PDF Appearance').setHeading();
 
   new Setting(containerEl)
-    .setName('Plain links in PDF')
-    .setDesc(
-      'Strip link colors and underlines in PDF export. Links render as plain text. ' +
-      'Can also be set per-document via export.pdf.plainLinks in frontmatter.',
-    )
-    .addToggle((toggle) =>
-      toggle
-        .setValue(plugin.settings.document.plainLinks)
+    .setName('Theme')
+    .setDesc('Color scheme for PDF export.')
+    .addDropdown((dropdown) =>
+      dropdown
+        .addOption('light', 'Light')
+        .addOption('dark', 'Dark')
+        .addOption('auto', 'Auto (follow OS)')
+        .setValue(plugin.settings.document.theme)
         .onChange(async (value) => {
-          plugin.settings.document.plainLinks = value;
+          plugin.settings.document.theme = value as ThemeMode;
           await plugin.saveSettings();
         }),
     );
 
-  // --- Watermark ---
+  new Setting(containerEl)
+    .setName('Font family')
+    .setDesc('Font stack for PDF export. Named presets use safe system fonts.')
+    .addDropdown((dropdown) =>
+      dropdown
+        .addOption('sans', 'Sans-serif')
+        .addOption('serif', 'Serif')
+        .addOption('mono', 'Monospace')
+        .addOption('system', 'System default')
+        .setValue(
+          ['sans', 'serif', 'mono', 'system'].includes(plugin.settings.document.fontFamily)
+            ? plugin.settings.document.fontFamily
+            : 'sans'
+        )
+        .onChange(async (value) => {
+          plugin.settings.document.fontFamily = value;
+          plugin.dynamicPdfPrintStyles.update(plugin.settings.document);
+          await plugin.saveSettings();
+        }),
+    );
+
+  new Setting(containerEl)
+    .setName('Font size')
+    .setDesc('Base font size for PDF export (6-24 pt).')
+    .addSlider((slider) =>
+      slider
+        .setLimits(6, 24, 1)
+        .setValue(plugin.settings.document.fontSize)
+        .setDynamicTooltip()
+        .onChange(async (value) => {
+          plugin.settings.document.fontSize = value;
+          plugin.dynamicPdfPrintStyles.update(plugin.settings.document);
+          await plugin.saveSettings();
+        }),
+    );
+
+  // =================================================================
+  // PDF Text
+  // =================================================================
+  new Setting(containerEl).setName('PDF Text').setHeading();
+
+  new Setting(containerEl)
+    .setName('Links')
+    .setDesc(
+      'How links appear in PDF export. ' +
+      'Can also be set per-document via export.pdf.links in frontmatter.',
+    )
+    .addDropdown((dropdown) =>
+      dropdown
+        .addOption('expand', 'Expand (show URL)')
+        .addOption('styled', 'Styled (blue, no URL)')
+        .addOption('plain', 'Plain (no styling)')
+        .addOption('stripped', 'Stripped (pure text)')
+        .setValue(plugin.settings.document.links)
+        .onChange(async (value) => {
+          plugin.settings.document.links = value as LinksMode;
+          await plugin.saveSettings();
+        }),
+    );
+
+  new Setting(containerEl)
+    .setName('Copy-paste safe')
+    .setDesc(
+      'Disable ligatures (fi, fl, ffi) so copied text pastes correctly in all PDF viewers.',
+    )
+    .addToggle((toggle) =>
+      toggle
+        .setValue(plugin.settings.document.copyPasteSafe)
+        .onChange(async (value) => {
+          plugin.settings.document.copyPasteSafe = value;
+          await plugin.saveSettings();
+        }),
+    );
+
+  new Setting(containerEl)
+    .setName('Compact tables')
+    .setDesc('Reduce table font size and padding for denser data display in PDF export.')
+    .addToggle((toggle) =>
+      toggle
+        .setValue(plugin.settings.document.compactTables)
+        .onChange(async (value) => {
+          plugin.settings.document.compactTables = value;
+          await plugin.saveSettings();
+        }),
+    );
+
+  // =================================================================
+  // PDF Layout
+  // =================================================================
+  new Setting(containerEl).setName('PDF Layout').setHeading();
+
+  new Setting(containerEl)
+    .setName('Page numbers')
+    .setDesc('Show page numbers in PDF export.')
+    .addToggle((toggle) =>
+      toggle
+        .setValue(plugin.settings.document.pageNumbers)
+        .onChange(async (value) => {
+          plugin.settings.document.pageNumbers = value;
+          await plugin.saveSettings();
+        }),
+    );
+
+  new Setting(containerEl)
+    .setName('TOC depth')
+    .setDesc('Maximum heading depth for generated tables of contents (1-6).')
+    .addSlider((slider) =>
+      slider
+        .setLimits(1, 6, 1)
+        .setValue(plugin.settings.document.tocDepth)
+        .setDynamicTooltip()
+        .onChange(async (value) => {
+          plugin.settings.document.tocDepth = value;
+          await plugin.saveSettings();
+        }),
+    );
+
+  // =================================================================
+  // PDF Branding
+  // =================================================================
+  new Setting(containerEl).setName('PDF Branding').setHeading();
+
   new Setting(containerEl)
     .setName('Default watermark for drafts')
     .setDesc('Watermark level automatically applied to draft documents.')
@@ -186,8 +310,6 @@ export function renderDocumentSettings(
           await plugin.saveSettings();
         }),
     );
-
-  // --- Headers & Footers ---
 
   async function saveAndRefreshHeaderFooter() {
     await plugin.saveSettings();
@@ -245,22 +367,11 @@ export function renderDocumentSettings(
         }),
     );
 
-  // --- Table of Contents ---
-  new Setting(containerEl)
-    .setName('TOC depth')
-    .setDesc('Maximum heading depth for generated tables of contents (1-6).')
-    .addSlider((slider) =>
-      slider
-        .setLimits(1, 6, 1)
-        .setValue(plugin.settings.document.tocDepth)
-        .setDynamicTooltip()
-        .onChange(async (value) => {
-          plugin.settings.document.tocDepth = value;
-          await plugin.saveSettings();
-        }),
-    );
+  // =================================================================
+  // Validation
+  // =================================================================
+  new Setting(containerEl).setName('Validation').setHeading();
 
-  // --- Validation ---
   new Setting(containerEl)
     .setName('Validate on save')
     .setDesc('Automatically validate frontmatter when files are saved (warnings to console only).')

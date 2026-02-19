@@ -14,7 +14,8 @@ import { generateToc } from './src/document/toc-generator';
 import { createClassificationBannerProcessor } from './src/document/classification-banner';
 import { renderDocumentSettings } from './src/document/settings-tab';
 import { DEFAULT_DOCUMENT_SETTINGS } from './src/document/settings';
-import { ClassificationPrintStyleManager, HeaderFooterPrintStyleManager } from './src/document/print-styles';
+import { ClassificationPrintStyleManager, HeaderFooterPrintStyleManager, DynamicPdfPrintStyleManager } from './src/document/print-styles';
+import type { LinksMode } from './src/document/settings';
 
 const BODY_CLASS_SYNTAX_DIMMING = 'yaae-syntax-dimming';
 const BODY_CLASS_GUTTERED_HEADINGS = 'yaae-guttered-headings';
@@ -39,6 +40,9 @@ export default class YaaePlugin extends Plugin {
 
   /** Dynamic print style manager for page headers and footers */
   headerFooterPrintStyles = new HeaderFooterPrintStyleManager();
+
+  /** Dynamic print style manager for fontSize and custom fonts */
+  dynamicPdfPrintStyles = new DynamicPdfPrintStyleManager();
 
   /** Status bar elements for quick toggles */
   private focusModeStatusEl: HTMLElement | null = null;
@@ -177,9 +181,10 @@ export default class YaaePlugin extends Plugin {
 
     // --- Document Auto-Behaviors ---
 
-    // Dynamic print CSS for custom classification banners and headers/footers
+    // Dynamic print CSS for custom classification banners, headers/footers, and PDF appearance
     this.classificationPrintStyles.init(this.settings.document.customClassifications);
     this.headerFooterPrintStyles.init(this.settings.document);
+    this.dynamicPdfPrintStyles.init(this.settings.document);
 
     // Classification banner in reading view
     if (this.settings.document.showClassificationBanner) {
@@ -207,6 +212,7 @@ export default class YaaePlugin extends Plugin {
     this.styleManager.destroy();
     this.classificationPrintStyles.destroy();
     this.headerFooterPrintStyles.destroy();
+    this.dynamicPdfPrintStyles.destroy();
     document.body.classList.remove(BODY_CLASS_SYNTAX_DIMMING);
     document.body.classList.remove(BODY_CLASS_GUTTERED_HEADINGS);
     this.removeTypewriterPadding();
@@ -234,6 +240,21 @@ export default class YaaePlugin extends Plugin {
       DEFAULT_DOCUMENT_SETTINGS,
       this.settings.document,
     );
+
+    // Migrate deprecated expandLinks/plainLinks booleans to links enum
+    const doc = this.settings.document;
+    if (doc.links === 'expand' && (doc.plainLinks || !doc.expandLinks)) {
+      const previousLinks = doc.links;
+      if (doc.plainLinks) {
+        doc.links = 'plain' as LinksMode;
+      } else if (!doc.expandLinks) {
+        doc.links = 'styled' as LinksMode;
+      }
+      console.info(
+        `[yaae] Migrated deprecated link booleans to links enum. ` +
+        `expandLinks: ${doc.expandLinks}, plainLinks: ${doc.plainLinks} → links: ${doc.links}`,
+      );
+    }
   }
 
   async saveSettings() {

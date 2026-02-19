@@ -1,0 +1,12 @@
+@media print {
+  /* Compact table styling: smaller font, tighter padding, auto layout */
+  .pdf-compact-tables table {
+    font-size: 0.85em;
+    table-layout: auto;
+  }
+
+  .pdf-compact-tables th,
+  .pdf-compact-tables td {
+    padding: 4px 8px;
+  }
+}

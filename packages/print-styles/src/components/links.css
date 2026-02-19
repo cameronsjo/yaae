@@ -1,5 +1,5 @@
 @media print {
-  /* Show URLs after external links */
+  /* Default (expand): Show URLs after external links */
   a.external-link::after {
     content: " [" attr(href) "]";
     font-size: 0.8em;
@@ -8,21 +8,35 @@
     word-break: break-all;
   }
 
-  /* Suppress URL expansion when pdf-no-links is set */
-  .pdf-no-links a.external-link::after {
+  /* Styled: suppress URL expansion, keep link styling */
+  .pdf-links-styled a.external-link::after {
     content: none;
   }
 
-  /* Strip all link styling — render as plain text */
-  .pdf-plain-links a,
-  .pdf-plain-links a.external-link,
-  .pdf-plain-links a.internal-link {
+  /* Plain: suppress URL expansion + strip link styling, keep <a> */
+  .pdf-links-plain a,
+  .pdf-links-plain a.external-link,
+  .pdf-links-plain a.internal-link {
     color: inherit !important;
     text-decoration: none !important;
     pointer-events: none;
   }
 
-  .pdf-plain-links a.external-link::after {
+  .pdf-links-plain a.external-link::after {
+    content: none;
+  }
+
+  /* Stripped: same visual as plain + cursor:text (DOM removal deferred) */
+  .pdf-links-stripped a,
+  .pdf-links-stripped a.external-link,
+  .pdf-links-stripped a.internal-link {
+    color: inherit !important;
+    text-decoration: none !important;
+    pointer-events: none;
+    cursor: text;
+  }
+
+  .pdf-links-stripped a.external-link::after {
     content: none;
   }
 }

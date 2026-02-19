@@ -1,8 +1,11 @@
 import type { CustomClassification } from '../schemas/classification';
-import type { DocumentSettings } from './settings';
+import type { DocumentSettings, FontPreset } from './settings';
 
 const STYLE_ID = 'yaae-custom-classification-print-styles';
 const HEADER_FOOTER_STYLE_ID = 'yaae-header-footer-print-styles';
+const DYNAMIC_PDF_STYLE_ID = 'yaae-dynamic-pdf-print-styles';
+
+const FONT_PRESETS: Set<string> = new Set<string>(['sans', 'serif', 'mono', 'system']);
 
 /**
  * Generate and inject dynamic @media print CSS rules for custom
@@ -203,6 +206,63 @@ export class HeaderFooterPrintStyleManager {
 
     rules.push('}');
     this.styleEl.textContent = rules.join('\n');
+  }
+
+  destroy(): void {
+    if (this.styleEl) {
+      this.styleEl.remove();
+      this.styleEl = null;
+    }
+  }
+}
+
+/**
+ * Dynamic print styles for fontSize and custom (non-preset) font-family.
+ * Injects a font-size rule and a raw font-family rule when the user
+ * specifies a non-preset string.
+ */
+export class DynamicPdfPrintStyleManager {
+  private styleEl: HTMLStyleElement | null = null;
+
+  init(settings: DocumentSettings): void {
+    this.styleEl = document.createElement('style');
+    this.styleEl.id = DYNAMIC_PDF_STYLE_ID;
+    document.head.appendChild(this.styleEl);
+    this.update(settings);
+    console.debug('[yaae] DynamicPdfPrintStyleManager initialized.');
+  }
+
+  update(settings: DocumentSettings): void {
+    if (!this.styleEl) return;
+
+    const hasCustomFontSize = settings.fontSize !== 11;
+    const isCustomFont = !FONT_PRESETS.has(settings.fontFamily);
+
+    if (!hasCustomFontSize && !isCustomFont) {
+      this.styleEl.textContent = '';
+      return;
+    }
+
+    const rules: string[] = ['@media print {'];
+
+    if (hasCustomFontSize) {
+      rules.push(`  .markdown-preview-view {
+    font-size: ${settings.fontSize}pt !important;
+  }`);
+    }
+
+    if (isCustomFont) {
+      const escaped = settings.fontFamily.replace(/"/g, '\\"');
+      rules.push(`  .markdown-preview-view {
+    font-family: ${escaped} !important;
+  }`);
+    }
+
+    rules.push('}');
+    this.styleEl.textContent = rules.join('\n');
+    console.debug(
+      `[yaae] Dynamic PDF print styles updated. fontSize: ${settings.fontSize}pt, fontFamily: ${settings.fontFamily}`,
+    );
   }
 
   destroy(): void {
