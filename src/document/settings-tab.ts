@@ -5,6 +5,7 @@ import {
   getClassificationMeta,
 } from '../schemas';
 import type { LinksMode, ThemeMode } from './settings';
+import { createCollapsibleSection } from '../settings/collapsible-section';
 
 /**
  * Render the Document settings section into the plugin settings tab.
@@ -12,15 +13,18 @@ import type { LinksMode, ThemeMode } from './settings';
 export function renderDocumentSettings(
   containerEl: HTMLElement,
   plugin: YaaePlugin,
+  expandedSections: Set<string>,
 ): void {
   // =================================================================
   // Classification
   // =================================================================
-  new Setting(containerEl).setName('Classification').setHeading();
+  const classContent = createCollapsibleSection(
+    containerEl, expandedSections, 'doc-classification', 'Classification', true,
+  );
 
   const allIds = getAllClassificationIds(plugin.settings.document.customClassifications);
 
-  new Setting(containerEl)
+  new Setting(classContent)
     .setName('Default classification')
     .setDesc('Classification level applied to new documents.')
     .addDropdown((dropdown) => {
@@ -36,7 +40,7 @@ export function renderDocumentSettings(
         });
     });
 
-  new Setting(containerEl)
+  new Setting(classContent)
     .setName('Show classification banner')
     .setDesc('Display a classification banner in reading view.')
     .addToggle((toggle) =>
@@ -48,7 +52,7 @@ export function renderDocumentSettings(
         }),
     );
 
-  new Setting(containerEl)
+  new Setting(classContent)
     .setName('Banner position')
     .setDesc('Where to display classification banners in PDF export.')
     .addDropdown((dropdown) =>
@@ -64,15 +68,15 @@ export function renderDocumentSettings(
 
   // --- Custom Classifications ---
 
-  new Setting(containerEl)
+  const customHeading = new Setting(classContent)
     .setName('Custom classifications')
     .setDesc(
       'Define custom classification levels. These override built-in levels with the same ID. ' +
       'Use the ID in frontmatter (e.g., classification: non-sensitive).',
-    )
-    .setHeading();
+    );
+  customHeading.settingEl.style.marginTop = '12px';
 
-  const customListEl = containerEl.createDiv('yaae-custom-classifications');
+  const customListEl = classContent.createDiv('yaae-custom-classifications');
 
   async function saveAndRefreshPrintStyles() {
     await plugin.saveSettings();
@@ -155,9 +159,11 @@ export function renderDocumentSettings(
   // =================================================================
   // PDF Appearance
   // =================================================================
-  new Setting(containerEl).setName('PDF Appearance').setHeading();
+  const appearanceContent = createCollapsibleSection(
+    containerEl, expandedSections, 'doc-appearance', 'PDF Appearance',
+  );
 
-  new Setting(containerEl)
+  new Setting(appearanceContent)
     .setName('Theme')
     .setDesc('Color scheme for PDF export.')
     .addDropdown((dropdown) =>
@@ -172,7 +178,7 @@ export function renderDocumentSettings(
         }),
     );
 
-  new Setting(containerEl)
+  new Setting(appearanceContent)
     .setName('Font family')
     .setDesc('Font stack for PDF export. Named presets use safe system fonts.')
     .addDropdown((dropdown) =>
@@ -193,7 +199,7 @@ export function renderDocumentSettings(
         }),
     );
 
-  new Setting(containerEl)
+  new Setting(appearanceContent)
     .setName('Font size')
     .setDesc('Base font size for PDF export (6-24 pt).')
     .addSlider((slider) =>
@@ -211,9 +217,11 @@ export function renderDocumentSettings(
   // =================================================================
   // PDF Text
   // =================================================================
-  new Setting(containerEl).setName('PDF Text').setHeading();
+  const textContent = createCollapsibleSection(
+    containerEl, expandedSections, 'doc-text', 'PDF Text',
+  );
 
-  new Setting(containerEl)
+  new Setting(textContent)
     .setName('Links')
     .setDesc(
       'How links appear in PDF export. ' +
@@ -232,7 +240,7 @@ export function renderDocumentSettings(
         }),
     );
 
-  new Setting(containerEl)
+  new Setting(textContent)
     .setName('Copy-paste safe')
     .setDesc(
       'Disable ligatures (fi, fl, ffi) so copied text pastes correctly in all PDF viewers.',
@@ -246,7 +254,7 @@ export function renderDocumentSettings(
         }),
     );
 
-  new Setting(containerEl)
+  new Setting(textContent)
     .setName('Compact tables')
     .setDesc('Reduce table font size and padding for denser data display in PDF export.')
     .addToggle((toggle) =>
@@ -261,9 +269,11 @@ export function renderDocumentSettings(
   // =================================================================
   // PDF Layout
   // =================================================================
-  new Setting(containerEl).setName('PDF Layout').setHeading();
+  const layoutContent = createCollapsibleSection(
+    containerEl, expandedSections, 'doc-layout', 'PDF Layout',
+  );
 
-  new Setting(containerEl)
+  new Setting(layoutContent)
     .setName('Page numbers')
     .setDesc('Show page numbers in PDF export.')
     .addToggle((toggle) =>
@@ -275,7 +285,7 @@ export function renderDocumentSettings(
         }),
     );
 
-  new Setting(containerEl)
+  new Setting(layoutContent)
     .setName('TOC depth')
     .setDesc('Maximum heading depth for generated tables of contents (1-6).')
     .addSlider((slider) =>
@@ -292,9 +302,11 @@ export function renderDocumentSettings(
   // =================================================================
   // PDF Branding
   // =================================================================
-  new Setting(containerEl).setName('PDF Branding').setHeading();
+  const brandingContent = createCollapsibleSection(
+    containerEl, expandedSections, 'doc-branding', 'PDF Branding',
+  );
 
-  new Setting(containerEl)
+  new Setting(brandingContent)
     .setName('Default watermark for drafts')
     .setDesc('Watermark level automatically applied to draft documents.')
     .addDropdown((dropdown) =>
@@ -316,7 +328,7 @@ export function renderDocumentSettings(
     plugin.headerFooterPrintStyles.update(plugin.settings.document);
   }
 
-  new Setting(containerEl)
+  new Setting(brandingContent)
     .setName('Default header (left)')
     .setDesc('Default left header text for PDF export. Appears on every printed page.')
     .addText((text) =>
@@ -329,7 +341,7 @@ export function renderDocumentSettings(
         }),
     );
 
-  new Setting(containerEl)
+  new Setting(brandingContent)
     .setName('Default header (right)')
     .setDesc('Default right header text for PDF export. Appears on every printed page.')
     .addText((text) =>
@@ -342,7 +354,7 @@ export function renderDocumentSettings(
         }),
     );
 
-  new Setting(containerEl)
+  new Setting(brandingContent)
     .setName('Default footer (left)')
     .setDesc('Default left footer text for PDF export.')
     .addText((text) =>
@@ -355,7 +367,7 @@ export function renderDocumentSettings(
         }),
     );
 
-  new Setting(containerEl)
+  new Setting(brandingContent)
     .setName('Default footer (right)')
     .addText((text) =>
       text
@@ -370,9 +382,11 @@ export function renderDocumentSettings(
   // =================================================================
   // Validation
   // =================================================================
-  new Setting(containerEl).setName('Validation').setHeading();
+  const validationContent = createCollapsibleSection(
+    containerEl, expandedSections, 'doc-validation', 'Validation',
+  );
 
-  new Setting(containerEl)
+  new Setting(validationContent)
     .setName('Validate on save')
     .setDesc('Automatically validate frontmatter when files are saved (warnings to console only).')
     .addToggle((toggle) =>

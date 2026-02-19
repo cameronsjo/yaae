@@ -266,3 +266,44 @@ body.yaae-guttered-headings .cm-content .cm-line .cm-formatting-header {
   color: var(--text-accent);
   border-bottom-color: var(--text-accent);
 }
+
+/* ==========================================================================
+   Settings Panel — Collapsible Sections
+   ========================================================================== */
+
+.yaae-section-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0;
+  cursor: pointer;
+  font-weight: var(--font-semibold);
+  font-size: var(--font-ui-medium);
+  color: var(--text-normal);
+  border-bottom: 1px solid var(--background-modifier-border);
+  margin-top: 12px;
+  user-select: none;
+}
+
+.yaae-section-header:hover {
+  color: var(--text-accent);
+}
+
+.yaae-section-chevron {
+  display: flex;
+  align-items: center;
+  transition: transform 0.15s ease;
+}
+
+.yaae-section-header.is-expanded .yaae-section-chevron {
+  transform: rotate(90deg);
+}
+
+.yaae-section-content {
+  display: none;
+  padding-top: 4px;
+}
+
+.yaae-section-content.is-expanded {
+  display: block;
+}

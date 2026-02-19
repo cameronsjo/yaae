@@ -14,6 +14,7 @@ import { generateToc } from './src/document/toc-generator';
 import { createClassificationBannerProcessor } from './src/document/classification-banner';
 import { renderDocumentSettings } from './src/document/settings-tab';
 import { DEFAULT_DOCUMENT_SETTINGS } from './src/document/settings';
+import { createCollapsibleSection } from './src/settings/collapsible-section';
 import { ClassificationPrintStyleManager, HeaderFooterPrintStyleManager, DynamicPdfPrintStyleManager } from './src/document/print-styles';
 import type { LinksMode } from './src/document/settings';
 
@@ -467,6 +468,7 @@ type SettingsTab = 'writing' | 'document' | 'about';
 class YaaeSettingTab extends PluginSettingTab {
   plugin: YaaePlugin;
   private activeTab: SettingsTab = 'writing';
+  private expandedSections = new Set<string>();
 
   constructor(app: App, plugin: YaaePlugin) {
     super(app, plugin);
@@ -505,7 +507,7 @@ class YaaeSettingTab extends PluginSettingTab {
         this.renderWritingTab(content);
         break;
       case 'document':
-        renderDocumentSettings(content, this.plugin);
+        renderDocumentSettings(content, this.plugin, this.expandedSections);
         break;
       case 'about':
         this.renderAboutTab(content);
@@ -514,13 +516,15 @@ class YaaeSettingTab extends PluginSettingTab {
   }
 
   private renderWritingTab(containerEl: HTMLElement): void {
-    // Prose highlight settings
-    renderProseHighlightSettings(containerEl, this.plugin);
+    // Prose highlight settings (renders its own collapsible sections)
+    renderProseHighlightSettings(containerEl, this.plugin, this.expandedSections);
 
     // Readability settings
-    new Setting(containerEl).setName('Readability').setHeading();
+    const readabilityContent = createCollapsibleSection(
+      containerEl, this.expandedSections, 'writing-readability', 'Readability', true,
+    );
 
-    new Setting(containerEl)
+    new Setting(readabilityContent)
       .setName('Syntax dimming')
       .setDesc(
         'Reduce opacity of markdown formatting characters (**, *, #, etc.) while keeping them visible.'
@@ -534,7 +538,7 @@ class YaaeSettingTab extends PluginSettingTab {
         })
       );
 
-    new Setting(containerEl)
+    new Setting(readabilityContent)
       .setName('Guttered headings')
       .setDesc(
         'Outdent # heading markers into the left gutter so heading text aligns with body text.'
@@ -547,7 +551,7 @@ class YaaeSettingTab extends PluginSettingTab {
         })
       );
 
-    new Setting(containerEl)
+    new Setting(readabilityContent)
       .setName('Focus mode')
       .setDesc(
         'Dim all text except the active sentence or paragraph.'
@@ -566,7 +570,7 @@ class YaaeSettingTab extends PluginSettingTab {
           })
       );
 
-    new Setting(containerEl)
+    new Setting(readabilityContent)
       .setName('Typewriter scroll')
       .setDesc(
         'Keep the cursor vertically centered in the viewport as you type.'
