@@ -1,0 +1,10 @@
+@media print {
+  /* Landscape orientation placeholder.
+   * Note: @page { size: landscape } cannot be scoped to a CSS class —
+   * it applies globally to the entire print job. This class serves as
+   * a marker for frontmatter-driven tooling. Actual @page orientation
+   * requires a pre-print script or Obsidian API integration. */
+  .pdf-landscape {
+    /* Marker class — no visual effect from CSS alone */
+  }
+}

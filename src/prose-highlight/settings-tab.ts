@@ -2,6 +2,7 @@ import { Setting } from 'obsidian';
 import type YaaePlugin from '../../main';
 import { POS_CATEGORIES, DEFAULT_POS_COLORS } from '../types';
 import type { POSCategory, CustomWordList } from '../types';
+import { createCollapsibleSection } from '../settings/collapsible-section';
 
 /** Human-readable labels for POS categories */
 const POS_LABELS: Record<POSCategory, string> = {
@@ -19,17 +20,22 @@ const POS_LABELS: Record<POSCategory, string> = {
 export function renderProseHighlightSettings(
   containerEl: HTMLElement,
   plugin: YaaePlugin,
+  expandedSections: Set<string>,
 ): void {
   const settings = plugin.settings.proseHighlight;
 
-  containerEl.createEl('h2', { text: 'Prose Highlighting' });
-  containerEl.createEl('p', {
+  // --- Prose Highlighting section ---
+  const proseContent = createCollapsibleSection(
+    containerEl, expandedSections, 'writing-prose', 'Prose Highlighting', true,
+  );
+
+  proseContent.createEl('p', {
     text: 'Color-code words by part of speech, inspired by iA Writer.',
     cls: 'setting-item-description',
   });
 
   // Master toggle
-  new Setting(containerEl)
+  new Setting(proseContent)
     .setName('Enable prose highlighting')
     .setDesc('Color-code adjectives, nouns, adverbs, verbs, and conjunctions in the editor.')
     .addToggle((toggle) =>
@@ -41,7 +47,7 @@ export function renderProseHighlightSettings(
     );
 
   // Reading View toggle
-  new Setting(containerEl)
+  new Setting(proseContent)
     .setName('Highlight in Reading View')
     .setDesc('Also apply prose highlighting when viewing notes in Reading View.')
     .addToggle((toggle) =>
@@ -53,13 +59,15 @@ export function renderProseHighlightSettings(
         }),
     );
 
-  // Per-POS toggles and color pickers
-  containerEl.createEl('h3', { text: 'Parts of Speech' });
+  // --- Parts of Speech section ---
+  const posContent = createCollapsibleSection(
+    containerEl, expandedSections, 'writing-pos', 'Parts of Speech',
+  );
 
   for (const cat of POS_CATEGORIES) {
     const catSettings = settings.categories[cat];
 
-    const setting = new Setting(containerEl)
+    const setting = new Setting(posContent)
       .setName(POS_LABELS[cat])
       .addToggle((toggle) =>
         toggle.setValue(catSettings.enabled).onChange(async (value) => {
@@ -95,14 +103,17 @@ export function renderProseHighlightSettings(
     }
   }
 
-  // Custom word lists
-  containerEl.createEl('h3', { text: 'Custom Word Lists' });
-  containerEl.createEl('p', {
+  // --- Custom Word Lists section ---
+  const wordListContent = createCollapsibleSection(
+    containerEl, expandedSections, 'writing-wordlists', 'Custom Word Lists',
+  );
+
+  wordListContent.createEl('p', {
     text: 'Define named groups of words to highlight with custom colors.',
     cls: 'setting-item-description',
   });
 
-  renderCustomWordLists(containerEl, plugin);
+  renderCustomWordLists(wordListContent, plugin);
 }
 
 function renderCustomWordLists(

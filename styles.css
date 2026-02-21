@@ -144,6 +144,30 @@ body {
   [class*="yaae-list-"] {
     color: inherit !important;
   }
+
+  /* Prevent content from overflowing off the printed page */
+  * {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  pre, code {
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+  table {
+    table-layout: fixed;
+    width: 100%;
+    word-break: break-word;
+  }
+
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+
 }
 
 .print [class*="yaae-pos-"],
@@ -195,4 +219,91 @@ body.yaae-guttered-headings .cm-content .cm-line .cm-formatting-header {
 .yaae-dimmed {
   color: var(--yaae-dimmed-color);
   transition: color var(--yaae-dimmed-transition) ease;
+}
+
+/* ==========================================================================
+   Status Bar Toggles
+   Clickable status bar items for quick feature toggling.
+   ========================================================================== */
+
+.yaae-statusbar-toggle {
+  cursor: pointer;
+}
+
+.yaae-statusbar-toggle:hover {
+  color: var(--text-accent);
+}
+
+/* ==========================================================================
+   Settings Panel — Tabbed Navigation
+   ========================================================================== */
+
+.yaae-settings-nav {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  margin-bottom: 16px;
+}
+
+.yaae-settings-tab {
+  padding: 8px 16px;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: var(--font-ui-small);
+  font-weight: 500;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.yaae-settings-tab:hover {
+  color: var(--text-normal);
+}
+
+.yaae-settings-tab.is-active {
+  color: var(--text-accent);
+  border-bottom-color: var(--text-accent);
+}
+
+/* ==========================================================================
+   Settings Panel — Collapsible Sections
+   ========================================================================== */
+
+.yaae-section-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0;
+  cursor: pointer;
+  font-weight: var(--font-semibold);
+  font-size: var(--font-ui-medium);
+  color: var(--text-normal);
+  border-bottom: 1px solid var(--background-modifier-border);
+  margin-top: 12px;
+  user-select: none;
+}
+
+.yaae-section-header:hover {
+  color: var(--text-accent);
+}
+
+.yaae-section-chevron {
+  display: flex;
+  align-items: center;
+  transition: transform 0.15s ease;
+}
+
+.yaae-section-header.is-expanded .yaae-section-chevron {
+  transform: rotate(90deg);
+}
+
+.yaae-section-content {
+  display: none;
+  padding-top: 4px;
+}
+
+.yaae-section-content.is-expanded {
+  display: block;
 }

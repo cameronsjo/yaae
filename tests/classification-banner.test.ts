@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { classificationBannerProcessor } from '../src/document/classification-banner';
+import { describe, it, expect, vi } from 'vitest';
+import { createClassificationBannerProcessor } from '../src/document/classification-banner';
 import { CLASSIFICATION_TAXONOMY } from '../src/schemas';
+import type { CustomClassification } from '../src/schemas';
 
 // Minimal mock for MarkdownPostProcessorContext
 function makeCtx(opts: {
@@ -31,13 +32,15 @@ function makeEl() {
 }
 
 describe('classificationBannerProcessor', () => {
+  const processor = createClassificationBannerProcessor();
+
   // --- Happy paths ---
 
   it('injects banner for valid classification at lineStart 0', () => {
     const el = makeEl();
     const ctx = makeCtx({ lineStart: 0, frontmatter: { classification: 'internal' } });
 
-    classificationBannerProcessor(el, ctx);
+    processor(el, ctx);
 
     expect(el.insertBefore).toHaveBeenCalledOnce();
     const banner = (el.insertBefore as any).mock.calls[0][0];
@@ -50,7 +53,7 @@ describe('classificationBannerProcessor', () => {
       const el = makeEl();
       const ctx = makeCtx({ lineStart: 0, frontmatter: { classification: level } });
 
-      classificationBannerProcessor(el, ctx);
+      processor(el, ctx);
 
       const banner = (el.insertBefore as any).mock.calls[0][0];
       const meta = CLASSIFICATION_TAXONOMY[level];
@@ -68,7 +71,7 @@ describe('classificationBannerProcessor', () => {
     const ctx = makeCtx({ frontmatter: { classification: 'internal' } });
     // lineStart is undefined → getSectionInfo returns null
 
-    classificationBannerProcessor(el, ctx);
+    processor(el, ctx);
 
     expect(el.insertBefore).not.toHaveBeenCalled();
   });
@@ -77,7 +80,7 @@ describe('classificationBannerProcessor', () => {
     const el = makeEl();
     const ctx = makeCtx({ lineStart: 5, frontmatter: { classification: 'internal' } });
 
-    classificationBannerProcessor(el, ctx);
+    processor(el, ctx);
 
     expect(el.insertBefore).not.toHaveBeenCalled();
   });
@@ -86,7 +89,7 @@ describe('classificationBannerProcessor', () => {
     const el = makeEl();
     const ctx = makeCtx({ lineStart: 0, frontmatter: null });
 
-    classificationBannerProcessor(el, ctx);
+    processor(el, ctx);
 
     expect(el.insertBefore).not.toHaveBeenCalled();
   });
@@ -95,17 +98,70 @@ describe('classificationBannerProcessor', () => {
     const el = makeEl();
     const ctx = makeCtx({ lineStart: 0, frontmatter: { title: 'Test' } });
 
-    classificationBannerProcessor(el, ctx);
+    processor(el, ctx);
 
     expect(el.insertBefore).not.toHaveBeenCalled();
   });
 
-  it('does nothing for invalid classification value', () => {
+  it('does nothing for unknown classification value without custom list', () => {
     const el = makeEl();
     const ctx = makeCtx({ lineStart: 0, frontmatter: { classification: 'top-secret' } });
 
-    classificationBannerProcessor(el, ctx);
+    processor(el, ctx);
 
     expect(el.insertBefore).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Custom classifications
+// ---------------------------------------------------------------------------
+
+describe('classificationBannerProcessor — custom classifications', () => {
+  const customs: CustomClassification[] = [
+    { id: 'non-sensitive', label: 'NON-SENSITIVE', color: '#2d7d2d', background: '#f0faf0' },
+    { id: 'sensitive', label: 'SENSITIVE', color: '#b8860b', background: '#fff8e7' },
+    { id: 'highly-sensitive', label: 'HIGHLY SENSITIVE', color: '#c41e1e', background: '#fff5f5' },
+    { id: 'highly-sensitive-restricted', label: 'HIGHLY SENSITIVE — RESTRICTED', color: '#8b0000', background: '#ffe0e0' },
+  ];
+
+  const processor = createClassificationBannerProcessor(customs);
+
+  it('injects banner for custom classification', () => {
+    const el = makeEl();
+    const ctx = makeCtx({ lineStart: 0, frontmatter: { classification: 'non-sensitive' } });
+
+    processor(el, ctx);
+
+    expect(el.insertBefore).toHaveBeenCalledOnce();
+    const banner = (el.insertBefore as any).mock.calls[0][0];
+    expect(banner.className).toBe('yaae-classification-banner yaae-non-sensitive');
+    expect(banner.textContent).toBe('NON-SENSITIVE');
+    expect(banner.style.cssText).toContain('color: #2d7d2d');
+    expect(banner.style.cssText).toContain('background: #f0faf0');
+  });
+
+  it('injects banner for all custom levels', () => {
+    for (const custom of customs) {
+      const el = makeEl();
+      const ctx = makeCtx({ lineStart: 0, frontmatter: { classification: custom.id } });
+
+      processor(el, ctx);
+
+      expect(el.insertBefore).toHaveBeenCalledOnce();
+      const banner = (el.insertBefore as any).mock.calls[0][0];
+      expect(banner.textContent).toBe(custom.label);
+    }
+  });
+
+  it('still supports built-in classifications alongside custom ones', () => {
+    const el = makeEl();
+    const ctx = makeCtx({ lineStart: 0, frontmatter: { classification: 'internal' } });
+
+    processor(el, ctx);
+
+    expect(el.insertBefore).toHaveBeenCalledOnce();
+    const banner = (el.insertBefore as any).mock.calls[0][0];
+    expect(banner.textContent).toBe(CLASSIFICATION_TAXONOMY.internal.label);
   });
 });
