@@ -37,7 +37,6 @@ Configure once in settings, forget about it. Override in frontmatter only when a
 | **Content**      |                                   |          |        |         |
 | toc              | boolean                           | `false`  | ✗      | ✓       |
 | tocDepth         | 1–6                               | `3`      | ✓      | ✓       |
-| signatureBlock   | boolean                           | `false`  | ✗      | ✓       |
 | **Branding**     |                                   |          |        |         |
 | watermark        | enum (5 levels)                   | `"off"`  | ✓ *    | ✓       |
 | classification   | string                            | varies   | ✓      | ✓       |
@@ -48,7 +47,7 @@ Configure once in settings, forget about it. Override in frontmatter only when a
 
 \* watermark global default only applies to `status: draft` docs
 
-`landscape`, `toc`, and `signatureBlock` are per-doc only — it doesn't make sense to default all documents to landscape or to all have signature blocks.
+`landscape` and `toc` are per-doc only — it doesn't make sense to default all documents to landscape or to all have a TOC.
 
 ## Links Enum
 
@@ -88,8 +87,7 @@ Each toggle maps to a CSS class for the print-styles package:
 | `compactTables: true`   | `pdf-compact-tables`   | Auto-shrink tables     |
 | `landscape: true`       | `pdf-landscape`        | `@page` landscape      |
 | `links: "plain"`        | `pdf-links-plain`      | Strip link styling     |
-| `links: "stripped"`     | `pdf-links-stripped`    | Remove `<a>` tags      |
-| `signatureBlock: true`  | `pdf-signature`        | Render sign-off area   |
+| `links: "stripped"`     | `pdf-links-stripped`   | Remove `<a>` tags      |
 
 Same pattern as existing `pdf-watermark-loud`, `pdf-no-links`, etc.
 
@@ -115,10 +113,9 @@ Same pattern as existing `pdf-watermark-loud`, `pdf-no-links`, etc.
   Validate on save
 ```
 
-## Open Questions
+## Resolved Decisions
 
-1. **`stripped` links**: Requires DOM manipulation (MarkdownPostProcessor or pre-export hook), unlike all other toggles which are pure CSS. Is `plain` (CSS-only, visually identical) sufficient?
-
-2. **Signature block content**: Blank lines for pen signatures, or structured frontmatter fields (`preparedBy`, `approvedBy`, `date`)?
-
-3. **`copyPasteSafe` as always-on**: Ligature-free text is visually identical at print sizes. Consider baking into base print CSS instead of exposing as a toggle.
+1. **`stripped` links**: Yes — requires DOM manipulation (MarkdownPostProcessor) to unwrap `<a>` tags. Worth the complexity for security-focused documents.
+2. **`copyPasteSafe`**: Stays as a toggle, not always-on.
+3. **Signature block**: Deferred — tracked as a bead.
+4. **Defanged links** (`hxxps://`, `[.]`): Deferred — tracked as a bead.
