@@ -1,9 +1,4 @@
 @media print {
-  :root {
-    --yaae-print-table-font-size: 0.85em;
-    --yaae-print-table-cell-padding: 4px 8px;
-  }
-
   /* Compact table styling: smaller font, tighter padding, auto layout */
   .pdf-compact-tables table {
     font-size: var(--yaae-print-table-font-size);

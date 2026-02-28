@@ -1,9 +1,4 @@
 @media print {
-  :root {
-    --yaae-print-link-url-font-size: 0.8em;
-    --yaae-print-link-url-color: #666;
-  }
-
   /* Default (expand): Show URLs after external links */
   a.external-link::after {
     content: " [" attr(href) "]";

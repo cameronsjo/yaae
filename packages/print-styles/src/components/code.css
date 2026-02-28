@@ -1,12 +1,4 @@
 @media print {
-  :root {
-    --yaae-print-code-border-color: #ddd;
-    --yaae-print-code-border-radius: 4px;
-    --yaae-print-code-padding: 0.8em;
-    --yaae-print-code-bg: #f8f8f8;
-    --yaae-print-code-font-size: 0.9em;
-  }
-
   pre {
     border: 1px solid var(--yaae-print-code-border-color);
     border-radius: var(--yaae-print-code-border-radius);

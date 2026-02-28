@@ -1,12 +1,4 @@
 @media print {
-  :root {
-    --yaae-print-dark-bg: #1e1e1e;
-    --yaae-print-dark-text: #d4d4d4;
-    --yaae-print-dark-heading-color: #e0e0e0;
-    --yaae-print-dark-code-bg: #2d2d2d;
-    --yaae-print-dark-table-border: #444;
-  }
-
   /* Dark theme: force dark background + light text */
   .pdf-theme-dark {
     background: var(--yaae-print-dark-bg) !important;

@@ -1,10 +1,4 @@
 @media print {
-  :root {
-    --yaae-print-banner-font-size: 10px;
-    --yaae-print-banner-letter-spacing: 0.1em;
-    --yaae-print-banner-padding: 2px 0;
-  }
-
   /* --- Classification Banner: Top (::before on .markdown-preview-view) --- */
   .pdf-public .markdown-preview-view::before,
   .pdf-internal .markdown-preview-view::before,

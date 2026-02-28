@@ -1,10 +1,4 @@
 @media print {
-  :root {
-    --yaae-print-toc-indent: 1.5em;
-    --yaae-print-toc-item-margin: 0.3em;
-    --yaae-print-toc-line-height: 1.4;
-  }
-
   .table-of-contents {
     page-break-after: always;
     break-after: page;

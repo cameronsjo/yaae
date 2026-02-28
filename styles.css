@@ -98,6 +98,232 @@ settings:
     max: 80
     step: 4
     format: px
+  -
+    id: yaae-print-heading
+    title: PDF Print Styles
+    type: heading
+    level: 1
+    collapsed: true
+  -
+    id: yaae-print-code-heading
+    title: Code Blocks
+    type: heading
+    level: 2
+    collapsed: true
+  -
+    id: yaae-print-code-border-color
+    title: Code border color
+    type: variable-color
+    format: hex
+    default: '#dddddd'
+  -
+    id: yaae-print-code-border-radius
+    title: Code border radius
+    type: variable-text
+    default: 4px
+  -
+    id: yaae-print-code-padding
+    title: Code padding
+    type: variable-text
+    default: 0.8em
+  -
+    id: yaae-print-code-bg
+    title: Code background color
+    type: variable-color
+    format: hex
+    default: '#f8f8f8'
+  -
+    id: yaae-print-code-font-size
+    title: Code font size
+    type: variable-text
+    default: 0.9em
+  -
+    id: yaae-print-links-heading
+    title: Links
+    type: heading
+    level: 2
+    collapsed: true
+  -
+    id: yaae-print-link-url-font-size
+    title: URL font size
+    type: variable-text
+    default: 0.8em
+  -
+    id: yaae-print-link-url-color
+    title: URL color
+    type: variable-color
+    format: hex
+    default: '#666666'
+  -
+    id: yaae-print-page-numbers-heading
+    title: Page Numbers
+    type: heading
+    level: 2
+    collapsed: true
+  -
+    id: yaae-print-page-number-bottom
+    title: Bottom offset
+    type: variable-number-slider
+    default: 12
+    min: 0
+    max: 40
+    step: 2
+    format: px
+  -
+    id: yaae-print-page-number-right
+    title: Right offset
+    type: variable-number-slider
+    default: 16
+    min: 0
+    max: 40
+    step: 2
+    format: px
+  -
+    id: yaae-print-page-number-font-size
+    title: Font size
+    type: variable-text
+    default: 9px
+  -
+    id: yaae-print-page-number-color
+    title: Color
+    type: variable-color
+    format: hex
+    default: '#888888'
+  -
+    id: yaae-print-tables-heading
+    title: Tables
+    type: heading
+    level: 2
+    collapsed: true
+  -
+    id: yaae-print-table-font-size
+    title: Table font size
+    type: variable-text
+    default: 0.85em
+  -
+    id: yaae-print-table-cell-padding
+    title: Cell padding
+    type: variable-text
+    default: 4px 8px
+  -
+    id: yaae-print-toc-heading
+    title: Table of Contents
+    type: heading
+    level: 2
+    collapsed: true
+  -
+    id: yaae-print-toc-indent
+    title: Nesting indent
+    type: variable-text
+    default: 1.5em
+  -
+    id: yaae-print-toc-item-margin
+    title: Item margin
+    type: variable-text
+    default: 0.3em
+  -
+    id: yaae-print-toc-line-height
+    title: Line height
+    type: variable-text
+    default: '1.4'
+  -
+    id: yaae-print-hf-heading
+    title: Header / Footer
+    type: heading
+    level: 2
+    collapsed: true
+  -
+    id: yaae-print-header-footer-font-size
+    title: Font size
+    type: variable-text
+    default: 9px
+  -
+    id: yaae-print-header-footer-color
+    title: Color
+    type: variable-color
+    format: hex
+    default: '#888888'
+  -
+    id: yaae-print-dark-heading
+    title: Dark Theme
+    type: heading
+    level: 2
+    collapsed: true
+  -
+    id: yaae-print-dark-bg
+    title: Background color
+    type: variable-color
+    format: hex
+    default: '#1e1e1e'
+  -
+    id: yaae-print-dark-text
+    title: Text color
+    type: variable-color
+    format: hex
+    default: '#d4d4d4'
+  -
+    id: yaae-print-dark-heading-color
+    title: Heading color
+    type: variable-color
+    format: hex
+    default: '#e0e0e0'
+  -
+    id: yaae-print-dark-code-bg
+    title: Code background
+    type: variable-color
+    format: hex
+    default: '#2d2d2d'
+  -
+    id: yaae-print-dark-table-border
+    title: Table border color
+    type: variable-color
+    format: hex
+    default: '#444444'
+  -
+    id: yaae-print-banner-heading
+    title: Classification Banners
+    type: heading
+    level: 2
+    collapsed: true
+  -
+    id: yaae-print-banner-font-size
+    title: Banner font size
+    type: variable-text
+    default: 10px
+  -
+    id: yaae-print-banner-letter-spacing
+    title: Banner letter spacing
+    type: variable-text
+    default: 0.1em
+  -
+    id: yaae-print-banner-padding
+    title: Banner padding
+    type: variable-text
+    default: 2px 0
+  -
+    id: yaae-print-typography-heading
+    title: Typography
+    type: heading
+    level: 2
+    collapsed: true
+  -
+    id: yaae-print-widows
+    title: Widows
+    description: Minimum lines of a paragraph at the top of a page
+    type: variable-number-slider
+    default: 3
+    min: 1
+    max: 6
+    step: 1
+  -
+    id: yaae-print-orphans
+    title: Orphans
+    description: Minimum lines of a paragraph at the bottom of a page
+    type: variable-number-slider
+    default: 3
+    min: 1
+    max: 6
+    step: 1
 
 */
 
@@ -123,6 +349,52 @@ body {
 
   /* Guttered headings */
   --yaae-gutter-width: 40px;
+
+  /* PDF Print — Code Blocks */
+  --yaae-print-code-border-color: #ddd;
+  --yaae-print-code-border-radius: 4px;
+  --yaae-print-code-padding: 0.8em;
+  --yaae-print-code-bg: #f8f8f8;
+  --yaae-print-code-font-size: 0.9em;
+
+  /* PDF Print — Links */
+  --yaae-print-link-url-font-size: 0.8em;
+  --yaae-print-link-url-color: #666;
+
+  /* PDF Print — Page Numbers */
+  --yaae-print-page-number-bottom: 12px;
+  --yaae-print-page-number-right: 16px;
+  --yaae-print-page-number-font-size: 9px;
+  --yaae-print-page-number-color: #888;
+
+  /* PDF Print — Tables */
+  --yaae-print-table-font-size: 0.85em;
+  --yaae-print-table-cell-padding: 4px 8px;
+
+  /* PDF Print — Table of Contents */
+  --yaae-print-toc-indent: 1.5em;
+  --yaae-print-toc-item-margin: 0.3em;
+  --yaae-print-toc-line-height: 1.4;
+
+  /* PDF Print — Header / Footer */
+  --yaae-print-header-footer-font-size: 9px;
+  --yaae-print-header-footer-color: #888;
+
+  /* PDF Print — Dark Theme */
+  --yaae-print-dark-bg: #1e1e1e;
+  --yaae-print-dark-text: #d4d4d4;
+  --yaae-print-dark-heading-color: #e0e0e0;
+  --yaae-print-dark-code-bg: #2d2d2d;
+  --yaae-print-dark-table-border: #444;
+
+  /* PDF Print — Classification Banners */
+  --yaae-print-banner-font-size: 10px;
+  --yaae-print-banner-letter-spacing: 0.1em;
+  --yaae-print-banner-padding: 2px 0;
+
+  /* PDF Print — Typography */
+  --yaae-print-widows: 3;
+  --yaae-print-orphans: 3;
 }
 
 /* ==========================================================================
