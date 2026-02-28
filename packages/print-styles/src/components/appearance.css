@@ -1,8 +1,16 @@
 @media print {
+  :root {
+    --yaae-print-dark-bg: #1e1e1e;
+    --yaae-print-dark-text: #d4d4d4;
+    --yaae-print-dark-heading-color: #e0e0e0;
+    --yaae-print-dark-code-bg: #2d2d2d;
+    --yaae-print-dark-table-border: #444;
+  }
+
   /* Dark theme: force dark background + light text */
   .pdf-theme-dark {
-    background: #1e1e1e !important;
-    color: #d4d4d4 !important;
+    background: var(--yaae-print-dark-bg) !important;
+    color: var(--yaae-print-dark-text) !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
@@ -13,32 +21,32 @@
   .pdf-theme-dark h4,
   .pdf-theme-dark h5,
   .pdf-theme-dark h6 {
-    color: #e0e0e0 !important;
+    color: var(--yaae-print-dark-heading-color) !important;
   }
 
   .pdf-theme-dark code {
-    background: #2d2d2d !important;
-    color: #d4d4d4 !important;
+    background: var(--yaae-print-dark-code-bg) !important;
+    color: var(--yaae-print-dark-text) !important;
   }
 
   .pdf-theme-dark pre {
-    background: #2d2d2d !important;
+    background: var(--yaae-print-dark-code-bg) !important;
   }
 
   .pdf-theme-dark table th {
-    background: #2d2d2d !important;
-    color: #d4d4d4 !important;
+    background: var(--yaae-print-dark-code-bg) !important;
+    color: var(--yaae-print-dark-text) !important;
   }
 
   .pdf-theme-dark table td {
-    border-color: #444 !important;
+    border-color: var(--yaae-print-dark-table-border) !important;
   }
 
   /* Auto theme: follow OS preference */
   @media (prefers-color-scheme: dark) {
     .pdf-theme-auto {
-      background: #1e1e1e !important;
-      color: #d4d4d4 !important;
+      background: var(--yaae-print-dark-bg) !important;
+      color: var(--yaae-print-dark-text) !important;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
@@ -49,16 +57,16 @@
     .pdf-theme-auto h4,
     .pdf-theme-auto h5,
     .pdf-theme-auto h6 {
-      color: #e0e0e0 !important;
+      color: var(--yaae-print-dark-heading-color) !important;
     }
 
     .pdf-theme-auto code {
-      background: #2d2d2d !important;
-      color: #d4d4d4 !important;
+      background: var(--yaae-print-dark-code-bg) !important;
+      color: var(--yaae-print-dark-text) !important;
     }
 
     .pdf-theme-auto pre {
-      background: #2d2d2d !important;
+      background: var(--yaae-print-dark-code-bg) !important;
     }
   }
 

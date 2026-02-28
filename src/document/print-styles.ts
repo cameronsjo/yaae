@@ -45,11 +45,11 @@ export class ClassificationPrintStyleManager {
     right: 0;
     display: block;
     text-align: center;
-    font-size: 10px;
+    font-size: var(--yaae-print-banner-font-size, 10px);
     font-weight: 700;
-    letter-spacing: 0.1em;
+    letter-spacing: var(--yaae-print-banner-letter-spacing, 0.1em);
     text-transform: uppercase;
-    padding: 2px 0;
+    padding: var(--yaae-print-banner-padding, 2px 0);
     z-index: 9999;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
@@ -69,11 +69,11 @@ export class ClassificationPrintStyleManager {
     right: 0;
     display: block;
     text-align: center;
-    font-size: 10px;
+    font-size: var(--yaae-print-banner-font-size, 10px);
     font-weight: 700;
-    letter-spacing: 0.1em;
+    letter-spacing: var(--yaae-print-banner-letter-spacing, 0.1em);
     text-transform: uppercase;
-    padding: 2px 0;
+    padding: var(--yaae-print-banner-padding, 2px 0);
     z-index: 9999;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
@@ -116,10 +116,11 @@ export class ClassificationPrintStyleManager {
 
 /**
  * Base styles shared by all header/footer pseudo-elements.
+ * Uses CSS custom properties so values can be overridden via Style Settings.
  */
 const HEADER_FOOTER_BASE = `
-    font-size: 9px;
-    color: #888;
+    font-size: var(--yaae-print-header-footer-font-size, 9px);
+    color: var(--yaae-print-header-footer-color, #888);
     z-index: 9998;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;`;

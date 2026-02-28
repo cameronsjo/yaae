@@ -1,4 +1,11 @@
 @media print {
+  :root {
+    --yaae-print-page-number-bottom: 12px;
+    --yaae-print-page-number-right: 16px;
+    --yaae-print-page-number-font-size: 9px;
+    --yaae-print-page-number-color: #888;
+  }
+
   /* Initialize counter on the print container */
   .print {
     counter-reset: page-number;
@@ -14,10 +21,10 @@
   .print > div::after {
     content: "Page " counter(page-number);
     position: absolute;
-    bottom: 12px;
-    right: 16px;
-    font-size: 9px;
-    color: #888;
+    bottom: var(--yaae-print-page-number-bottom);
+    right: var(--yaae-print-page-number-right);
+    font-size: var(--yaae-print-page-number-font-size);
+    color: var(--yaae-print-page-number-color);
   }
 
   /* Hide page number on cover page */

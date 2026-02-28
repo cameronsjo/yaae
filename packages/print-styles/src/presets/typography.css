@@ -17,8 +17,8 @@
 
   /* Widow and orphan control */
   p {
-    widows: 3;
-    orphans: 3;
+    widows: var(--yaae-print-widows);
+    orphans: var(--yaae-print-orphans);
   }
 
   /* Repeat table headers across pages */
@@ -63,6 +63,8 @@
     --print-font-size: 11pt;
     --print-line-height: 1.6;
     --print-heading-scale: 1.2;
+    --yaae-print-widows: 3;
+    --yaae-print-orphans: 3;
   }
 
   body {
