@@ -37,8 +37,10 @@ Configure once in settings, forget about it. Override in frontmatter only when a
 | **Content**      |                                   |          |        |         |
 | toc              | boolean                           | `false`  | ✗      | ✓       |
 | tocDepth         | 1–6                               | `3`      | ✓      | ✓       |
+| lineHeight       | number (1.0–3.0)                  | `1.6`    | ✓      | ✓       |
 | **Branding**     |                                   |          |        |         |
 | watermark        | enum (5 levels)                   | `"off"`  | ✓ *    | ✓       |
+| watermarkText    | string                            | `"DRAFT"` | ✓    | ✓       |
 | classification   | string                            | varies   | ✓      | ✓       |
 | headerLeft       | string                            | `""`     | ✓      | ✓       |
 | headerRight      | string                            | `""`     | ✓      | ✓       |
@@ -112,6 +114,27 @@ Same pattern as existing `pdf-watermark-loud`, `pdf-no-links`, etc.
 ── Validation ──
   Validate on save
 ```
+
+## CSS Custom Properties
+
+All hardcoded values in the print CSS pipeline are exposed as `--yaae-print-*` CSS custom properties, overridable via the [Style Settings](https://github.com/mgmeyers/obsidian-style-settings) plugin or user CSS snippets.
+
+| Category | Properties |
+|----------|-----------|
+| Code Blocks | `--yaae-print-code-border-color`, `--yaae-print-code-border-radius`, `--yaae-print-code-padding`, `--yaae-print-code-bg`, `--yaae-print-code-font-size` |
+| Links | `--yaae-print-link-url-font-size`, `--yaae-print-link-url-color` |
+| Page Numbers | `--yaae-print-page-number-bottom`, `--yaae-print-page-number-right`, `--yaae-print-page-number-font-size`, `--yaae-print-page-number-color` |
+| Tables | `--yaae-print-table-font-size`, `--yaae-print-table-cell-padding` |
+| TOC | `--yaae-print-toc-indent`, `--yaae-print-toc-item-margin`, `--yaae-print-toc-line-height` |
+| Header/Footer | `--yaae-print-header-footer-font-size`, `--yaae-print-header-footer-color` |
+| Dark Theme | `--yaae-print-dark-bg`, `--yaae-print-dark-text`, `--yaae-print-dark-heading-color`, `--yaae-print-dark-code-bg`, `--yaae-print-dark-table-border` |
+| Banners | `--yaae-print-banner-font-size`, `--yaae-print-banner-letter-spacing`, `--yaae-print-banner-padding` |
+| Typography | `--yaae-print-widows`, `--yaae-print-orphans` |
+
+**Not exposed as CSS variables** (handled by dynamic style managers):
+- `--print-font-size` and `--print-line-height` — set by `DynamicPdfPrintStyleManager`
+- Watermark SVG data URIs — generated dynamically from `watermarkText` setting
+- Built-in classification colors — semantic identity, not cosmetic (custom classifications use the color picker UI)
 
 ## Resolved Decisions
 
