@@ -95,7 +95,7 @@ Same pattern as existing `pdf-watermark-loud`, `pdf-no-links`, etc.
 
 ## Settings UI Grouping
 
-```
+```text
 ── Classification ──
   Default classification, banner toggle, banner position
 

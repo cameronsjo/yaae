@@ -39,14 +39,13 @@
 
   pre, code {
     white-space: pre-wrap;
-    word-break: break-word;
     overflow-wrap: break-word;
   }
 
   table {
     table-layout: fixed;
     width: 100%;
-    word-break: break-word;
+    overflow-wrap: break-word;
   }
 
   img {

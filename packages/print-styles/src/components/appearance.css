@@ -72,6 +72,6 @@
   }
 
   .pdf-font-mono {
-    font-family: "SFMono-Regular", Consolas, "Courier New", monospace !important;
+    font-family: SFMono-Regular, Consolas, "Courier New", monospace !important;
   }
 }

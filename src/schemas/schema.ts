@@ -45,7 +45,7 @@ export const docFrontmatterSchema = z.object({
   title: z.string().min(1),
 
   // Classification & Status
-  classification: z.string().default('internal'),
+  classification: z.string().trim().min(1).default('internal'),
   status: z.enum(['draft', 'review', 'final', 'archived']).default('draft'),
 
   // Metadata

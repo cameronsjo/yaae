@@ -3,19 +3,23 @@ import {
   getClassificationMeta,
   type CustomClassification,
 } from '../schemas';
+import type { DocumentSettings } from './settings';
 
 /**
  * Create a MarkdownPostProcessor that injects a classification banner
- * into reading view. Custom classifications are resolved via the lookup
- * function so user-defined levels are supported.
+ * into reading view. Reads the `showClassificationBanner` setting at
+ * runtime so toggling takes effect without a reload.
  */
 export function createClassificationBannerProcessor(
-  customClassifications: CustomClassification[] = [],
+  getSettings: () => DocumentSettings,
 ) {
   return function classificationBannerProcessor(
     el: HTMLElement,
     ctx: MarkdownPostProcessorContext,
   ): void {
+    const settings = getSettings();
+    if (!settings.showClassificationBanner) return;
+
     const info = ctx.getSectionInfo(el);
     if (!info || info.lineStart !== 0) return;
 
@@ -25,7 +29,7 @@ export function createClassificationBannerProcessor(
     const classification = metadata.classification as string | undefined;
     if (!classification) return;
 
-    const meta = getClassificationMeta(classification, customClassifications);
+    const meta = getClassificationMeta(classification, settings.customClassifications);
     if (!meta) return;
 
     const banner = document.createElement('div');

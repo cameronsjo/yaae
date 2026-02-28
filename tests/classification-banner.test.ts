@@ -2,6 +2,13 @@ import { describe, it, expect, vi } from 'vitest';
 import { createClassificationBannerProcessor } from '../src/document/classification-banner';
 import { CLASSIFICATION_TAXONOMY } from '../src/schemas';
 import type { CustomClassification } from '../src/schemas';
+import { DEFAULT_DOCUMENT_SETTINGS, type DocumentSettings } from '../src/document/settings';
+
+/** Helper to build a settings getter for tests */
+function settingsGetter(overrides: Partial<DocumentSettings> = {}): () => DocumentSettings {
+  const settings = { ...DEFAULT_DOCUMENT_SETTINGS, ...overrides };
+  return () => settings;
+}
 
 // Minimal mock for MarkdownPostProcessorContext
 function makeCtx(opts: {
@@ -32,7 +39,7 @@ function makeEl() {
 }
 
 describe('classificationBannerProcessor', () => {
-  const processor = createClassificationBannerProcessor();
+  const processor = createClassificationBannerProcessor(settingsGetter());
 
   // --- Happy paths ---
 
@@ -111,6 +118,18 @@ describe('classificationBannerProcessor', () => {
 
     expect(el.insertBefore).not.toHaveBeenCalled();
   });
+
+  it('does nothing when showClassificationBanner is false', () => {
+    const disabledProcessor = createClassificationBannerProcessor(
+      settingsGetter({ showClassificationBanner: false }),
+    );
+    const el = makeEl();
+    const ctx = makeCtx({ lineStart: 0, frontmatter: { classification: 'internal' } });
+
+    disabledProcessor(el, ctx);
+
+    expect(el.insertBefore).not.toHaveBeenCalled();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -125,7 +144,9 @@ describe('classificationBannerProcessor — custom classifications', () => {
     { id: 'highly-sensitive-restricted', label: 'HIGHLY SENSITIVE — RESTRICTED', color: '#8b0000', background: '#ffe0e0' },
   ];
 
-  const processor = createClassificationBannerProcessor(customs);
+  const processor = createClassificationBannerProcessor(settingsGetter({
+    customClassifications: customs,
+  }));
 
   it('injects banner for custom classification', () => {
     const el = makeEl();

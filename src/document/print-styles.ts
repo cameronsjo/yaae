@@ -8,6 +8,29 @@ const DYNAMIC_PDF_STYLE_ID = 'yaae-dynamic-pdf-print-styles';
 const FONT_PRESETS: Set<string> = new Set<string>(['sans', 'serif', 'mono', 'system']);
 
 /**
+ * Build a shared banner CSS rule for either top or bottom position.
+ * Only the `position` property (top/bottom) differs between the two.
+ */
+function buildBannerRule(selectors: string[], position: 'top' | 'bottom'): string {
+  return `  ${selectors.join(',\n  ')} {
+    position: fixed;
+    ${position}: 0;
+    left: 0;
+    right: 0;
+    display: block;
+    text-align: center;
+    font-size: var(--yaae-print-banner-font-size, 10px);
+    font-weight: 700;
+    letter-spacing: var(--yaae-print-banner-letter-spacing, 0.1em);
+    text-transform: uppercase;
+    padding: var(--yaae-print-banner-padding, 2px 0);
+    z-index: 9999;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }`;
+}
+
+/**
  * Generate and inject dynamic @media print CSS rules for custom
  * classification banners. This complements the static classification.css
  * in @yaae/print-styles, which only covers the 4 built-in levels.
@@ -38,22 +61,7 @@ export class ClassificationPrintStyleManager {
       .map((c) => `.pdf-${c.id} .markdown-preview-view::before`);
 
     if (topSelectors.length > 0) {
-      rules.push(`  ${topSelectors.join(',\n  ')} {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    display: block;
-    text-align: center;
-    font-size: var(--yaae-print-banner-font-size, 10px);
-    font-weight: 700;
-    letter-spacing: var(--yaae-print-banner-letter-spacing, 0.1em);
-    text-transform: uppercase;
-    padding: var(--yaae-print-banner-padding, 2px 0);
-    z-index: 9999;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }`);
+      rules.push(buildBannerRule(topSelectors, 'top'));
     }
 
     // Shared base styles for bottom banners
@@ -62,22 +70,7 @@ export class ClassificationPrintStyleManager {
       .map((c) => `.pdf-${c.id} .markdown-preview-sizer::after`);
 
     if (bottomSelectors.length > 0) {
-      rules.push(`  ${bottomSelectors.join(',\n  ')} {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    display: block;
-    text-align: center;
-    font-size: var(--yaae-print-banner-font-size, 10px);
-    font-weight: 700;
-    letter-spacing: var(--yaae-print-banner-letter-spacing, 0.1em);
-    text-transform: uppercase;
-    padding: var(--yaae-print-banner-padding, 2px 0);
-    z-index: 9999;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }`);
+      rules.push(buildBannerRule(bottomSelectors, 'bottom'));
     }
 
     // Per-classification color rules

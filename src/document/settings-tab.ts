@@ -1,8 +1,9 @@
-import { Setting } from 'obsidian';
+import { Setting, setTooltip } from 'obsidian';
 import type YaaePlugin from '../../main';
 import {
   getAllClassificationIds,
   getClassificationMeta,
+  type WatermarkLevel,
 } from '../schemas';
 import type { LinksMode, ThemeMode } from './settings';
 import { createCollapsibleSection } from '../settings/collapsible-section';
@@ -116,19 +117,21 @@ export function renderDocumentSettings(
           }),
       );
 
-      row.addColorPicker((picker) =>
+      const colorPicker = row.addColorPicker((picker) =>
         picker.setValue(entry.color).onChange(async (value) => {
           entry.color = value;
           await saveAndRefreshPrintStyles();
         }),
       );
+      setTooltip(colorPicker.colorPickerEl, 'Text color');
 
-      row.addColorPicker((picker) =>
+      const bgPicker = row.addColorPicker((picker) =>
         picker.setValue(entry.background).onChange(async (value) => {
           entry.background = value;
           await saveAndRefreshPrintStyles();
         }),
       );
+      setTooltip(bgPicker.colorPickerEl, 'Background color');
 
       row.addExtraButton((btn) =>
         btn.setIcon('trash').setTooltip('Remove').onClick(async () => {
@@ -333,7 +336,7 @@ export function renderDocumentSettings(
         .addOption('screaming', 'Screaming')
         .setValue(plugin.settings.document.defaultWatermarkForDrafts)
         .onChange(async (value) => {
-          plugin.settings.document.defaultWatermarkForDrafts = value as any;
+          plugin.settings.document.defaultWatermarkForDrafts = value as WatermarkLevel;
           await plugin.saveSettings();
         }),
     );

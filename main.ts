@@ -187,12 +187,10 @@ export default class YaaePlugin extends Plugin {
     this.headerFooterPrintStyles.init(this.settings.document);
     this.dynamicPdfPrintStyles.init(this.settings.document);
 
-    // Classification banner in reading view
-    if (this.settings.document.showClassificationBanner) {
-      this.registerMarkdownPostProcessor(
-        createClassificationBannerProcessor(this.settings.document.customClassifications),
-      );
-    }
+    // Classification banner in reading view (always registered; checks setting at runtime)
+    this.registerMarkdownPostProcessor(
+      createClassificationBannerProcessor(() => this.settings.document),
+    );
 
     // Validate on save
     if (this.settings.document.validateOnSave) {

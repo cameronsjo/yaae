@@ -1,5 +1,4 @@
-import type { WatermarkLevel } from '../schemas';
-import type { CustomClassification } from '../schemas/classification';
+import type { WatermarkLevel, CustomClassification } from '../schemas';
 
 export type LinksMode = 'expand' | 'styled' | 'plain' | 'stripped';
 export type ThemeMode = 'light' | 'dark' | 'auto';
