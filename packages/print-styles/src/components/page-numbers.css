@@ -24,4 +24,9 @@
   .pdf-skip-cover .print > div:first-child::after {
     opacity: 0;
   }
+
+  /* Hide all page numbers when toggle is off */
+  .pdf-no-page-numbers .print > div::after {
+    display: none !important;
+  }
 }

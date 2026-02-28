@@ -76,6 +76,9 @@ export function deriveCssClasses(frontmatter: DocFrontmatter): string[] {
 
     // TOC
     if (pdf.toc) classes.push('pdf-toc');
+
+    // Page numbers (default true — class disables them)
+    if (pdf.pageNumbers === false) classes.push('pdf-no-page-numbers');
   }
 
   return classes;
