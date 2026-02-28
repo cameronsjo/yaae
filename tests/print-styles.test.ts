@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { ClassificationPrintStyleManager, HeaderFooterPrintStyleManager } from '../src/document/print-styles';
+import {
+  ClassificationPrintStyleManager,
+  HeaderFooterPrintStyleManager,
+  DynamicPdfPrintStyleManager,
+  buildWatermarkDataUri,
+  WATERMARK_PRESETS,
+} from '../src/document/print-styles';
 import type { CustomClassification } from '../src/schemas';
 import { DEFAULT_DOCUMENT_SETTINGS, type DocumentSettings } from '../src/document/settings';
 
@@ -258,6 +264,140 @@ describe('HeaderFooterPrintStyleManager', () => {
 
     manager.update(makeSettings());
     expect(el.textContent).toBe('');
+  });
+
+  it('removes style element on destroy', () => {
+    manager.init(makeSettings());
+    const el = getLastStyleEl(dom.headAppendChild);
+    manager.destroy();
+    expect(el.remove).toHaveBeenCalledOnce();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildWatermarkDataUri
+// ---------------------------------------------------------------------------
+
+describe('buildWatermarkDataUri', () => {
+  it('returns a data URI string', () => {
+    const uri = buildWatermarkDataUri('whisper', 'DRAFT');
+    expect(uri).toMatch(/^url\("data:image\/svg\+xml,/);
+    expect(uri).toContain('DRAFT');
+  });
+
+  it('uses preset parameters for each level', () => {
+    for (const level of Object.keys(WATERMARK_PRESETS) as (keyof typeof WATERMARK_PRESETS)[]) {
+      const uri = buildWatermarkDataUri(level, 'TEST');
+      const preset = WATERMARK_PRESETS[level];
+      // The URI should contain the font-size from the preset
+      expect(uri).toContain(`font-size%3D'${preset.fontSize}'`);
+    }
+  });
+
+  it('escapes XML special characters in text', () => {
+    const uri = buildWatermarkDataUri('loud', 'A & B <C> "D"');
+    // Should not contain unescaped special chars
+    expect(uri).not.toContain('&');
+    expect(uri).not.toContain('<C>');
+    // Should contain encoded versions
+    const decoded = decodeURIComponent(uri);
+    expect(decoded).toContain('&amp;');
+    expect(decoded).toContain('&lt;');
+    expect(decoded).toContain('&gt;');
+    expect(decoded).toContain('&quot;');
+  });
+
+  it('produces different tile sizes per level', () => {
+    const whisperUri = buildWatermarkDataUri('whisper', 'X');
+    const screamingUri = buildWatermarkDataUri('screaming', 'X');
+    // Whisper should have larger tile (400) than screaming (150)
+    expect(whisperUri).toContain("width%3D'400'");
+    expect(screamingUri).toContain("width%3D'150'");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// DynamicPdfPrintStyleManager
+// ---------------------------------------------------------------------------
+
+describe('DynamicPdfPrintStyleManager', () => {
+  let manager: DynamicPdfPrintStyleManager;
+  let dom: ReturnType<typeof setupDOM>;
+
+  function makeSettings(overrides: Partial<DocumentSettings> = {}): DocumentSettings {
+    return { ...DEFAULT_DOCUMENT_SETTINGS, ...overrides };
+  }
+
+  beforeEach(() => {
+    dom = setupDOM();
+    manager = new DynamicPdfPrintStyleManager();
+  });
+
+  afterEach(() => {
+    manager.destroy();
+  });
+
+  it('creates a style element on init', () => {
+    manager.init(makeSettings());
+    expect(dom.headAppendChild).toHaveBeenCalled();
+    const el = getLastStyleEl(dom.headAppendChild);
+    expect(el.id).toBe('yaae-dynamic-pdf-print-styles');
+  });
+
+  it('generates empty styles with all defaults', () => {
+    manager.init(makeSettings());
+    const el = getLastStyleEl(dom.headAppendChild);
+    expect(el.textContent).toBe('');
+  });
+
+  it('emits font-size rule when fontSize differs from default', () => {
+    manager.init(makeSettings({ fontSize: 14 }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).toContain('14pt');
+    expect(css).toContain('@media print');
+  });
+
+  it('emits font-family rule for custom font string', () => {
+    manager.init(makeSettings({ fontFamily: 'Inter, sans-serif' }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).toContain('Inter, sans-serif');
+  });
+
+  it('emits watermark overrides when watermarkText differs from DRAFT', () => {
+    manager.init(makeSettings({ watermarkText: 'CONFIDENTIAL' }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).toContain('.pdf-watermark-whisper');
+    expect(css).toContain('.pdf-watermark-heads-up');
+    expect(css).toContain('.pdf-watermark-loud');
+    expect(css).toContain('.pdf-watermark-screaming');
+    expect(css).toContain('CONFIDENTIAL');
+  });
+
+  it('does not emit watermark overrides when text is DRAFT (default)', () => {
+    manager.init(makeSettings({ watermarkText: 'DRAFT' }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).not.toContain('.pdf-watermark-');
+  });
+
+  it('emits line-height override when lineHeight differs from default', () => {
+    manager.init(makeSettings({ lineHeight: 1.8 }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).toContain('--print-line-height: 1.8');
+  });
+
+  it('does not emit line-height when at default 1.6', () => {
+    manager.init(makeSettings({ lineHeight: 1.6 }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).not.toContain('--print-line-height');
+  });
+
+  it('updates styles dynamically', () => {
+    manager.init(makeSettings());
+    const el = getLastStyleEl(dom.headAppendChild);
+    expect(el.textContent).toBe('');
+
+    manager.update(makeSettings({ fontSize: 16 }));
+    expect(el.textContent).toContain('16pt');
   });
 
   it('removes style element on destroy', () => {

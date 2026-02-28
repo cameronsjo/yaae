@@ -838,6 +838,27 @@ export:
     expect(classes).toContain('pdf-toc');
   });
 
+  // --- pageNumbers ---
+
+  it('excludes pdf-no-page-numbers by default (pageNumbers defaults to true)', () => {
+    const yaml = `title: Test
+created: 2024-01-01`;
+    const result = validateMarkdown(wrap(yaml));
+    const classes = deriveCssClasses(result.data!);
+    expect(classes).not.toContain('pdf-no-page-numbers');
+  });
+
+  it('includes pdf-no-page-numbers when pageNumbers is false', () => {
+    const yaml = `title: Test
+created: 2024-01-01
+export:
+  pdf:
+    pageNumbers: false`;
+    const result = validateMarkdown(wrap(yaml));
+    const classes = deriveCssClasses(result.data!);
+    expect(classes).toContain('pdf-no-page-numbers');
+  });
+
   it('maps all four classification levels', () => {
     for (const level of ['public', 'internal', 'confidential', 'restricted']) {
       const yaml = `title: Test
