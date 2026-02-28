@@ -62,6 +62,13 @@
     --print-font-size: 11pt;
     --print-line-height: 1.6;
     --print-heading-scale: 1.2;
+    /* Derived heading sizes: h6=1em, each level up multiplies by scale */
+    --print-h6-size: 1em;
+    --print-h5-size: calc(var(--print-h6-size) * var(--print-heading-scale));
+    --print-h4-size: calc(var(--print-h5-size) * var(--print-heading-scale));
+    --print-h3-size: calc(var(--print-h4-size) * var(--print-heading-scale));
+    --print-h2-size: calc(var(--print-h3-size) * var(--print-heading-scale));
+    --print-h1-size: calc(var(--print-h2-size) * var(--print-heading-scale));
   }
 
   body {
@@ -69,12 +76,10 @@
     line-height: var(--print-line-height);
   }
 
-  /* Heading scale: each level is heading-scale × the next level's size.
-     h6 = 1em, h5 = scale^1, h4 = scale^2, ..., h1 = scale^5 */
-  h1 { font-size: calc(1em * var(--print-heading-scale) * var(--print-heading-scale) * var(--print-heading-scale) * var(--print-heading-scale) * var(--print-heading-scale)); }
-  h2 { font-size: calc(1em * var(--print-heading-scale) * var(--print-heading-scale) * var(--print-heading-scale) * var(--print-heading-scale)); }
-  h3 { font-size: calc(1em * var(--print-heading-scale) * var(--print-heading-scale) * var(--print-heading-scale)); }
-  h4 { font-size: calc(1em * var(--print-heading-scale) * var(--print-heading-scale)); }
-  h5 { font-size: calc(1em * var(--print-heading-scale)); }
-  h6 { font-size: 1em; }
+  h1 { font-size: var(--print-h1-size); }
+  h2 { font-size: var(--print-h2-size); }
+  h3 { font-size: var(--print-h3-size); }
+  h4 { font-size: var(--print-h4-size); }
+  h5 { font-size: var(--print-h5-size); }
+  h6 { font-size: var(--print-h6-size); }
 }

@@ -104,7 +104,7 @@ describe('ClassificationPrintStyleManager', () => {
     const css = getLastStyleEl(dom.headAppendChild).textContent!;
 
     expect(css).toContain('.pdf-test-level .markdown-preview-view::before');
-    expect(css).toContain('.pdf-test-level .markdown-preview-sizer::after');
+    expect(css).toContain('.pdf-test-level:not(.pdf-signature-block) .markdown-preview-sizer::after');
   });
 
   it('updates styles dynamically', () => {

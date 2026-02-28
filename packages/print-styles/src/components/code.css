@@ -4,7 +4,8 @@
     border-radius: var(--yaae-print-code-border-radius);
     padding: var(--yaae-print-code-padding);
     white-space: pre-wrap;
-    word-break: break-word;
+    overflow-wrap: anywhere;
+    word-break: normal;
     background-color: var(--yaae-print-code-bg) !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;

@@ -27,7 +27,7 @@ Configure once in settings, forget about it. Override in frontmatter only when a
 | **Text Quality** |                                   |          |        |         |
 | copyPasteSafe    | boolean                           | `true`   | ✓      | ✓       |
 | **Links**        |                                   |          |        |         |
-| links            | `"expand"` \| `"styled"` \| `"plain"` \| `"stripped"` | `"expand"` | ✓ | ✓ |
+| links            | `"expand"` \| `"styled"` \| `"plain"` \| `"stripped"` \| `"defanged"` | `"expand"` | ✓ | ✓ |
 | **Tables**       |                                   |          |        |         |
 | compactTables    | boolean                           | `true`   | ✓      | ✓       |
 | **Layout**       |                                   |          |        |         |
@@ -61,6 +61,7 @@ Replaces the two booleans (`expandLinks`, `plainLinks`) with a single enum:
 | `"styled"`  | Link text only, blue + underlined                   |
 | `"plain"`   | Link text only, no color or underline, still `<a>`  |
 | `"stripped"` | `<a>` tag removed, pure text                       |
+| `"defanged"` | URLs neutralized: `hxxps://`, `[.]` for domains   |
 
 Migration strategy: **additive**. Keep `expandLinks`/`plainLinks` working as aliases, add `links` enum as the preferred way. `links` takes precedence if present. Deprecate the booleans over time.
 
@@ -90,6 +91,8 @@ Each toggle maps to a CSS class for the print-styles package:
 | `landscape: true`       | `pdf-landscape`        | `@page` landscape      |
 | `links: "plain"`        | `pdf-links-plain`      | Strip link styling     |
 | `links: "stripped"`     | `pdf-links-stripped`   | Remove `<a>` tags      |
+| `links: "defanged"`    | `pdf-links-defanged`   | Neutralize URLs        |
+| `signatureBlock: true` | `pdf-signature-block`  | Sign-off block         |
 
 Same pattern as existing `pdf-watermark-loud`, `pdf-no-links`, etc.
 
@@ -140,5 +143,5 @@ All hardcoded values in the print CSS pipeline are exposed as `--yaae-print-*` C
 
 1. **`stripped` links**: Yes — requires DOM manipulation (MarkdownPostProcessor) to unwrap `<a>` tags. Worth the complexity for security-focused documents.
 2. **`copyPasteSafe`**: Stays as a toggle, not always-on.
-3. **Signature block**: Deferred — tracked as a bead.
-4. **Defanged links** (`hxxps://`, `[.]`): Deferred — tracked as a bead.
+3. **Signature block**: Implemented — per-document `export.pdf.signatureBlock: true` renders "Prepared by / Reviewed by / Approved by" sign-off lines via CSS `::after`.
+4. **Defanged links** (`hxxps://`, `[.]`): Implemented — `links: "defanged"` mode with `defangUrl()` pure function and MarkdownPostProcessor.

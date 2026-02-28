@@ -15,7 +15,7 @@ export function defangUrl(url: string): string {
     .replace(/^https:\/\//i, 'hxxps://')
     .replace(/^http:\/\//i, 'hxxp://');
 
-  // Find where the domain ends (first `/`, `?`, `#`, or `:port` after protocol)
+  // Find where the domain ends (first `/`, `?`, or `#` after protocol; ports stay in domain)
   const protocolEnd = result.indexOf('//');
   if (protocolEnd === -1) return result;
 
@@ -64,9 +64,6 @@ export function createDefangedLinksProcessor(
       if (textContent.includes(href)) {
         anchor.textContent = textContent.replace(href, defangedHref);
       }
-
-      // Replace the href so the link is non-functional
-      anchor.setAttribute('href', defangedHref);
 
       // Wrap content in a span to signal non-clickable styling
       const span = document.createElement('span');

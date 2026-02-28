@@ -67,7 +67,7 @@ export class ClassificationPrintStyleManager {
     // Shared base styles for bottom banners
     const bottomSelectors = customClassifications
       .filter((c) => c.id)
-      .map((c) => `.pdf-${c.id} .markdown-preview-sizer::after`);
+      .map((c) => `.pdf-${c.id}:not(.pdf-signature-block) .markdown-preview-sizer::after`);
 
     if (bottomSelectors.length > 0) {
       rules.push(buildBannerRule(bottomSelectors, 'bottom'));
@@ -81,7 +81,7 @@ export class ClassificationPrintStyleManager {
 
       // Top + bottom shared colors
       rules.push(`  .pdf-${c.id} .markdown-preview-view::before,
-  .pdf-${c.id} .markdown-preview-sizer::after {
+  .pdf-${c.id}:not(.pdf-signature-block) .markdown-preview-sizer::after {
     content: "${escapedLabel}";
     color: ${c.color};
     background: ${c.background};
@@ -89,7 +89,7 @@ export class ClassificationPrintStyleManager {
   }`);
 
       // Bottom banner: swap border to top
-      rules.push(`  .pdf-${c.id} .markdown-preview-sizer::after {
+      rules.push(`  .pdf-${c.id}:not(.pdf-signature-block) .markdown-preview-sizer::after {
     border-bottom: none;
     border-top: 2px solid ${c.color};
   }`);

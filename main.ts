@@ -265,6 +265,7 @@ export default class YaaePlugin extends Plugin {
         `[yaae] Migrated deprecated link booleans to links enum. ` +
         `expandLinks: ${doc.expandLinks}, plainLinks: ${doc.plainLinks} → links: ${doc.links}`,
       );
+      await this.saveSettings();
     }
   }
 

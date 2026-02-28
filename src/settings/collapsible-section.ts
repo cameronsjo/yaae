@@ -24,10 +24,13 @@ export function createCollapsibleSection(
 
   const isExpanded = expandedSections.has(id);
 
-  // Header row — clickable with chevron
+  // Header row — clickable + keyboard-accessible
   const header = containerEl.createDiv({
     cls: `yaae-section-header${isExpanded ? ' is-expanded' : ''}`,
   });
+  header.setAttribute('role', 'button');
+  header.setAttribute('tabindex', '0');
+  header.setAttribute('aria-expanded', String(isExpanded));
 
   const chevron = header.createSpan({ cls: 'yaae-section-chevron' });
   setIcon(chevron, 'chevron-right');
@@ -39,8 +42,7 @@ export function createCollapsibleSection(
     cls: `yaae-section-content${isExpanded ? ' is-expanded' : ''}`,
   });
 
-  // Toggle on click
-  header.addEventListener('click', () => {
+  function toggleSection(): void {
     const expanding = !expandedSections.has(id);
     if (expanding) {
       expandedSections.add(id);
@@ -49,6 +51,15 @@ export function createCollapsibleSection(
     }
     header.toggleClass('is-expanded', expanding);
     content.toggleClass('is-expanded', expanding);
+    header.setAttribute('aria-expanded', String(expanding));
+  }
+
+  header.addEventListener('click', toggleSection);
+  header.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      toggleSection();
+    }
   });
 
   return content;
