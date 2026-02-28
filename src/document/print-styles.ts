@@ -77,6 +77,8 @@ export class ClassificationPrintStyleManager {
     for (const c of customClassifications) {
       if (!c.id) continue;
 
+      // Only double-quotes need escaping — labels come from our settings UI,
+      // not arbitrary user input, so backslash escaping is unnecessary
       const escapedLabel = c.label.replace(/"/g, '\\"');
 
       // Top + bottom shared colors

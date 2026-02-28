@@ -54,6 +54,8 @@
   }
 
   a {
+    /* break-all is intentional — URLs have no natural break points,
+       so overflow-wrap: break-word would leave them overflowing */
     word-break: break-all;
   }
 
