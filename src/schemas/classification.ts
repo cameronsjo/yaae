@@ -65,7 +65,7 @@ export function getClassificationMeta(
   }
 
   // Fall back to built-in taxonomy
-  if (level in CLASSIFICATION_TAXONOMY) {
+  if (Object.hasOwn(CLASSIFICATION_TAXONOMY, level)) {
     return CLASSIFICATION_TAXONOMY[level as BuiltinClassificationLevel];
   }
 

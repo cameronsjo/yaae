@@ -1,6 +1,5 @@
 @media print {
   .pdf-signature-block .markdown-preview-sizer::after {
-    content: "";
     display: block;
     margin-top: var(--yaae-print-sig-margin-top, 3em);
     padding-top: 1.5em;

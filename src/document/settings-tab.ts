@@ -101,8 +101,9 @@ export function renderDocumentSettings(
           .setValue(entry.id)
           .onChange(async (value) => {
             entry.id = value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-            row.setDesc(entry.id ? `Frontmatter value: ${entry.id}` : '');
-            await saveAndRefreshPrintStyles();
+            row.setDesc(entry.id ? `Frontmatter value: ${entry.id}` : 'ID required');
+            row.settingEl.toggleClass('is-invalid', !entry.id);
+            if (entry.id) await saveAndRefreshPrintStyles();
           }),
       );
 
@@ -219,10 +220,10 @@ export function renderDocumentSettings(
 
   new Setting(appearanceContent)
     .setName('Line height')
-    .setDesc('Line spacing for PDF export (1.0–2.5).')
+    .setDesc('Line spacing for PDF export (1.0–3.0).')
     .addSlider((slider) =>
       slider
-        .setLimits(10, 25, 1)
+        .setLimits(10, 30, 1)
         .setValue(Math.round(plugin.settings.document.lineHeight * 10))
         .setDynamicTooltip()
         .onChange(async (value) => {

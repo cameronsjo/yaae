@@ -1,11 +1,13 @@
 @media print {
-  /* Prevent orphaned headings */
+  /* Prevent orphaned headings — a heading at the bottom of a page with
+     content on the next page looks broken in formal documents */
   h1, h2, h3, h4 {
     page-break-after: avoid;
     break-after: avoid;
   }
 
-  /* Keep headings with following content */
+  /* Adjacent sibling selector ensures the first element after a heading
+     stays on the same page — both rules work together to prevent splits */
   h1 + *, h2 + *, h3 + *, h4 + * {
     break-before: avoid;
   }
@@ -31,17 +33,22 @@
     break-inside: avoid;
   }
 
-  /* Prevent horizontal overflow */
+  /* Prevent horizontal overflow — PDF pages can't scroll, so any content
+     wider than the page silently disappears from the right edge */
   * {
     max-width: 100%;
     box-sizing: border-box;
   }
 
+  /* pre-wrap preserves whitespace but allows wrapping at container edge;
+     overflow-wrap: break-word breaks long tokens only when necessary */
   pre, code {
     white-space: pre-wrap;
     overflow-wrap: break-word;
   }
 
+  /* fixed layout + 100% width prevents tables from overflowing the page;
+     without this, wide tables extend past the right margin and get clipped */
   table {
     table-layout: fixed;
     width: 100%;
@@ -54,6 +61,8 @@
   }
 
   a {
+    /* break-all is intentional — URLs have no natural break points,
+       so overflow-wrap: break-word would leave them overflowing */
     word-break: break-all;
   }
 
@@ -62,6 +71,13 @@
     --print-font-size: 11pt;
     --print-line-height: 1.6;
     --print-heading-scale: 1.2;
+    /* Derived heading sizes: h6=1em, each level up multiplies by scale */
+    --print-h6-size: 1em;
+    --print-h5-size: calc(var(--print-h6-size) * var(--print-heading-scale));
+    --print-h4-size: calc(var(--print-h5-size) * var(--print-heading-scale));
+    --print-h3-size: calc(var(--print-h4-size) * var(--print-heading-scale));
+    --print-h2-size: calc(var(--print-h3-size) * var(--print-heading-scale));
+    --print-h1-size: calc(var(--print-h2-size) * var(--print-heading-scale));
   }
 
   body {
@@ -69,12 +85,10 @@
     line-height: var(--print-line-height);
   }
 
-  /* Heading scale: each level is heading-scale × the next level's size.
-     h6 = 1em, h5 = scale^1, h4 = scale^2, ..., h1 = scale^5 */
-  h1 { font-size: calc(1em * var(--print-heading-scale) * var(--print-heading-scale) * var(--print-heading-scale) * var(--print-heading-scale) * var(--print-heading-scale)); }
-  h2 { font-size: calc(1em * var(--print-heading-scale) * var(--print-heading-scale) * var(--print-heading-scale) * var(--print-heading-scale)); }
-  h3 { font-size: calc(1em * var(--print-heading-scale) * var(--print-heading-scale) * var(--print-heading-scale)); }
-  h4 { font-size: calc(1em * var(--print-heading-scale) * var(--print-heading-scale)); }
-  h5 { font-size: calc(1em * var(--print-heading-scale)); }
-  h6 { font-size: 1em; }
+  h1 { font-size: var(--print-h1-size); }
+  h2 { font-size: var(--print-h2-size); }
+  h3 { font-size: var(--print-h3-size); }
+  h4 { font-size: var(--print-h4-size); }
+  h5 { font-size: var(--print-h5-size); }
+  h6 { font-size: var(--print-h6-size); }
 }

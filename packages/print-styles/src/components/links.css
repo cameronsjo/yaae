@@ -13,31 +13,26 @@
     content: none;
   }
 
-  /* Plain: suppress URL expansion + strip link styling, keep <a> */
+  /* Plain + Stripped: shared reset — strip link styling, keep <a> */
   .pdf-links-plain a,
   .pdf-links-plain a.external-link,
-  .pdf-links-plain a.internal-link {
-    color: inherit !important;
-    text-decoration: none !important;
-    pointer-events: none;
-  }
-
-  .pdf-links-plain a.external-link::after {
-    content: none;
-  }
-
-  /* Stripped: same visual as plain + cursor:text (DOM removal deferred) */
+  .pdf-links-plain a.internal-link,
   .pdf-links-stripped a,
   .pdf-links-stripped a.external-link,
   .pdf-links-stripped a.internal-link {
     color: inherit !important;
     text-decoration: none !important;
     pointer-events: none;
-    cursor: text;
   }
 
+  .pdf-links-plain a.external-link::after,
   .pdf-links-stripped a.external-link::after {
     content: none;
+  }
+
+  /* Stripped-only: cursor hint that text is not clickable */
+  .pdf-links-stripped a {
+    cursor: text;
   }
 
   /* Defanged: neutralized URLs for security documents */
