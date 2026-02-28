@@ -1,11 +1,13 @@
 @media print {
-  /* Prevent orphaned headings */
+  /* Prevent orphaned headings — a heading at the bottom of a page with
+     content on the next page looks broken in formal documents */
   h1, h2, h3, h4 {
     page-break-after: avoid;
     break-after: avoid;
   }
 
-  /* Keep headings with following content */
+  /* Adjacent sibling selector ensures the first element after a heading
+     stays on the same page — both rules work together to prevent splits */
   h1 + *, h2 + *, h3 + *, h4 + * {
     break-before: avoid;
   }
@@ -31,17 +33,22 @@
     break-inside: avoid;
   }
 
-  /* Prevent horizontal overflow */
+  /* Prevent horizontal overflow — PDF pages can't scroll, so any content
+     wider than the page silently disappears from the right edge */
   * {
     max-width: 100%;
     box-sizing: border-box;
   }
 
+  /* pre-wrap preserves whitespace but allows wrapping at container edge;
+     overflow-wrap: break-word breaks long tokens only when necessary */
   pre, code {
     white-space: pre-wrap;
     overflow-wrap: break-word;
   }
 
+  /* fixed layout + 100% width prevents tables from overflowing the page;
+     without this, wide tables extend past the right margin and get clipped */
   table {
     table-layout: fixed;
     width: 100%;
