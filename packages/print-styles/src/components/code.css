@@ -1,16 +1,16 @@
 @media print {
   pre {
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    padding: 0.8em;
+    border: 1px solid var(--yaae-print-code-border-color);
+    border-radius: var(--yaae-print-code-border-radius);
+    padding: var(--yaae-print-code-padding);
     white-space: pre-wrap;
     word-break: break-word;
-    background-color: #f8f8f8 !important;
+    background-color: var(--yaae-print-code-bg) !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
 
   code {
-    font-size: 0.9em;
+    font-size: var(--yaae-print-code-font-size);
   }
 }

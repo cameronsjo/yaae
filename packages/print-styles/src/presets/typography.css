@@ -17,8 +17,8 @@
 
   /* Widow and orphan control */
   p {
-    widows: 3;
-    orphans: 3;
+    widows: var(--yaae-print-widows);
+    orphans: var(--yaae-print-orphans);
   }
 
   /* Repeat table headers across pages */
@@ -29,6 +29,32 @@
   /* Prevent row splitting */
   table tr {
     break-inside: avoid;
+  }
+
+  /* Prevent horizontal overflow */
+  * {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  pre, code {
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+  }
+
+  table {
+    table-layout: fixed;
+    width: 100%;
+    overflow-wrap: break-word;
+  }
+
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+
+  a {
+    word-break: break-all;
   }
 
   /* Print-optimized sizes via CSS variables */
@@ -42,4 +68,13 @@
     font-size: var(--print-font-size);
     line-height: var(--print-line-height);
   }
+
+  /* Heading scale: each level is heading-scale × the next level's size.
+     h6 = 1em, h5 = scale^1, h4 = scale^2, ..., h1 = scale^5 */
+  h1 { font-size: calc(1em * var(--print-heading-scale) * var(--print-heading-scale) * var(--print-heading-scale) * var(--print-heading-scale) * var(--print-heading-scale)); }
+  h2 { font-size: calc(1em * var(--print-heading-scale) * var(--print-heading-scale) * var(--print-heading-scale) * var(--print-heading-scale)); }
+  h3 { font-size: calc(1em * var(--print-heading-scale) * var(--print-heading-scale) * var(--print-heading-scale)); }
+  h4 { font-size: calc(1em * var(--print-heading-scale) * var(--print-heading-scale)); }
+  h5 { font-size: calc(1em * var(--print-heading-scale)); }
+  h6 { font-size: 1em; }
 }

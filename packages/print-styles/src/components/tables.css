@@ -1,0 +1,12 @@
+@media print {
+  /* Compact table styling: smaller font, tighter padding, auto layout */
+  .pdf-compact-tables table {
+    font-size: var(--yaae-print-table-font-size);
+    table-layout: auto;
+  }
+
+  .pdf-compact-tables th,
+  .pdf-compact-tables td {
+    padding: var(--yaae-print-table-cell-padding);
+  }
+}

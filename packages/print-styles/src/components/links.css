@@ -1,15 +1,54 @@
 @media print {
-  /* Show URLs after external links */
+  /* Default (expand): Show URLs after external links */
   a.external-link::after {
     content: " [" attr(href) "]";
-    font-size: 0.8em;
+    font-size: var(--yaae-print-link-url-font-size);
     font-style: italic;
-    color: #666;
+    color: var(--yaae-print-link-url-color);
     word-break: break-all;
   }
 
-  /* Suppress URL expansion when pdf-no-links is set */
-  .pdf-no-links a.external-link::after {
+  /* Styled: suppress URL expansion, keep link styling */
+  .pdf-links-styled a.external-link::after {
+    content: none;
+  }
+
+  /* Plain: suppress URL expansion + strip link styling, keep <a> */
+  .pdf-links-plain a,
+  .pdf-links-plain a.external-link,
+  .pdf-links-plain a.internal-link {
+    color: inherit !important;
+    text-decoration: none !important;
+    pointer-events: none;
+  }
+
+  .pdf-links-plain a.external-link::after {
+    content: none;
+  }
+
+  /* Stripped: same visual as plain + cursor:text (DOM removal deferred) */
+  .pdf-links-stripped a,
+  .pdf-links-stripped a.external-link,
+  .pdf-links-stripped a.internal-link {
+    color: inherit !important;
+    text-decoration: none !important;
+    pointer-events: none;
+    cursor: text;
+  }
+
+  .pdf-links-stripped a.external-link::after {
+    content: none;
+  }
+
+  /* Defanged: neutralized URLs for security documents */
+  .pdf-links-defanged .yaae-defanged-link {
+    font-family: var(--font-monospace);
+    font-size: 0.9em;
+    color: inherit;
+    word-break: break-all;
+  }
+
+  .pdf-links-defanged a.external-link::after {
     content: none;
   }
 }

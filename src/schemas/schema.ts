@@ -1,20 +1,30 @@
 import { z } from 'zod';
-import type { ClassificationLevel } from './classification';
-import type { WatermarkLevel } from './watermark';
 
 const coercedDate = z.coerce.date();
 
 const pdfExportSchema = z.object({
   watermark: z.enum(['off', 'whisper', 'heads-up', 'loud', 'screaming']).default('off'),
-  expandLinks: z.boolean().default(true),
+  links: z.enum(['expand', 'styled', 'plain', 'stripped', 'defanged']).default('expand'),
+  theme: z.enum(['light', 'dark', 'auto']).default('light'),
+  fontFamily: z.union([z.enum(['sans', 'serif', 'mono', 'system']), z.string()]).default('sans'),
+  fontSize: z.number().min(6).max(24).default(11),
+  copyPasteSafe: z.boolean().default(true),
+  compactTables: z.boolean().default(true),
+  landscape: z.boolean().default(false),
   toc: z.boolean().default(false),
   tocDepth: z.number().int().min(1).max(6).default(3),
   skipCover: z.boolean().default(false),
   pageNumbers: z.boolean().default(true),
+  watermarkText: z.string().optional(),
+  lineHeight: z.number().min(1.0).max(3.0).default(1.6),
+  signatureBlock: z.boolean().default(false),
   headerLeft: z.string().optional(),
   headerRight: z.string().optional(),
   footerLeft: z.string().optional(),
   footerRight: z.string().optional(),
+  // Deprecated: use `links` enum instead
+  expandLinks: z.boolean().default(true),
+  plainLinks: z.boolean().default(false),
 }).default({});
 
 const slidesExportSchema = z.object({
@@ -36,7 +46,7 @@ export const docFrontmatterSchema = z.object({
   title: z.string().min(1),
 
   // Classification & Status
-  classification: z.enum(['public', 'internal', 'confidential', 'restricted']).default('internal'),
+  classification: z.string().trim().min(1).default('internal'),
   status: z.enum(['draft', 'review', 'final', 'archived']).default('draft'),
 
   // Metadata

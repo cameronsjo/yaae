@@ -1,0 +1,77 @@
+@media print {
+  /* Dark theme: force dark background + light text */
+  .pdf-theme-dark {
+    background: var(--yaae-print-dark-bg) !important;
+    color: var(--yaae-print-dark-text) !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .pdf-theme-dark h1,
+  .pdf-theme-dark h2,
+  .pdf-theme-dark h3,
+  .pdf-theme-dark h4,
+  .pdf-theme-dark h5,
+  .pdf-theme-dark h6 {
+    color: var(--yaae-print-dark-heading-color) !important;
+  }
+
+  .pdf-theme-dark code {
+    background: var(--yaae-print-dark-code-bg) !important;
+    color: var(--yaae-print-dark-text) !important;
+  }
+
+  .pdf-theme-dark pre {
+    background: var(--yaae-print-dark-code-bg) !important;
+  }
+
+  .pdf-theme-dark table th {
+    background: var(--yaae-print-dark-code-bg) !important;
+    color: var(--yaae-print-dark-text) !important;
+  }
+
+  .pdf-theme-dark table td {
+    border-color: var(--yaae-print-dark-table-border) !important;
+  }
+
+  /* Auto theme: follow OS preference */
+  @media (prefers-color-scheme: dark) {
+    .pdf-theme-auto {
+      background: var(--yaae-print-dark-bg) !important;
+      color: var(--yaae-print-dark-text) !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .pdf-theme-auto h1,
+    .pdf-theme-auto h2,
+    .pdf-theme-auto h3,
+    .pdf-theme-auto h4,
+    .pdf-theme-auto h5,
+    .pdf-theme-auto h6 {
+      color: var(--yaae-print-dark-heading-color) !important;
+    }
+
+    .pdf-theme-auto code {
+      background: var(--yaae-print-dark-code-bg) !important;
+      color: var(--yaae-print-dark-text) !important;
+    }
+
+    .pdf-theme-auto pre {
+      background: var(--yaae-print-dark-code-bg) !important;
+    }
+  }
+
+  /* Font family presets */
+  .pdf-font-sans {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+  }
+
+  .pdf-font-serif {
+    font-family: Georgia, "Times New Roman", Times, serif !important;
+  }
+
+  .pdf-font-mono {
+    font-family: SFMono-Regular, Consolas, "Courier New", monospace !important;
+  }
+}

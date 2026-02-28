@@ -1,0 +1,22 @@
+@media print {
+  .pdf-signature-block .markdown-preview-sizer::after {
+    content: "";
+    display: block;
+    margin-top: var(--yaae-print-sig-margin-top, 3em);
+    padding-top: 1.5em;
+    border-top: 1px solid #ccc;
+    font-size: var(--yaae-print-sig-font-size, 10pt);
+    white-space: pre-line;
+    line-height: 2.8;
+    content:
+      "Prepared by:  ______________________________    Date:  ________________\A"
+      "Reviewed by:  ______________________________    Date:  ________________\A"
+      "Approved by:  ______________________________    Date:  ________________";
+  }
+}
+
+@media screen {
+  .pdf-signature-block .markdown-preview-sizer::after {
+    display: none;
+  }
+}

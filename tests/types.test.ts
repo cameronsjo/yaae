@@ -94,8 +94,31 @@ describe('DocumentSettings defaults', () => {
     expect(DEFAULT_DOCUMENT_SETTINGS.defaultFooterRight).toBe('');
   });
 
-  it('should enable expand links and page numbers by default', () => {
-    expect(DEFAULT_DOCUMENT_SETTINGS.expandLinks).toBe(true);
+  it('should default links to expand', () => {
+    expect(DEFAULT_DOCUMENT_SETTINGS.links).toBe('expand');
+  });
+
+  it('should default theme to light', () => {
+    expect(DEFAULT_DOCUMENT_SETTINGS.theme).toBe('light');
+  });
+
+  it('should default fontFamily to sans', () => {
+    expect(DEFAULT_DOCUMENT_SETTINGS.fontFamily).toBe('sans');
+  });
+
+  it('should default fontSize to 11', () => {
+    expect(DEFAULT_DOCUMENT_SETTINGS.fontSize).toBe(11);
+  });
+
+  it('should enable copyPasteSafe by default', () => {
+    expect(DEFAULT_DOCUMENT_SETTINGS.copyPasteSafe).toBe(true);
+  });
+
+  it('should enable compactTables by default', () => {
+    expect(DEFAULT_DOCUMENT_SETTINGS.compactTables).toBe(true);
+  });
+
+  it('should enable page numbers by default', () => {
     expect(DEFAULT_DOCUMENT_SETTINGS.pageNumbers).toBe(true);
   });
 

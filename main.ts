@@ -11,9 +11,14 @@ import { focusExtension } from './src/cm6/focus-mode';
 import { typewriterExtension } from './src/cm6/typewriter-scroll';
 import { validateMarkdown, deriveCssClasses } from './src/schemas';
 import { generateToc } from './src/document/toc-generator';
-import { classificationBannerProcessor } from './src/document/classification-banner';
+import { createClassificationBannerProcessor } from './src/document/classification-banner';
+import { createStrippedLinksProcessor } from './src/document/stripped-links';
+import { createDefangedLinksProcessor } from './src/document/defanged-links';
 import { renderDocumentSettings } from './src/document/settings-tab';
 import { DEFAULT_DOCUMENT_SETTINGS } from './src/document/settings';
+import { createCollapsibleSection } from './src/settings/collapsible-section';
+import { ClassificationPrintStyleManager, HeaderFooterPrintStyleManager, DynamicPdfPrintStyleManager } from './src/document/print-styles';
+import type { LinksMode } from './src/document/settings';
 
 const BODY_CLASS_SYNTAX_DIMMING = 'yaae-syntax-dimming';
 const BODY_CLASS_GUTTERED_HEADINGS = 'yaae-guttered-headings';
@@ -32,6 +37,19 @@ export default class YaaePlugin extends Plugin {
 
   /** Mutable array for CM6 editor extension toggle */
   private editorExtensions: Extension[] = [];
+
+  /** Dynamic print style manager for custom classification banners */
+  classificationPrintStyles = new ClassificationPrintStyleManager();
+
+  /** Dynamic print style manager for page headers and footers */
+  headerFooterPrintStyles = new HeaderFooterPrintStyleManager();
+
+  /** Dynamic print style manager for fontSize and custom fonts */
+  dynamicPdfPrintStyles = new DynamicPdfPrintStyleManager();
+
+  /** Status bar elements for quick toggles */
+  private focusModeStatusEl: HTMLElement | null = null;
+  private syntaxDimmingStatusEl: HTMLElement | null = null;
 
   async onload() {
     await this.loadSettings();
@@ -148,12 +166,43 @@ export default class YaaePlugin extends Plugin {
       },
     });
 
+    // --- Status Bar Toggles ---
+
+    this.focusModeStatusEl = this.addStatusBarItem();
+    this.focusModeStatusEl.addClass('yaae-statusbar-toggle');
+    this.updateFocusModeStatus();
+    this.registerDomEvent(this.focusModeStatusEl, 'click', () => {
+      this.cycleFocusMode();
+    });
+
+    this.syntaxDimmingStatusEl = this.addStatusBarItem();
+    this.syntaxDimmingStatusEl.addClass('yaae-statusbar-toggle');
+    this.updateSyntaxDimmingStatus();
+    this.registerDomEvent(this.syntaxDimmingStatusEl, 'click', () => {
+      this.toggleSyntaxDimming();
+    });
+
     // --- Document Auto-Behaviors ---
 
-    // Classification banner in reading view
-    if (this.settings.document.showClassificationBanner) {
-      this.registerMarkdownPostProcessor(classificationBannerProcessor);
-    }
+    // Dynamic print CSS for custom classification banners, headers/footers, and PDF appearance
+    this.classificationPrintStyles.init(this.settings.document.customClassifications);
+    this.headerFooterPrintStyles.init(this.settings.document);
+    this.dynamicPdfPrintStyles.init(this.settings.document);
+
+    // Classification banner in reading view (always registered; checks setting at runtime)
+    this.registerMarkdownPostProcessor(
+      createClassificationBannerProcessor(() => this.settings.document),
+    );
+
+    // Stripped links processor (always registered; checks links mode at runtime)
+    this.registerMarkdownPostProcessor(
+      createStrippedLinksProcessor(() => this.settings.document),
+    );
+
+    // Defanged links processor (always registered; checks links mode at runtime)
+    this.registerMarkdownPostProcessor(
+      createDefangedLinksProcessor(() => this.settings.document),
+    );
 
     // Validate on save
     if (this.settings.document.validateOnSave) {
@@ -172,6 +221,9 @@ export default class YaaePlugin extends Plugin {
 
   onunload() {
     this.styleManager.destroy();
+    this.classificationPrintStyles.destroy();
+    this.headerFooterPrintStyles.destroy();
+    this.dynamicPdfPrintStyles.destroy();
     document.body.classList.remove(BODY_CLASS_SYNTAX_DIMMING);
     document.body.classList.remove(BODY_CLASS_GUTTERED_HEADINGS);
     this.removeTypewriterPadding();
@@ -199,6 +251,21 @@ export default class YaaePlugin extends Plugin {
       DEFAULT_DOCUMENT_SETTINGS,
       this.settings.document,
     );
+
+    // Migrate deprecated expandLinks/plainLinks booleans to links enum
+    const doc = this.settings.document;
+    if (doc.links === 'expand' && (doc.plainLinks || !doc.expandLinks)) {
+      const previousLinks = doc.links;
+      if (doc.plainLinks) {
+        doc.links = 'plain' as LinksMode;
+      } else if (!doc.expandLinks) {
+        doc.links = 'styled' as LinksMode;
+      }
+      console.info(
+        `[yaae] Migrated deprecated link booleans to links enum. ` +
+        `expandLinks: ${doc.expandLinks}, plainLinks: ${doc.plainLinks} → links: ${doc.links}`,
+      );
+    }
   }
 
   async saveSettings() {
@@ -293,6 +360,7 @@ export default class YaaePlugin extends Plugin {
   async toggleSyntaxDimming() {
     this.settings.syntaxDimming = !this.settings.syntaxDimming;
     this.applyBodyClasses();
+    this.updateSyntaxDimmingStatus();
     await this.saveSettings();
   }
 
@@ -307,6 +375,7 @@ export default class YaaePlugin extends Plugin {
     const idx = cycle.indexOf(this.settings.focusMode);
     this.settings.focusMode = cycle[(idx + 1) % cycle.length];
     this.reconfigureFocus();
+    this.updateFocusModeStatus();
     await this.saveSettings();
   }
 
@@ -314,6 +383,27 @@ export default class YaaePlugin extends Plugin {
     this.settings.typewriterScroll = !this.settings.typewriterScroll;
     this.reconfigureTypewriter();
     await this.saveSettings();
+  }
+
+  // --- Status Bar Methods ---
+
+  updateFocusModeStatus() {
+    if (!this.focusModeStatusEl) return;
+    const labels: Record<FocusMode, string> = {
+      off: 'Focus: Off',
+      sentence: 'Focus: Sentence',
+      paragraph: 'Focus: Paragraph',
+    };
+    this.focusModeStatusEl.setText(labels[this.settings.focusMode]);
+    this.focusModeStatusEl.ariaLabel = 'Click to cycle focus mode';
+  }
+
+  updateSyntaxDimmingStatus() {
+    if (!this.syntaxDimmingStatusEl) return;
+    this.syntaxDimmingStatusEl.setText(
+      this.settings.syntaxDimming ? 'Syntax: Dim' : 'Syntax: Off',
+    );
+    this.syntaxDimmingStatusEl.ariaLabel = 'Click to toggle syntax dimming';
   }
 
   // --- Document Methods ---
@@ -383,8 +473,12 @@ export default class YaaePlugin extends Plugin {
   }
 }
 
+type SettingsTab = 'writing' | 'document' | 'about';
+
 class YaaeSettingTab extends PluginSettingTab {
   plugin: YaaePlugin;
+  private activeTab: SettingsTab = 'writing';
+  private expandedSections = new Set<string>();
 
   constructor(app: App, plugin: YaaePlugin) {
     super(app, plugin);
@@ -394,14 +488,53 @@ class YaaeSettingTab extends PluginSettingTab {
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
+    containerEl.addClass('yaae-settings');
 
-    // Prose highlight settings (from prose-highlight/settings-tab.ts)
-    renderProseHighlightSettings(containerEl, this.plugin);
+    // --- Tab Navigation ---
+    const nav = containerEl.createDiv('yaae-settings-nav');
+    const tabs: { id: SettingsTab; label: string }[] = [
+      { id: 'writing', label: 'Writing' },
+      { id: 'document', label: 'Document' },
+      { id: 'about', label: 'About' },
+    ];
+
+    for (const tab of tabs) {
+      const btn = nav.createEl('button', {
+        text: tab.label,
+        cls: `yaae-settings-tab${this.activeTab === tab.id ? ' is-active' : ''}`,
+      });
+      btn.addEventListener('click', () => {
+        this.activeTab = tab.id;
+        this.display();
+      });
+    }
+
+    // --- Tab Content ---
+    const content = containerEl.createDiv('yaae-settings-content');
+
+    switch (this.activeTab) {
+      case 'writing':
+        this.renderWritingTab(content);
+        break;
+      case 'document':
+        renderDocumentSettings(content, this.plugin, this.expandedSections);
+        break;
+      case 'about':
+        this.renderAboutTab(content);
+        break;
+    }
+  }
+
+  private renderWritingTab(containerEl: HTMLElement): void {
+    // Prose highlight settings (renders its own collapsible sections)
+    renderProseHighlightSettings(containerEl, this.plugin, this.expandedSections);
 
     // Readability settings
-    new Setting(containerEl).setName('Readability').setHeading();
+    const readabilityContent = createCollapsibleSection(
+      containerEl, this.expandedSections, 'writing-readability', 'Readability', true,
+    );
 
-    new Setting(containerEl)
+    new Setting(readabilityContent)
       .setName('Syntax dimming')
       .setDesc(
         'Reduce opacity of markdown formatting characters (**, *, #, etc.) while keeping them visible.'
@@ -410,11 +543,12 @@ class YaaeSettingTab extends PluginSettingTab {
         toggle.setValue(this.plugin.settings.syntaxDimming).onChange(async (value) => {
           this.plugin.settings.syntaxDimming = value;
           this.plugin.applyBodyClasses();
+          this.plugin.updateSyntaxDimmingStatus();
           await this.plugin.saveSettings();
         })
       );
 
-    new Setting(containerEl)
+    new Setting(readabilityContent)
       .setName('Guttered headings')
       .setDesc(
         'Outdent # heading markers into the left gutter so heading text aligns with body text.'
@@ -427,7 +561,7 @@ class YaaeSettingTab extends PluginSettingTab {
         })
       );
 
-    new Setting(containerEl)
+    new Setting(readabilityContent)
       .setName('Focus mode')
       .setDesc(
         'Dim all text except the active sentence or paragraph.'
@@ -441,11 +575,12 @@ class YaaeSettingTab extends PluginSettingTab {
           .onChange(async (value) => {
             this.plugin.settings.focusMode = value as FocusMode;
             this.plugin.reconfigureFocus();
+            this.plugin.updateFocusModeStatus();
             await this.plugin.saveSettings();
           })
       );
 
-    new Setting(containerEl)
+    new Setting(readabilityContent)
       .setName('Typewriter scroll')
       .setDesc(
         'Keep the cursor vertically centered in the viewport as you type.'
@@ -459,8 +594,35 @@ class YaaeSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           })
       );
+  }
 
-    // Document settings
-    renderDocumentSettings(containerEl, this.plugin);
+  private renderAboutTab(containerEl: HTMLElement): void {
+    containerEl.createEl('h2', { text: 'YAAE' });
+    containerEl.createEl('p', {
+      text: 'Why Author Anywhere Else',
+      cls: 'setting-item-description',
+    });
+
+    new Setting(containerEl)
+      .setName('Version')
+      .setDesc(this.plugin.manifest.version);
+
+    new Setting(containerEl)
+      .setName('Author')
+      .setDesc(this.plugin.manifest.author);
+
+    if (this.plugin.manifest.authorUrl) {
+      new Setting(containerEl)
+        .setName('GitHub')
+        .addButton((btn) =>
+          btn.setButtonText('Open').onClick(() => {
+            window.open(this.plugin.manifest.authorUrl!, '_blank');
+          }),
+        );
+    }
+
+    new Setting(containerEl)
+      .setName('Description')
+      .setDesc(this.plugin.manifest.description);
   }
 }

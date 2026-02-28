@@ -16,6 +16,12 @@
     print-color-adjust: exact;
   }
 
+  /* Default watermark text: "DRAFT"
+   * These static SVG data URIs provide the default. When custom watermark
+   * text is configured, DynamicPdfPrintStyleManager overrides background-image
+   * with dynamically generated SVGs containing the user's text.
+   */
+
   /* WHISPER: opacity 0.04, font-size 48, weight 500, gap 400, rotation -30 */
   .pdf-watermark-whisper .print > div::before {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dominant-baseline='middle' font-family='sans-serif' font-size='48' font-weight='500' fill='rgba(0,0,0,0.04)' transform='rotate(-30,200,200)'%3EDRAFT%3C/text%3E%3C/svg%3E");

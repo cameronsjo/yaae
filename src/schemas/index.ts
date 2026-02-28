@@ -1,8 +1,12 @@
 // Classification taxonomy
 export {
   type ClassificationLevel,
+  type BuiltinClassificationLevel,
   type ClassificationMeta,
+  type CustomClassification,
   CLASSIFICATION_TAXONOMY,
+  getClassificationMeta,
+  getAllClassificationIds,
 } from './classification';
 
 // Watermark levels
@@ -34,4 +38,4 @@ export {
 } from './validation';
 
 // CSS bridge
-export { deriveCssClasses } from './css-bridge';
+export { deriveCssClasses, resolveLinksMode } from './css-bridge';
