@@ -1,0 +1,72 @@
+name: Promote to Stable
+
+# Manually promote the latest prerelease to a stable release.
+# This strips the prerelease flag so Obsidian's community plugin
+# registry (and BRAT stable channel) pick it up.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to promote (e.g., 0.2.0-beta.0)"
+        required: true
+        type: string
+      strip_prerelease_suffix:
+        description: "Re-tag without -beta.N suffix (e.g., 0.2.0-beta.0 → 0.2.0)"
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate tag exists
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          if ! gh release view "$TAG" &>/dev/null; then
+            echo "::error::Release $TAG not found"
+            exit 1
+          fi
+
+      - name: Promote release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+          STRIP_SUFFIX: ${{ inputs.strip_prerelease_suffix }}
+        run: |
+          if [ "$STRIP_SUFFIX" = "true" ]; then
+            # Extract stable version (remove -beta.N suffix)
+            STABLE_TAG="${TAG%%-beta.*}"
+
+            if [ "$STABLE_TAG" = "$TAG" ]; then
+              echo "Tag $TAG has no -beta suffix, promoting as-is"
+              gh release edit "$TAG" --prerelease=false --latest
+              exit 0
+            fi
+
+            echo "Promoting $TAG → $STABLE_TAG"
+
+            # Download release assets
+            mkdir -p /tmp/release-assets
+            gh release download "$TAG" --dir /tmp/release-assets
+
+            # Create new stable release with the same assets
+            gh release create "$STABLE_TAG" \
+              --title "$STABLE_TAG" \
+              --notes "Promoted from prerelease \`$TAG\`." \
+              --latest \
+              /tmp/release-assets/*
+          else
+            # Just flip the prerelease flag
+            echo "Promoting $TAG to stable (keeping tag)"
+            gh release edit "$TAG" --prerelease=false --latest
+          fi
