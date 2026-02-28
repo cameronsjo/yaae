@@ -12,6 +12,8 @@ import { typewriterExtension } from './src/cm6/typewriter-scroll';
 import { validateMarkdown, deriveCssClasses } from './src/schemas';
 import { generateToc } from './src/document/toc-generator';
 import { createClassificationBannerProcessor } from './src/document/classification-banner';
+import { createStrippedLinksProcessor } from './src/document/stripped-links';
+import { createDefangedLinksProcessor } from './src/document/defanged-links';
 import { renderDocumentSettings } from './src/document/settings-tab';
 import { DEFAULT_DOCUMENT_SETTINGS } from './src/document/settings';
 import { createCollapsibleSection } from './src/settings/collapsible-section';
@@ -190,6 +192,16 @@ export default class YaaePlugin extends Plugin {
     // Classification banner in reading view (always registered; checks setting at runtime)
     this.registerMarkdownPostProcessor(
       createClassificationBannerProcessor(() => this.settings.document),
+    );
+
+    // Stripped links processor (always registered; checks links mode at runtime)
+    this.registerMarkdownPostProcessor(
+      createStrippedLinksProcessor(() => this.settings.document),
+    );
+
+    // Defanged links processor (always registered; checks links mode at runtime)
+    this.registerMarkdownPostProcessor(
+      createDefangedLinksProcessor(() => this.settings.document),
     );
 
     // Validate on save

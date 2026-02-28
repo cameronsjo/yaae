@@ -4,7 +4,7 @@ const coercedDate = z.coerce.date();
 
 const pdfExportSchema = z.object({
   watermark: z.enum(['off', 'whisper', 'heads-up', 'loud', 'screaming']).default('off'),
-  links: z.enum(['expand', 'styled', 'plain', 'stripped']).default('expand'),
+  links: z.enum(['expand', 'styled', 'plain', 'stripped', 'defanged']).default('expand'),
   theme: z.enum(['light', 'dark', 'auto']).default('light'),
   fontFamily: z.union([z.enum(['sans', 'serif', 'mono', 'system']), z.string()]).default('sans'),
   fontSize: z.number().min(6).max(24).default(11),
@@ -17,6 +17,7 @@ const pdfExportSchema = z.object({
   pageNumbers: z.boolean().default(true),
   watermarkText: z.string().optional(),
   lineHeight: z.number().min(1.0).max(3.0).default(1.6),
+  signatureBlock: z.boolean().default(false),
   headerLeft: z.string().optional(),
   headerRight: z.string().optional(),
   footerLeft: z.string().optional(),

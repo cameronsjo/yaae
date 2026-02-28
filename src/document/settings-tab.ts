@@ -251,6 +251,7 @@ export function renderDocumentSettings(
         .addOption('styled', 'Styled (blue, no URL)')
         .addOption('plain', 'Plain (no styling)')
         .addOption('stripped', 'Stripped (pure text)')
+        .addOption('defanged', 'Defanged (hxxps://)')
         .setValue(plugin.settings.document.links)
         .onChange(async (value) => {
           plugin.settings.document.links = value as LinksMode;

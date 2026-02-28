@@ -1,6 +1,6 @@
 import type { WatermarkLevel, CustomClassification } from '../schemas';
 
-export type LinksMode = 'expand' | 'styled' | 'plain' | 'stripped';
+export type LinksMode = 'expand' | 'styled' | 'plain' | 'stripped' | 'defanged';
 export type ThemeMode = 'light' | 'dark' | 'auto';
 export type FontPreset = 'sans' | 'serif' | 'mono' | 'system';
 

@@ -167,7 +167,7 @@ describe('validateMarkdown — PDF toggles', () => {
   const base = 'title: Test\ncreated: 2024-01-01';
 
   it('accepts all links enum values', () => {
-    for (const mode of ['expand', 'styled', 'plain', 'stripped']) {
+    for (const mode of ['expand', 'styled', 'plain', 'stripped', 'defanged']) {
       const yaml = `${base}\nexport:\n  pdf:\n    links: ${mode}`;
       const result = validateMarkdown(wrap(yaml));
       expect(result.valid).toBe(true);
@@ -300,6 +300,25 @@ describe('validateMarkdown — PDF toggles', () => {
 
   it('rejects fontSize with fractional value below min', () => {
     const yaml = `${base}\nexport:\n  pdf:\n    fontSize: 5.5`;
+    const result = validateMarkdown(wrap(yaml));
+    expect(result.valid).toBe(false);
+  });
+
+  it('defaults signatureBlock to false', () => {
+    const result = validateMarkdown(wrap(base));
+    expect(result.valid).toBe(true);
+    expect(result.data?.export?.pdf?.signatureBlock).toBe(false);
+  });
+
+  it('accepts signatureBlock true', () => {
+    const yaml = `${base}\nexport:\n  pdf:\n    signatureBlock: true`;
+    const result = validateMarkdown(wrap(yaml));
+    expect(result.valid).toBe(true);
+    expect(result.data?.export?.pdf?.signatureBlock).toBe(true);
+  });
+
+  it('rejects signatureBlock with string value', () => {
+    const yaml = `${base}\nexport:\n  pdf:\n    signatureBlock: "yes"`;
     const result = validateMarkdown(wrap(yaml));
     expect(result.valid).toBe(false);
   });
@@ -635,6 +654,17 @@ export:
     expect(classes).toContain('pdf-links-stripped');
   });
 
+  it('includes pdf-links-defanged when links is defanged', () => {
+    const yaml = `title: Test
+created: 2024-01-01
+export:
+  pdf:
+    links: defanged`;
+    const result = validateMarkdown(wrap(yaml));
+    const classes = deriveCssClasses(result.data!);
+    expect(classes).toContain('pdf-links-defanged');
+  });
+
   it('no links class when links is expand (default)', () => {
     const yaml = `title: Test
 created: 2024-01-01`;
@@ -859,6 +889,38 @@ export:
     expect(classes).toContain('pdf-no-page-numbers');
   });
 
+  // --- signatureBlock ---
+
+  it('excludes pdf-signature-block by default', () => {
+    const yaml = `title: Test
+created: 2024-01-01`;
+    const result = validateMarkdown(wrap(yaml));
+    const classes = deriveCssClasses(result.data!);
+    expect(classes).not.toContain('pdf-signature-block');
+  });
+
+  it('includes pdf-signature-block when signatureBlock is true', () => {
+    const yaml = `title: Test
+created: 2024-01-01
+export:
+  pdf:
+    signatureBlock: true`;
+    const result = validateMarkdown(wrap(yaml));
+    const classes = deriveCssClasses(result.data!);
+    expect(classes).toContain('pdf-signature-block');
+  });
+
+  it('excludes pdf-signature-block when signatureBlock is explicitly false', () => {
+    const yaml = `title: Test
+created: 2024-01-01
+export:
+  pdf:
+    signatureBlock: false`;
+    const result = validateMarkdown(wrap(yaml));
+    const classes = deriveCssClasses(result.data!);
+    expect(classes).not.toContain('pdf-signature-block');
+  });
+
   it('maps all four classification levels', () => {
     for (const level of ['public', 'internal', 'confidential', 'restricted']) {
       const yaml = `title: Test
@@ -907,7 +969,8 @@ export:
     landscape: true
     watermark: loud
     skipCover: true
-    toc: true`;
+    toc: true
+    signatureBlock: true`;
     const result = validateMarkdown(wrap(yaml));
     expect(result.valid).toBe(true);
     const classes = deriveCssClasses(result.data!);
@@ -923,6 +986,7 @@ export:
     expect(classes).toContain('pdf-watermark-loud');
     expect(classes).toContain('pdf-skip-cover');
     expect(classes).toContain('pdf-toc');
+    expect(classes).toContain('pdf-signature-block');
 
     // Should NOT include (opted out or different value)
     expect(classes).not.toContain('pdf-copy-safe');

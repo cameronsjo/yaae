@@ -1,6 +1,6 @@
 import type { DocFrontmatter } from './schema';
 
-type LinksMode = 'expand' | 'styled' | 'plain' | 'stripped';
+type LinksMode = 'expand' | 'styled' | 'plain' | 'stripped' | 'defanged';
 
 /**
  * Resolve the effective links mode from frontmatter.
@@ -52,6 +52,7 @@ export function deriveCssClasses(frontmatter: DocFrontmatter): string[] {
     if (linksMode === 'styled') classes.push('pdf-links-styled');
     if (linksMode === 'plain') classes.push('pdf-links-plain');
     if (linksMode === 'stripped') classes.push('pdf-links-stripped');
+    if (linksMode === 'defanged') classes.push('pdf-links-defanged');
 
     // Theme
     if (pdf.theme === 'dark') classes.push('pdf-theme-dark');
@@ -79,6 +80,9 @@ export function deriveCssClasses(frontmatter: DocFrontmatter): string[] {
 
     // Page numbers (default true — class disables them)
     if (pdf.pageNumbers === false) classes.push('pdf-no-page-numbers');
+
+    // Signature block
+    if (pdf.signatureBlock) classes.push('pdf-signature-block');
   }
 
   return classes;

@@ -39,4 +39,16 @@
   .pdf-links-stripped a.external-link::after {
     content: none;
   }
+
+  /* Defanged: neutralized URLs for security documents */
+  .pdf-links-defanged .yaae-defanged-link {
+    font-family: var(--font-monospace);
+    font-size: 0.9em;
+    color: inherit;
+    word-break: break-all;
+  }
+
+  .pdf-links-defanged a.external-link::after {
+    content: none;
+  }
 }
