@@ -218,9 +218,46 @@ export class HeaderFooterPrintStyleManager {
 }
 
 /**
- * Dynamic print styles for fontSize and custom (non-preset) font-family.
- * Injects a font-size rule and a raw font-family rule when the user
- * specifies a non-preset string.
+ * Per-level watermark presets: opacity, fontSize, fontWeight, tileSize, rotation.
+ * Intensity increases from whisper → screaming.
+ */
+export const WATERMARK_PRESETS = {
+  whisper:   { opacity: 0.04, fontSize: 48,  fontWeight: 500, tileSize: 400, rotation: -30 },
+  'heads-up': { opacity: 0.08, fontSize: 80,  fontWeight: 700, tileSize: 300, rotation: -35 },
+  loud:      { opacity: 0.14, fontSize: 110, fontWeight: 800, tileSize: 220, rotation: -40 },
+  screaming: { opacity: 0.22, fontSize: 140, fontWeight: 900, tileSize: 150, rotation: -45 },
+} as const;
+
+type WatermarkPresetLevel = keyof typeof WATERMARK_PRESETS;
+
+/**
+ * Build a tiling SVG data URI for the watermark overlay.
+ * The text is URL-encoded so special characters (quotes, ampersands) are safe.
+ */
+export function buildWatermarkDataUri(level: WatermarkPresetLevel, text: string): string {
+  const p = WATERMARK_PRESETS[level];
+  const half = p.tileSize / 2;
+  const encoded = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${p.tileSize}' height='${p.tileSize}'>`
+    + `<text x='50%' y='50%' text-anchor='middle' dominant-baseline='middle' `
+    + `font-family='sans-serif' font-size='${p.fontSize}' font-weight='${p.fontWeight}' `
+    + `fill='rgba(0,0,0,${p.opacity})' `
+    + `transform='rotate(${p.rotation},${half},${half})'>`
+    + `${encoded}</text></svg>`;
+
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+}
+
+/**
+ * Dynamic print styles for fontSize, custom font-family, watermark text,
+ * and line-height overrides. Injects rules that require JS logic
+ * (SVG data URI generation, runtime value computation).
  */
 export class DynamicPdfPrintStyleManager {
   private styleEl: HTMLStyleElement | null = null;
@@ -238,8 +275,10 @@ export class DynamicPdfPrintStyleManager {
 
     const hasCustomFontSize = settings.fontSize !== 11;
     const isCustomFont = !FONT_PRESETS.has(settings.fontFamily);
+    const hasCustomWatermarkText = settings.watermarkText !== 'DRAFT';
+    const hasCustomLineHeight = settings.lineHeight !== undefined && settings.lineHeight !== 1.6;
 
-    if (!hasCustomFontSize && !isCustomFont) {
+    if (!hasCustomFontSize && !isCustomFont && !hasCustomWatermarkText && !hasCustomLineHeight) {
       this.styleEl.textContent = '';
       return;
     }
@@ -256,6 +295,24 @@ export class DynamicPdfPrintStyleManager {
       const escaped = settings.fontFamily.replace(/"/g, '\\"');
       rules.push(`  .markdown-preview-view {
     font-family: ${escaped} !important;
+  }`);
+    }
+
+    if (hasCustomWatermarkText) {
+      const text = settings.watermarkText;
+      for (const [level, _preset] of Object.entries(WATERMARK_PRESETS)) {
+        const uri = buildWatermarkDataUri(level as WatermarkPresetLevel, text);
+        const size = WATERMARK_PRESETS[level as WatermarkPresetLevel].tileSize;
+        rules.push(`  .pdf-watermark-${level} .print > div::before {
+    background-image: ${uri};
+    background-size: ${size}px ${size}px;
+  }`);
+      }
+    }
+
+    if (hasCustomLineHeight) {
+      rules.push(`  body {
+    --print-line-height: ${settings.lineHeight};
   }`);
     }
 

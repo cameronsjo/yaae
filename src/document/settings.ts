@@ -8,6 +8,7 @@ export type FontPreset = 'sans' | 'serif' | 'mono' | 'system';
 export interface DocumentSettings {
   defaultClassification: string;
   defaultWatermarkForDrafts: WatermarkLevel;
+  watermarkText: string;
   defaultHeaderLeft: string;
   defaultHeaderRight: string;
   defaultFooterLeft: string;
@@ -21,6 +22,7 @@ export interface DocumentSettings {
   copyPasteSafe: boolean;
   compactTables: boolean;
   pageNumbers: boolean;
+  lineHeight: number;
   validateOnSave: boolean;
   showClassificationBanner: boolean;
   bannerPosition: 'top' | 'both';
@@ -33,6 +35,7 @@ export interface DocumentSettings {
 export const DEFAULT_DOCUMENT_SETTINGS: DocumentSettings = {
   defaultClassification: 'internal',
   defaultWatermarkForDrafts: 'heads-up',
+  watermarkText: 'DRAFT',
   defaultHeaderLeft: '',
   defaultHeaderRight: '',
   defaultFooterLeft: '',
@@ -46,6 +49,7 @@ export const DEFAULT_DOCUMENT_SETTINGS: DocumentSettings = {
   copyPasteSafe: true,
   compactTables: true,
   pageNumbers: true,
+  lineHeight: 1.6,
   validateOnSave: true,
   showClassificationBanner: true,
   bannerPosition: 'top',

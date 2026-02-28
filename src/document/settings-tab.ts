@@ -214,6 +214,21 @@ export function renderDocumentSettings(
         }),
     );
 
+  new Setting(appearanceContent)
+    .setName('Line height')
+    .setDesc('Line spacing for PDF export (1.0–2.5).')
+    .addSlider((slider) =>
+      slider
+        .setLimits(10, 25, 1)
+        .setValue(Math.round(plugin.settings.document.lineHeight * 10))
+        .setDynamicTooltip()
+        .onChange(async (value) => {
+          plugin.settings.document.lineHeight = value / 10;
+          plugin.dynamicPdfPrintStyles.update(plugin.settings.document);
+          await plugin.saveSettings();
+        }),
+    );
+
   // =================================================================
   // PDF Text
   // =================================================================
@@ -319,6 +334,20 @@ export function renderDocumentSettings(
         .setValue(plugin.settings.document.defaultWatermarkForDrafts)
         .onChange(async (value) => {
           plugin.settings.document.defaultWatermarkForDrafts = value as any;
+          await plugin.saveSettings();
+        }),
+    );
+
+  new Setting(brandingContent)
+    .setName('Watermark text')
+    .setDesc('Text displayed in the watermark overlay. Applied to all watermark intensity levels.')
+    .addText((text) =>
+      text
+        .setPlaceholder('DRAFT')
+        .setValue(plugin.settings.document.watermarkText)
+        .onChange(async (value) => {
+          plugin.settings.document.watermarkText = value || 'DRAFT';
+          plugin.dynamicPdfPrintStyles.update(plugin.settings.document);
           await plugin.saveSettings();
         }),
     );
