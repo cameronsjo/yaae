@@ -481,6 +481,12 @@ describe('DynamicPdfPrintStyleManager', () => {
     expect(css).toContain('Georgia');
   });
 
+  it('does not emit watermark overrides for system font preset', () => {
+    manager.init(makeSettings({ fontFamily: 'system' }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).not.toContain('.pdf-watermark-whisper');
+  });
+
   it('emits line-height override when lineHeight differs from default', () => {
     manager.init(makeSettings({ lineHeight: 1.8 }));
     const css = getLastStyleEl(dom.headAppendChild).textContent!;

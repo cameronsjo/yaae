@@ -305,7 +305,9 @@ export class DynamicPdfPrintStyleManager {
     // Regenerate watermark SVGs when text or font differs from static defaults
     if (hasCustomWatermarkText || hasNonDefaultFont) {
       const text = settings.watermarkText;
-      const svgFont = FONT_PRESET_SVG[settings.fontFamily as FontPreset] ?? settings.fontFamily;
+      const svgFont = Object.hasOwn(FONT_PRESET_SVG, settings.fontFamily)
+        ? FONT_PRESET_SVG[settings.fontFamily as FontPreset]
+        : settings.fontFamily;
       for (const [level, _preset] of Object.entries(WATERMARK_PRESETS)) {
         const uri = buildWatermarkDataUri(level as WatermarkPresetLevel, text, svgFont);
         const size = WATERMARK_PRESETS[level as WatermarkPresetLevel].tileSize;

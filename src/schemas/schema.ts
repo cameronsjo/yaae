@@ -16,7 +16,7 @@ const pdfExportSchema = z.object({
   skipCover: z.boolean().default(false),
   pageNumbers: z.boolean().default(true),
   watermarkText: z.string().optional(),
-  lineHeight: z.number().min(1.0).max(3.0).default(1.6),
+  lineHeight: z.number().min(1.0).max(3.0).default(1.5),
   signatureBlock: z.boolean().default(false),
   headerLeft: z.string().optional(),
   headerRight: z.string().optional(),
