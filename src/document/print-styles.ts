@@ -1,11 +1,11 @@
 import type { CustomClassification } from '../schemas/classification';
+import { getClassificationMeta } from '../schemas/classification';
 import type { DocumentSettings, FontPreset } from './settings';
 import { DEFAULT_DOCUMENT_SETTINGS } from './settings';
 import { escapeCssString, sanitizeColor, clampNumber, sanitizeFontFamily, sanitizeCssId } from './css-sanitize';
 
-const STYLE_ID = 'yaae-custom-classification-print-styles';
-const HEADER_FOOTER_STYLE_ID = 'yaae-header-footer-print-styles';
 const DYNAMIC_PDF_STYLE_ID = 'yaae-dynamic-pdf-print-styles';
+const PAGE_CHROME_STYLE_ID = 'yaae-page-chrome-print-styles';
 
 const FONT_PRESETS: Set<FontPreset> = new Set<FontPreset>(['sans', 'serif', 'mono', 'system']);
 
@@ -18,191 +18,159 @@ const FONT_PRESET_SVG: Record<FontPreset, string> = {
 };
 
 /**
- * Build a shared banner CSS rule for either top or bottom position.
- * Only the `position` property (top/bottom) differs between the two.
+ * State for the page chrome — everything that appears in @page margin boxes.
+ * Updated when the active document changes or settings change.
  */
-function buildBannerRule(selectors: string[], position: 'top' | 'bottom'): string {
-  return `  ${selectors.join(',\n  ')} {
-    position: fixed;
-    ${position}: 0;
-    left: 0;
-    right: 0;
-    display: block;
-    text-align: center;
-    font-size: var(--yaae-print-banner-font-size, 10px);
+export interface PageChromeState {
+  classification: string | null;
+  customClassifications: CustomClassification[];
+  headerLeft: string;
+  headerRight: string;
+  footerLeft: string;
+  footerRight: string;
+  pageNumbers: boolean;
+  signatureBlock: boolean;
+  bannerPosition: 'top' | 'both';
+  showClassificationBanner: boolean;
+}
+
+/** Shared base styles for banner margin boxes.
+ * Static values — var() does not work inside @page margin boxes in Chrome. */
+const BANNER_BASE = `
+    font-size: 10px;
     font-weight: 700;
-    letter-spacing: var(--yaae-print-banner-letter-spacing, 0.1em);
+    letter-spacing: 0.1em;
     text-transform: uppercase;
-    padding: var(--yaae-print-banner-padding, 2px 0);
-    z-index: 9999;
     -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }`;
-}
+    print-color-adjust: exact;`;
 
-/**
- * Generate and inject dynamic @media print CSS rules for custom
- * classification banners. This complements the static classification.css
- * in @yaae/print-styles, which only covers the 4 built-in levels.
- */
-export class ClassificationPrintStyleManager {
-  private styleEl: HTMLStyleElement | null = null;
-
-  init(customClassifications: CustomClassification[]): void {
-    this.styleEl = document.createElement('style');
-    this.styleEl.id = STYLE_ID;
-    document.head.appendChild(this.styleEl);
-    this.update(customClassifications);
-  }
-
-  update(customClassifications: CustomClassification[]): void {
-    if (!this.styleEl) return;
-
-    // Filter to entries with valid CSS-safe IDs
-    const valid = customClassifications.filter((c) => sanitizeCssId(c.id));
-
-    if (valid.length === 0) {
-      this.styleEl.textContent = '';
-      return;
-    }
-
-    const rules: string[] = ['@media print {'];
-
-    // Shared base styles for top banners
-    const topSelectors = valid
-      .map((c) => `.pdf-${c.id} .markdown-preview-view::before`);
-
-    if (topSelectors.length > 0) {
-      rules.push(buildBannerRule(topSelectors, 'top'));
-    }
-
-    // Shared base styles for bottom banners
-    const bottomSelectors = valid
-      .map((c) => `.pdf-${c.id}:not(.pdf-signature-block) .markdown-preview-sizer::after`);
-
-    if (bottomSelectors.length > 0) {
-      rules.push(buildBannerRule(bottomSelectors, 'bottom'));
-    }
-
-    // Per-classification color rules
-    for (const c of valid) {
-      const label = escapeCssString(c.label);
-      const color = sanitizeColor(c.color, '#000');
-      const bg = sanitizeColor(c.background, '#fff');
-
-      // Top + bottom shared colors
-      rules.push(`  .pdf-${c.id} .markdown-preview-view::before,
-  .pdf-${c.id}:not(.pdf-signature-block) .markdown-preview-sizer::after {
-    content: "${label}";
-    color: ${color};
-    background: ${bg};
-    border-bottom: 2px solid ${color};
-  }`);
-
-      // Bottom banner: swap border to top
-      rules.push(`  .pdf-${c.id}:not(.pdf-signature-block) .markdown-preview-sizer::after {
-    border-bottom: none;
-    border-top: 2px solid ${color};
-  }`);
-    }
-
-    rules.push('}');
-    this.styleEl.textContent = rules.join('\n');
-  }
-
-  destroy(): void {
-    if (this.styleEl) {
-      this.styleEl.remove();
-      this.styleEl = null;
-    }
-  }
-}
-
-/**
- * Base styles shared by all header/footer pseudo-elements.
- * Uses CSS custom properties so values can be overridden via Style Settings.
- */
-const HEADER_FOOTER_BASE = `
-    font-size: var(--yaae-print-header-footer-font-size, 9px);
-    color: var(--yaae-print-header-footer-color, #888);
-    z-index: 9998;
+/** Shared base styles for header/footer margin boxes.
+ * Static values — var() does not work inside @page margin boxes in Chrome. */
+const CHROME_TEXT_BASE = `
+    font-size: 9px;
+    color: #888;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;`;
 
 /**
- * Generate and inject dynamic @media print CSS rules for page headers
- * and footers. Uses fixed-positioned pseudo-elements that repeat on
- * every printed page.
+ * Generate and inject @page margin box rules for classification banners,
+ * headers, footers, and page numbers. Replaces the position:fixed pseudo-
+ * element approach with native CSS paged media (Chrome 131+).
  *
- * Pseudo-element allocation (avoiding conflicts with existing features):
- *   - Header left:  .print::before     (fixed top-left)
- *   - Header right: .markdown-preview-view::after (fixed top-right)
- *   - Footer left:  .markdown-preview-sizer::before (fixed bottom-left)
- *   - Footer right: .print::after      (fixed bottom-right)
+ * Margin box allocation:
+ *   @top-left:     Header left
+ *   @top-center:   Classification banner
+ *   @top-right:    Header right
+ *   @bottom-left:  Footer left
+ *   @bottom-center: Classification banner (unless signature block)
+ *   @bottom-right: Page numbers + footer right
  */
-export class HeaderFooterPrintStyleManager {
+export class PageChromeManager {
   private styleEl: HTMLStyleElement | null = null;
 
-  init(settings: DocumentSettings): void {
+  init(state: PageChromeState): void {
     this.styleEl = document.createElement('style');
-    this.styleEl.id = HEADER_FOOTER_STYLE_ID;
+    this.styleEl.id = PAGE_CHROME_STYLE_ID;
     document.head.appendChild(this.styleEl);
-    this.update(settings);
+    this.update(state);
+    console.debug('[yaae] PageChromeManager initialized.');
   }
 
-  update(settings: DocumentSettings): void {
+  update(state: PageChromeState): void {
     if (!this.styleEl) return;
 
-    const headerLeft = settings.defaultHeaderLeft.trim();
-    const headerRight = settings.defaultHeaderRight.trim();
-    const footerLeft = settings.defaultFooterLeft.trim();
-    const footerRight = settings.defaultFooterRight.trim();
+    const headerLeft = state.headerLeft.trim();
+    const headerRight = state.headerRight.trim();
+    const footerLeft = state.footerLeft.trim();
+    const footerRight = state.footerRight.trim();
 
-    if (!headerLeft && !headerRight && !footerLeft && !footerRight) {
+    // Resolve classification metadata (built-in or custom)
+    const meta = state.classification && state.showClassificationBanner
+      ? getClassificationMeta(state.classification, state.customClassifications)
+      : null;
+
+    const hasTopBanner = meta !== null;
+    const hasBottomBanner = meta !== null && state.bannerPosition === 'both' && !state.signatureBlock;
+    const hasAny = hasTopBanner || hasBottomBanner
+      || headerLeft || headerRight || footerLeft || footerRight
+      || state.pageNumbers;
+
+    if (!hasAny) {
       this.styleEl.textContent = '';
       return;
     }
 
-    const rules: string[] = ['@media print {'];
+    const marginBoxes: string[] = [];
 
+    // --- Classification banners ---
+    if (meta) {
+      const label = escapeCssString(meta.label);
+      const color = sanitizeColor(meta.color, '#000');
+      const bg = sanitizeColor(meta.background, '#fff');
+
+      if (hasTopBanner) {
+        marginBoxes.push(`    @top-center {
+      content: "${label}";
+      color: ${color};
+      background: ${bg};
+      border-bottom: 2px solid ${color};${BANNER_BASE}
+    }`);
+      }
+
+      if (hasBottomBanner) {
+        marginBoxes.push(`    @bottom-center {
+      content: "${label}";
+      color: ${color};
+      background: ${bg};
+      border-top: 2px solid ${color};${BANNER_BASE}
+    }`);
+      }
+    }
+
+    // --- Headers ---
     if (headerLeft) {
-      rules.push(`  .print::before {
-    content: "${escapeCssString(headerLeft)}";
-    position: fixed;
-    top: 6px;
-    left: 16px;${HEADER_FOOTER_BASE}
-  }`);
+      marginBoxes.push(`    @top-left {
+      content: "${escapeCssString(headerLeft)}";${CHROME_TEXT_BASE}
+    }`);
     }
 
     if (headerRight) {
-      rules.push(`  .markdown-preview-view::after {
-    content: "${escapeCssString(headerRight)}";
-    position: fixed;
-    top: 6px;
-    right: 16px;${HEADER_FOOTER_BASE}
-  }`);
+      marginBoxes.push(`    @top-right {
+      content: "${escapeCssString(headerRight)}";${CHROME_TEXT_BASE}
+    }`);
     }
 
+    // --- Footers ---
     if (footerLeft) {
-      rules.push(`  .markdown-preview-sizer::before {
-    content: "${escapeCssString(footerLeft)}";
-    position: fixed;
-    bottom: 6px;
-    left: 16px;${HEADER_FOOTER_BASE}
-  }`);
+      marginBoxes.push(`    @bottom-left {
+      content: "${escapeCssString(footerLeft)}";${CHROME_TEXT_BASE}
+    }`);
     }
 
-    if (footerRight) {
-      rules.push(`  .print::after {
-    content: "${escapeCssString(footerRight)}";
-    position: fixed;
-    bottom: 6px;
-    right: 16px;${HEADER_FOOTER_BASE}
-  }`);
+    // --- Bottom-right: page numbers + optional footer right ---
+    const pageCounterExpr = '"Page " counter(page) " of " counter(pages)';
+    if (state.pageNumbers && footerRight) {
+      marginBoxes.push(`    @bottom-right {
+      content: "${escapeCssString(footerRight)}  \\B7  " ${pageCounterExpr};${CHROME_TEXT_BASE}
+    }`);
+    } else if (state.pageNumbers) {
+      marginBoxes.push(`    @bottom-right {
+      content: ${pageCounterExpr};${CHROME_TEXT_BASE}
+    }`);
+    } else if (footerRight) {
+      marginBoxes.push(`    @bottom-right {
+      content: "${escapeCssString(footerRight)}";${CHROME_TEXT_BASE}
+    }`);
     }
 
-    rules.push('}');
-    this.styleEl.textContent = rules.join('\n');
+    const css = `@media print {
+  @page {
+    margin: 1in !important;
+${marginBoxes.join('\n')}
+  }
+}`;
+
+    this.styleEl.textContent = css;
   }
 
   destroy(): void {

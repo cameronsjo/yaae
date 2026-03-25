@@ -1,10 +1,6 @@
 @media print {
-  /* Reserve margin space for headers, footers, and classification banners.
-     Without this, position:fixed chrome overlaps body content on every page.
-     !important overrides Obsidian/Electron defaults (see #11). */
-  @page {
-    margin: 0.75in !important;
-  }
+  /* @page margin is now set dynamically by PageChromeManager (1in),
+     which generates all margin box content. See print-styles.ts. */
 
   /* Prevent orphaned headings — a heading at the bottom of a page with
      content on the next page looks broken in formal documents */

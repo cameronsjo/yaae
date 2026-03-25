@@ -1,22 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
-  ClassificationPrintStyleManager,
-  HeaderFooterPrintStyleManager,
   DynamicPdfPrintStyleManager,
+  PageChromeManager,
   buildWatermarkDataUri,
   WATERMARK_PRESETS,
 } from '../src/document/print-styles';
+import type { PageChromeState } from '../src/document/print-styles';
 import type { CustomClassification } from '../src/schemas';
 import { DEFAULT_DOCUMENT_SETTINGS, type DocumentSettings } from '../src/document/settings';
 
 // Mock document.head and createElement for Node.js environment
 function setupDOM() {
-  const styleEl = {
-    id: '',
-    textContent: '',
-    remove: vi.fn(),
-  };
-
   const headAppendChild = vi.fn();
 
   (globalThis as any).document = {
@@ -39,16 +33,33 @@ function getLastStyleEl(headAppendChild: ReturnType<typeof vi.fn>) {
 }
 
 // ---------------------------------------------------------------------------
-// ClassificationPrintStyleManager
+// PageChromeManager
 // ---------------------------------------------------------------------------
 
-describe('ClassificationPrintStyleManager', () => {
-  let manager: ClassificationPrintStyleManager;
+const DEFAULT_CHROME: PageChromeState = {
+  classification: null,
+  customClassifications: [],
+  headerLeft: '',
+  headerRight: '',
+  footerLeft: '',
+  footerRight: '',
+  pageNumbers: false,
+  signatureBlock: false,
+  bannerPosition: 'both',
+  showClassificationBanner: true,
+};
+
+function makeChrome(overrides: Partial<PageChromeState> = {}): PageChromeState {
+  return { ...DEFAULT_CHROME, ...overrides };
+}
+
+describe('PageChromeManager', () => {
+  let manager: PageChromeManager;
   let dom: ReturnType<typeof setupDOM>;
 
   beforeEach(() => {
     dom = setupDOM();
-    manager = new ClassificationPrintStyleManager();
+    manager = new PageChromeManager();
   });
 
   afterEach(() => {
@@ -56,276 +67,147 @@ describe('ClassificationPrintStyleManager', () => {
   });
 
   it('creates a style element on init', () => {
-    manager.init([]);
-    expect(dom.headAppendChild).toHaveBeenCalled();
+    manager.init(makeChrome());
+    expect(dom.headAppendChild).toHaveBeenCalledOnce();
     const el = getLastStyleEl(dom.headAppendChild);
-    expect(el.id).toBe('yaae-custom-classification-print-styles');
+    expect(el.id).toBe('yaae-page-chrome-print-styles');
   });
 
-  it('generates empty styles for empty custom list', () => {
-    manager.init([]);
-    const el = getLastStyleEl(dom.headAppendChild);
-    expect(el.textContent).toBe('');
-  });
-
-  it('generates @media print rules for custom classifications', () => {
-    const customs: CustomClassification[] = [
-      { id: 'non-sensitive', label: 'NON-SENSITIVE', color: '#2d7d2d', background: '#f0faf0' },
-    ];
-    manager.init(customs);
-    const css = getLastStyleEl(dom.headAppendChild).textContent!;
-
-    expect(css).toContain('@media print');
-    expect(css).toContain('.pdf-non-sensitive');
-    expect(css).toContain('"NON-SENSITIVE"');
-    expect(css).toContain('#2d7d2d');
-    expect(css).toContain('#f0faf0');
-  });
-
-  it('generates rules for multiple custom classifications', () => {
-    const customs: CustomClassification[] = [
-      { id: 'non-sensitive', label: 'NON-SENSITIVE', color: '#2d7d2d', background: '#f0faf0' },
-      { id: 'sensitive', label: 'SENSITIVE', color: '#b8860b', background: '#fff8e7' },
-      { id: 'highly-sensitive', label: 'HIGHLY SENSITIVE', color: '#c41e1e', background: '#fff5f5' },
-    ];
-    manager.init(customs);
-    const css = getLastStyleEl(dom.headAppendChild).textContent!;
-
-    expect(css).toContain('.pdf-non-sensitive');
-    expect(css).toContain('.pdf-sensitive');
-    expect(css).toContain('.pdf-highly-sensitive');
-  });
-
-  it('includes both top and bottom banner selectors', () => {
-    const customs: CustomClassification[] = [
-      { id: 'test-level', label: 'TEST', color: '#000', background: '#fff' },
-    ];
-    manager.init(customs);
-    const css = getLastStyleEl(dom.headAppendChild).textContent!;
-
-    expect(css).toContain('.pdf-test-level .markdown-preview-view::before');
-    expect(css).toContain('.pdf-test-level:not(.pdf-signature-block) .markdown-preview-sizer::after');
-  });
-
-  it('updates styles dynamically', () => {
-    manager.init([]);
-    const el = getLastStyleEl(dom.headAppendChild);
-    expect(el.textContent).toBe('');
-
-    manager.update([
-      { id: 'new-level', label: 'NEW', color: '#ff0000', background: '#fff0f0' },
-    ]);
-    expect(el.textContent).toContain('.pdf-new-level');
-  });
-
-  it('skips entries with empty id', () => {
-    const customs: CustomClassification[] = [
-      { id: '', label: 'EMPTY', color: '#000', background: '#fff' },
-      { id: 'valid', label: 'VALID', color: '#000', background: '#fff' },
-    ];
-    manager.init(customs);
-    const css = getLastStyleEl(dom.headAppendChild).textContent!;
-
-    expect(css).not.toContain('"EMPTY"');
-    expect(css).toContain('.pdf-valid');
-  });
-
-  it('escapes double quotes in labels', () => {
-    const customs: CustomClassification[] = [
-      { id: 'quoted', label: 'LEVEL "A"', color: '#000', background: '#fff' },
-    ];
-    manager.init(customs);
-    const css = getLastStyleEl(dom.headAppendChild).textContent!;
-
-    expect(css).toContain('LEVEL \\"A\\"');
-  });
-
-  it('removes style element on destroy', () => {
-    manager.init([]);
-    const el = getLastStyleEl(dom.headAppendChild);
-    manager.destroy();
-    expect(el.remove).toHaveBeenCalledOnce();
-  });
-
-  // Security regression tests
-  it('escapes newlines in classification labels', () => {
-    const customs: CustomClassification[] = [
-      { id: 'evil', label: 'EVIL\n} * { display: none }', color: '#000', background: '#fff' },
-    ];
-    manager.init(customs);
-    const css = getLastStyleEl(dom.headAppendChild).textContent!;
-    expect(css).not.toContain('\n} *');
-    expect(css).toContain('\\a ');
-  });
-
-  it('sanitizes invalid color values to fallback', () => {
-    const customs: CustomClassification[] = [
-      { id: 'bad-color', label: 'TEST', color: 'red; content: pwned', background: 'rgb(0,0,0)' },
-    ];
-    manager.init(customs);
-    const css = getLastStyleEl(dom.headAppendChild).textContent!;
-    expect(css).toContain('color: #000');
-    expect(css).toContain('background: #fff');
-    expect(css).not.toContain('pwned');
-  });
-
-  it('skips entries with invalid CSS id characters', () => {
-    const customs: CustomClassification[] = [
-      { id: 'evil } * { display:none', label: 'BAD', color: '#000', background: '#fff' },
-      { id: 'good', label: 'GOOD', color: '#000', background: '#fff' },
-    ];
-    manager.init(customs);
-    const css = getLastStyleEl(dom.headAppendChild).textContent!;
-    expect(css).not.toContain('evil');
-    expect(css).toContain('.pdf-good');
-  });
-
-  it('generates empty styles when all entries have invalid ids', () => {
-    const customs: CustomClassification[] = [
-      { id: '', label: 'EMPTY', color: '#000', background: '#fff' },
-      { id: 'has space', label: 'SPACE', color: '#000', background: '#fff' },
-    ];
-    manager.init(customs);
+  it('generates empty styles when no chrome is configured', () => {
+    manager.init(makeChrome());
     const css = getLastStyleEl(dom.headAppendChild).textContent!;
     expect(css).toBe('');
   });
-});
 
-// ---------------------------------------------------------------------------
-// HeaderFooterPrintStyleManager
-// ---------------------------------------------------------------------------
-
-describe('HeaderFooterPrintStyleManager', () => {
-  let manager: HeaderFooterPrintStyleManager;
-  let dom: ReturnType<typeof setupDOM>;
-
-  function makeSettings(overrides: Partial<DocumentSettings> = {}): DocumentSettings {
-    return { ...DEFAULT_DOCUMENT_SETTINGS, ...overrides };
-  }
-
-  beforeEach(() => {
-    dom = setupDOM();
-    manager = new HeaderFooterPrintStyleManager();
-  });
-
-  afterEach(() => {
-    manager.destroy();
-  });
-
-  it('creates a style element on init', () => {
-    manager.init(makeSettings());
-    expect(dom.headAppendChild).toHaveBeenCalled();
-    const el = getLastStyleEl(dom.headAppendChild);
-    expect(el.id).toBe('yaae-header-footer-print-styles');
-  });
-
-  it('generates empty styles when all header/footer fields are empty', () => {
-    manager.init(makeSettings());
-    const el = getLastStyleEl(dom.headAppendChild);
-    expect(el.textContent).toBe('');
-  });
-
-  it('generates header-left rule', () => {
-    manager.init(makeSettings({ defaultHeaderLeft: 'Acme Corp' }));
+  it('generates @top-center for built-in classification', () => {
+    manager.init(makeChrome({ classification: 'confidential' }));
     const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).toContain('@top-center');
+    expect(css).toContain('"CONFIDENTIAL"');
+    expect(css).toContain('#c41e1e');
+    expect(css).toContain('#fff5f5');
+  });
 
-    expect(css).toContain('@media print');
+  it('generates @bottom-center when bannerPosition is both', () => {
+    manager.init(makeChrome({ classification: 'internal', bannerPosition: 'both' }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).toContain('@top-center');
+    expect(css).toContain('@bottom-center');
+    expect(css).toContain('INTERNAL');
+  });
+
+  it('omits @bottom-center when bannerPosition is top', () => {
+    manager.init(makeChrome({ classification: 'internal', bannerPosition: 'top' }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).toContain('@top-center');
+    expect(css).not.toContain('@bottom-center');
+  });
+
+  it('omits @bottom-center when signatureBlock is true', () => {
+    manager.init(makeChrome({ classification: 'confidential', bannerPosition: 'both', signatureBlock: true }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).toContain('@top-center');
+    expect(css).not.toContain('@bottom-center');
+  });
+
+  it('resolves custom classification via getClassificationMeta', () => {
+    const customs: CustomClassification[] = [
+      { id: 'secret', label: 'TOP SECRET', color: '#800080', background: '#f0e0f0' },
+    ];
+    manager.init(makeChrome({ classification: 'secret', customClassifications: customs }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).toContain('"TOP SECRET"');
+    expect(css).toContain('#800080');
+  });
+
+  it('generates header text in correct margin boxes', () => {
+    manager.init(makeChrome({ headerLeft: 'Acme Corp', headerRight: 'Engineering' }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).toContain('@top-left');
     expect(css).toContain('"Acme Corp"');
-    expect(css).toContain('.print::before');
-    expect(css).toContain('position: fixed');
-    expect(css).toContain('top:');
-    expect(css).toContain('left:');
-  });
-
-  it('generates header-right rule', () => {
-    manager.init(makeSettings({ defaultHeaderRight: 'Engineering' }));
-    const css = getLastStyleEl(dom.headAppendChild).textContent!;
-
+    expect(css).toContain('@top-right');
     expect(css).toContain('"Engineering"');
-    expect(css).toContain('.markdown-preview-view::after');
-    expect(css).toContain('right:');
   });
 
-  it('generates footer-left rule', () => {
-    manager.init(makeSettings({ defaultFooterLeft: 'Confidential' }));
+  it('generates footer text in correct margin boxes', () => {
+    manager.init(makeChrome({ footerLeft: 'SENSITIVE' }));
     const css = getLastStyleEl(dom.headAppendChild).textContent!;
-
-    expect(css).toContain('"Confidential"');
-    expect(css).toContain('.markdown-preview-sizer::before');
-    expect(css).toContain('bottom:');
+    expect(css).toContain('@bottom-left');
+    expect(css).toContain('"SENSITIVE"');
   });
 
-  it('generates footer-right rule', () => {
-    manager.init(makeSettings({ defaultFooterRight: 'v2.0' }));
+  it('generates Page X of Y when pageNumbers enabled', () => {
+    manager.init(makeChrome({ pageNumbers: true }));
     const css = getLastStyleEl(dom.headAppendChild).textContent!;
-
-    expect(css).toContain('"v2.0"');
-    expect(css).toContain('.print::after');
-    expect(css).toContain('bottom:');
-    expect(css).toContain('right:');
+    expect(css).toContain('@bottom-right');
+    expect(css).toContain('counter(page)');
+    expect(css).toContain('counter(pages)');
   });
 
-  it('generates all four positions when all are set', () => {
-    manager.init(makeSettings({
-      defaultHeaderLeft: 'HL',
-      defaultHeaderRight: 'HR',
-      defaultFooterLeft: 'FL',
-      defaultFooterRight: 'FR',
-    }));
+  it('combines footer right and page numbers in @bottom-right', () => {
+    manager.init(makeChrome({ footerRight: 'v2.0', pageNumbers: true }));
     const css = getLastStyleEl(dom.headAppendChild).textContent!;
-
-    expect(css).toContain('"HL"');
-    expect(css).toContain('"HR"');
-    expect(css).toContain('"FL"');
-    expect(css).toContain('"FR"');
-    expect(css).toContain('.print::before');
-    expect(css).toContain('.markdown-preview-view::after');
-    expect(css).toContain('.markdown-preview-sizer::before');
-    expect(css).toContain('.print::after');
+    expect(css).toContain('@bottom-right');
+    expect(css).toContain('"v2.0');
+    expect(css).toContain('counter(page)');
   });
 
-  it('escapes double quotes in text', () => {
-    manager.init(makeSettings({ defaultHeaderLeft: 'Version "1.0"' }));
+  it('sets @page margin to 1in', () => {
+    manager.init(makeChrome({ pageNumbers: true }));
     const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).toContain('margin: 1in');
+  });
 
+  it('escapes text values for CSS safety', () => {
+    manager.init(makeChrome({ headerLeft: 'Version "1.0"\nInjection' }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
     expect(css).toContain('Version \\"1.0\\"');
+    expect(css).toContain('\\a ');
+    expect(css).not.toContain('\nInjection');
+  });
+
+  it('sanitizes classification colors', () => {
+    const customs: CustomClassification[] = [
+      { id: 'bad', label: 'BAD', color: 'red; injection', background: 'rgb(0,0,0)' },
+    ];
+    manager.init(makeChrome({ classification: 'bad', customClassifications: customs }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).toContain('color: #000');
+    expect(css).toContain('background: #fff');
+    expect(css).not.toContain('injection');
+  });
+
+  it('omits banner when showClassificationBanner is false', () => {
+    manager.init(makeChrome({ classification: 'confidential', showClassificationBanner: false }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).toBe('');
+  });
+
+  it('trims whitespace-only header/footer fields', () => {
+    manager.init(makeChrome({ headerLeft: '   ' }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).toBe('');
   });
 
   it('updates styles dynamically', () => {
-    manager.init(makeSettings());
+    manager.init(makeChrome());
     const el = getLastStyleEl(dom.headAppendChild);
     expect(el.textContent).toBe('');
 
-    manager.update(makeSettings({ defaultHeaderLeft: 'Updated Corp' }));
-    expect(el.textContent).toContain('"Updated Corp"');
-  });
-
-  it('clears styles when all text is removed', () => {
-    manager.init(makeSettings({ defaultHeaderLeft: 'Corp' }));
-    const el = getLastStyleEl(dom.headAppendChild);
-    expect(el.textContent).toContain('"Corp"');
-
-    manager.update(makeSettings());
-    expect(el.textContent).toBe('');
+    manager.update(makeChrome({ classification: 'public' }));
+    expect(el.textContent).toContain('@top-center');
+    expect(el.textContent).toContain('PUBLIC');
   });
 
   it('removes style element on destroy', () => {
-    manager.init(makeSettings());
+    manager.init(makeChrome());
     const el = getLastStyleEl(dom.headAppendChild);
     manager.destroy();
     expect(el.remove).toHaveBeenCalledOnce();
   });
 
-  // Security regression tests
-  it('escapes newlines in header text', () => {
-    manager.init(makeSettings({ defaultHeaderLeft: 'Corp\n} * { display: none }' }));
-    const css = getLastStyleEl(dom.headAppendChild).textContent!;
-    expect(css).not.toContain('\n} *');
-    expect(css).toContain('\\a ');
-  });
-
-  it('trims whitespace-only fields and treats as empty', () => {
-    manager.init(makeSettings({ defaultHeaderLeft: '   ' }));
+  it('omits banner when classification ID is unrecognized', () => {
+    manager.init(makeChrome({ classification: 'nonexistent-level' }));
     const css = getLastStyleEl(dom.headAppendChild).textContent!;
     expect(css).toBe('');
   });
