@@ -27,7 +27,8 @@ Frontmatter-driven document management with Zod-validated schemas:
 - **Classification taxonomy** — Public, Internal, Confidential, Restricted — with color-coded banners in reading view
 - **Watermark levels** — Five presets (off → screaming) for draft documents
 - **Schema validation** — Auto-validate frontmatter on save with smart warnings (e.g., "draft without watermark", "confidential without reviewers")
-- **Specialized schemas** — ADR, threat model, runbook, and slides templates with required field validation
+- **Specialized schemas** — ADR, threat model, runbook, and slides — with required field validation
+- **Document templates** — ADR, threat model, one-pager, and tech-talk slides
 - **Table of contents** — Generate GitHub-compatible TOC from headings, inserted after frontmatter
 - **CSS class derivation** — Apply `cssclass` values from frontmatter for PDF export styling
 
@@ -35,9 +36,7 @@ Frontmatter-driven document management with Zod-validated schemas:
 
 CSS snippets for Obsidian's PDF export (`@yaae/print-styles`):
 
-- Classification banners and watermarks
-- Typography presets
-- TOC, links, code blocks, page breaks, page numbers, and image handling
+Classification banners and watermarks, typography presets, TOC, links, code blocks, tables, page breaks, page numbers, landscape mode, signature blocks, copy-safe text, images, and appearance tuning
 
 ## Installation
 
