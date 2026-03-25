@@ -34,19 +34,21 @@ export interface PageChromeState {
   showClassificationBanner: boolean;
 }
 
-/** Shared base styles for banner margin boxes. */
+/** Shared base styles for banner margin boxes.
+ * Static values — var() does not work inside @page margin boxes in Chrome. */
 const BANNER_BASE = `
-    font-size: var(--yaae-print-banner-font-size, 10px);
+    font-size: 10px;
     font-weight: 700;
-    letter-spacing: var(--yaae-print-banner-letter-spacing, 0.1em);
+    letter-spacing: 0.1em;
     text-transform: uppercase;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;`;
 
-/** Shared base styles for header/footer margin boxes. */
+/** Shared base styles for header/footer margin boxes.
+ * Static values — var() does not work inside @page margin boxes in Chrome. */
 const CHROME_TEXT_BASE = `
-    font-size: var(--yaae-print-header-footer-font-size, 9px);
-    color: var(--yaae-print-header-footer-color, #888);
+    font-size: 9px;
+    color: #888;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;`;
 

@@ -205,6 +205,12 @@ describe('PageChromeManager', () => {
     manager.destroy();
     expect(el.remove).toHaveBeenCalledOnce();
   });
+
+  it('omits banner when classification ID is unrecognized', () => {
+    manager.init(makeChrome({ classification: 'nonexistent-level' }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).toBe('');
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -191,7 +191,9 @@ export default class YaaePlugin extends Plugin {
     // Update page chrome when active document changes (classification comes from frontmatter)
     this.registerEvent(
       this.app.workspace.on('active-leaf-change', () => {
-        this.updatePageChromeFromActiveFile();
+        this.updatePageChromeFromActiveFile().catch((err) => {
+          console.warn('[yaae] Failed to update page chrome from active file:', err);
+        });
       }),
     );
 
