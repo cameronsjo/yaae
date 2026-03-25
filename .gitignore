@@ -48,3 +48,6 @@ test-vault/.obsidian/workspace.json
 test-vault/.obsidian/workspace-mobile.json
 test-vault/.obsidian/plugins/yaae/main.js
 test-vault/.obsidian/plugins/yaae/data.json
+
+# WebdriverIO Obsidian cache (downloaded Obsidian binaries)
+.obsidian-cache/
