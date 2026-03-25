@@ -42,6 +42,7 @@ vectors/
 # Test coverage
 coverage/
 mcp-sessions.json
+*.local.md
 
 # Test vault — commit docs, ignore Obsidian runtime state and symlinked build artifacts
 test-vault/.obsidian/workspace.json
