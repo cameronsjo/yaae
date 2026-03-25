@@ -82,6 +82,7 @@ export function renderDocumentSettings(
   async function saveAndRefreshPrintStyles() {
     await plugin.saveSettings();
     plugin.classificationPrintStyles.update(plugin.settings.document.customClassifications);
+    plugin.pageChromeManager.update(plugin.buildPageChromeState());
   }
 
   function renderCustomClassifications() {
@@ -360,6 +361,7 @@ export function renderDocumentSettings(
   async function saveAndRefreshHeaderFooter() {
     await plugin.saveSettings();
     plugin.headerFooterPrintStyles.update(plugin.settings.document);
+    plugin.pageChromeManager.update(plugin.buildPageChromeState());
   }
 
   new Setting(brandingContent)

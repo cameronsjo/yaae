@@ -17,7 +17,8 @@ import { createDefangedLinksProcessor } from './src/document/defanged-links';
 import { renderDocumentSettings } from './src/document/settings-tab';
 import { DEFAULT_DOCUMENT_SETTINGS } from './src/document/settings';
 import { createCollapsibleSection } from './src/settings/collapsible-section';
-import { ClassificationPrintStyleManager, HeaderFooterPrintStyleManager, DynamicPdfPrintStyleManager } from './src/document/print-styles';
+import { ClassificationPrintStyleManager, HeaderFooterPrintStyleManager, DynamicPdfPrintStyleManager, PageChromeManager } from './src/document/print-styles';
+import type { PageChromeState } from './src/document/print-styles';
 import type { LinksMode } from './src/document/settings';
 
 const BODY_CLASS_SYNTAX_DIMMING = 'yaae-syntax-dimming';
@@ -46,6 +47,9 @@ export default class YaaePlugin extends Plugin {
 
   /** Dynamic print style manager for fontSize and custom fonts */
   dynamicPdfPrintStyles = new DynamicPdfPrintStyleManager();
+
+  /** @page margin box manager for classification banners, headers, footers, and page numbers */
+  pageChromeManager = new PageChromeManager();
 
   /** Status bar elements for quick toggles */
   private focusModeStatusEl: HTMLElement | null = null;
@@ -189,6 +193,16 @@ export default class YaaePlugin extends Plugin {
     this.headerFooterPrintStyles.init(this.settings.document);
     this.dynamicPdfPrintStyles.init(this.settings.document);
 
+    // @page margin box manager — replaces position:fixed pseudo-elements
+    this.pageChromeManager.init(this.buildPageChromeState());
+
+    // Update page chrome when active document changes (classification comes from frontmatter)
+    this.registerEvent(
+      this.app.workspace.on('active-leaf-change', () => {
+        this.updatePageChromeFromActiveFile();
+      }),
+    );
+
     // Classification banner in reading view (always registered; checks setting at runtime)
     this.registerMarkdownPostProcessor(
       createClassificationBannerProcessor(() => this.settings.document),
@@ -224,6 +238,7 @@ export default class YaaePlugin extends Plugin {
     this.classificationPrintStyles.destroy();
     this.headerFooterPrintStyles.destroy();
     this.dynamicPdfPrintStyles.destroy();
+    this.pageChromeManager.destroy();
     document.body.classList.remove(BODY_CLASS_SYNTAX_DIMMING);
     document.body.classList.remove(BODY_CLASS_GUTTERED_HEADINGS);
     this.removeTypewriterPadding();
@@ -471,6 +486,43 @@ export default class YaaePlugin extends Plugin {
     });
 
     new Notice(`Applied CSS classes: ${classes.join(', ')}`);
+  }
+
+  /** Build PageChromeState from current settings + optional classification override. */
+  buildPageChromeState(classification?: string): PageChromeState {
+    const doc = this.settings.document;
+    return {
+      classification: classification ?? doc.defaultClassification,
+      customClassifications: doc.customClassifications,
+      headerLeft: doc.defaultHeaderLeft,
+      headerRight: doc.defaultHeaderRight,
+      footerLeft: doc.defaultFooterLeft,
+      footerRight: doc.defaultFooterRight,
+      pageNumbers: doc.pageNumbers,
+      signatureBlock: false,
+      bannerPosition: doc.bannerPosition,
+      showClassificationBanner: doc.showClassificationBanner,
+    };
+  }
+
+  /** Read active document's frontmatter and update page chrome with its classification. */
+  async updatePageChromeFromActiveFile(): Promise<void> {
+    const file = this.app.workspace.getActiveFile();
+    if (!file || file.extension !== 'md') {
+      this.pageChromeManager.update(this.buildPageChromeState());
+      return;
+    }
+
+    const content = await this.app.vault.read(file);
+    const result = validateMarkdown(content);
+
+    const classification = result.data?.classification ?? this.settings.document.defaultClassification;
+    const signatureBlock = result.data?.export?.pdf?.signatureBlock ?? false;
+
+    this.pageChromeManager.update({
+      ...this.buildPageChromeState(classification),
+      signatureBlock,
+    });
   }
 }
 
