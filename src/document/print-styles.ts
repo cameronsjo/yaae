@@ -282,7 +282,7 @@ export class DynamicPdfPrintStyleManager {
     const hasCustomFontSize = settings.fontSize !== 11;
     const isCustomFont = !FONT_PRESETS.has(settings.fontFamily);
     const hasCustomWatermarkText = settings.watermarkText !== 'DRAFT';
-    const hasCustomLineHeight = settings.lineHeight !== undefined && settings.lineHeight !== 1.5;
+    const hasCustomLineHeight = settings.lineHeight !== 1.5;
     const hasNonDefaultFont = settings.fontFamily !== 'sans' && settings.fontFamily !== 'system';
 
     if (!hasCustomFontSize && !isCustomFont && !hasCustomWatermarkText && !hasCustomLineHeight && !hasNonDefaultFont) {

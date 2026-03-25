@@ -314,6 +314,24 @@ describe('buildWatermarkDataUri', () => {
     expect(whisperUri).toContain("width%3D'400'");
     expect(screamingUri).toContain("width%3D'150'");
   });
+
+  it('uses custom font-family when provided', () => {
+    const uri = buildWatermarkDataUri('whisper', 'DRAFT', 'Georgia, Times New Roman, serif');
+    const decoded = decodeURIComponent(uri);
+    expect(decoded).toContain("font-family='Georgia, Times New Roman, serif'");
+  });
+
+  it('escapes single quotes in font-family', () => {
+    const uri = buildWatermarkDataUri('whisper', 'DRAFT', "O'Brien Serif");
+    const decoded = decodeURIComponent(uri);
+    expect(decoded).toContain("font-family='O&apos;Brien Serif'");
+  });
+
+  it('defaults to sans-serif when no font-family provided', () => {
+    const uri = buildWatermarkDataUri('whisper', 'DRAFT');
+    const decoded = decodeURIComponent(uri);
+    expect(decoded).toContain("font-family='sans-serif'");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -377,6 +395,13 @@ describe('DynamicPdfPrintStyleManager', () => {
     manager.init(makeSettings({ watermarkText: 'DRAFT' }));
     const css = getLastStyleEl(dom.headAppendChild).textContent!;
     expect(css).not.toContain('.pdf-watermark-');
+  });
+
+  it('emits watermark overrides for non-default font preset', () => {
+    manager.init(makeSettings({ fontFamily: 'serif' }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).toContain('.pdf-watermark-whisper');
+    expect(css).toContain('Georgia');
   });
 
   it('emits line-height override when lineHeight differs from default', () => {
