@@ -17,7 +17,7 @@ import { createDefangedLinksProcessor } from './src/document/defanged-links';
 import { renderDocumentSettings } from './src/document/settings-tab';
 import { DEFAULT_DOCUMENT_SETTINGS } from './src/document/settings';
 import { createCollapsibleSection } from './src/settings/collapsible-section';
-import { ClassificationPrintStyleManager, HeaderFooterPrintStyleManager, DynamicPdfPrintStyleManager, PageChromeManager } from './src/document/print-styles';
+import { DynamicPdfPrintStyleManager, PageChromeManager } from './src/document/print-styles';
 import type { PageChromeState } from './src/document/print-styles';
 import type { LinksMode } from './src/document/settings';
 
@@ -38,12 +38,6 @@ export default class YaaePlugin extends Plugin {
 
   /** Mutable array for CM6 editor extension toggle */
   private editorExtensions: Extension[] = [];
-
-  /** Dynamic print style manager for custom classification banners */
-  classificationPrintStyles = new ClassificationPrintStyleManager();
-
-  /** Dynamic print style manager for page headers and footers */
-  headerFooterPrintStyles = new HeaderFooterPrintStyleManager();
 
   /** Dynamic print style manager for fontSize and custom fonts */
   dynamicPdfPrintStyles = new DynamicPdfPrintStyleManager();
@@ -188,12 +182,10 @@ export default class YaaePlugin extends Plugin {
 
     // --- Document Auto-Behaviors ---
 
-    // Dynamic print CSS for custom classification banners, headers/footers, and PDF appearance
-    this.classificationPrintStyles.init(this.settings.document.customClassifications);
-    this.headerFooterPrintStyles.init(this.settings.document);
+    // Dynamic print CSS for fontSize, custom fonts, watermarks, and line-height
     this.dynamicPdfPrintStyles.init(this.settings.document);
 
-    // @page margin box manager — replaces position:fixed pseudo-elements
+    // @page margin box manager for classification banners, headers, footers, page numbers
     this.pageChromeManager.init(this.buildPageChromeState());
 
     // Update page chrome when active document changes (classification comes from frontmatter)
@@ -235,8 +227,6 @@ export default class YaaePlugin extends Plugin {
 
   onunload() {
     this.styleManager.destroy();
-    this.classificationPrintStyles.destroy();
-    this.headerFooterPrintStyles.destroy();
     this.dynamicPdfPrintStyles.destroy();
     this.pageChromeManager.destroy();
     document.body.classList.remove(BODY_CLASS_SYNTAX_DIMMING);
