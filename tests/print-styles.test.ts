@@ -327,6 +327,13 @@ describe('buildWatermarkDataUri', () => {
     expect(decoded).toContain("font-family='O&apos;Brien Serif'");
   });
 
+  it('escapes XML-special characters in font-family', () => {
+    const uri = buildWatermarkDataUri('whisper', 'DRAFT', 'Fira & Code');
+    const decoded = decodeURIComponent(uri);
+    expect(decoded).toContain("font-family='Fira &amp; Code'");
+    expect(decoded).not.toContain("font-family='Fira & Code'");
+  });
+
   it('defaults to sans-serif when no font-family provided', () => {
     const uri = buildWatermarkDataUri('whisper', 'DRAFT');
     const decoded = decodeURIComponent(uri);

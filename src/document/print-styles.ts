@@ -233,6 +233,16 @@ export const WATERMARK_PRESETS = {
 
 type WatermarkPresetLevel = keyof typeof WATERMARK_PRESETS;
 
+/** Escape all XML-special characters for safe embedding in SVG attributes and text. */
+function escapeXml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
 /**
  * Build a tiling SVG data URI for the watermark overlay.
  * The text is URL-encoded so special characters (quotes, ampersands) are safe.
@@ -240,15 +250,8 @@ type WatermarkPresetLevel = keyof typeof WATERMARK_PRESETS;
 export function buildWatermarkDataUri(level: WatermarkPresetLevel, text: string, fontFamily = 'sans-serif'): string {
   const p = WATERMARK_PRESETS[level];
   const half = p.tileSize / 2;
-  const encoded = text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
-
-  // Escape single quotes in font family for SVG attribute context
-  const escapedFont = fontFamily.replace(/'/g, '&apos;');
+  const encoded = escapeXml(text);
+  const escapedFont = escapeXml(fontFamily);
 
   const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${p.tileSize}' height='${p.tileSize}'>`
     + `<text x='50%' y='50%' text-anchor='middle' dominant-baseline='middle' `
