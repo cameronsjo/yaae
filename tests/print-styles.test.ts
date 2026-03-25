@@ -146,6 +146,49 @@ describe('ClassificationPrintStyleManager', () => {
     manager.destroy();
     expect(el.remove).toHaveBeenCalledOnce();
   });
+
+  // Security regression tests
+  it('escapes newlines in classification labels', () => {
+    const customs: CustomClassification[] = [
+      { id: 'evil', label: 'EVIL\n} * { display: none }', color: '#000', background: '#fff' },
+    ];
+    manager.init(customs);
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).not.toContain('\n} *');
+    expect(css).toContain('\\a ');
+  });
+
+  it('sanitizes invalid color values to fallback', () => {
+    const customs: CustomClassification[] = [
+      { id: 'bad-color', label: 'TEST', color: 'red; content: pwned', background: 'rgb(0,0,0)' },
+    ];
+    manager.init(customs);
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).toContain('color: #000');
+    expect(css).toContain('background: #fff');
+    expect(css).not.toContain('pwned');
+  });
+
+  it('skips entries with invalid CSS id characters', () => {
+    const customs: CustomClassification[] = [
+      { id: 'evil } * { display:none', label: 'BAD', color: '#000', background: '#fff' },
+      { id: 'good', label: 'GOOD', color: '#000', background: '#fff' },
+    ];
+    manager.init(customs);
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).not.toContain('evil');
+    expect(css).toContain('.pdf-good');
+  });
+
+  it('generates empty styles when all entries have invalid ids', () => {
+    const customs: CustomClassification[] = [
+      { id: '', label: 'EMPTY', color: '#000', background: '#fff' },
+      { id: 'has space', label: 'SPACE', color: '#000', background: '#fff' },
+    ];
+    manager.init(customs);
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).toBe('');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -272,6 +315,20 @@ describe('HeaderFooterPrintStyleManager', () => {
     manager.destroy();
     expect(el.remove).toHaveBeenCalledOnce();
   });
+
+  // Security regression tests
+  it('escapes newlines in header text', () => {
+    manager.init(makeSettings({ defaultHeaderLeft: 'Corp\n} * { display: none }' }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).not.toContain('\n} *');
+    expect(css).toContain('\\a ');
+  });
+
+  it('trims whitespace-only fields and treats as empty', () => {
+    manager.init(makeSettings({ defaultHeaderLeft: '   ' }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).toBe('');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -338,6 +395,19 @@ describe('buildWatermarkDataUri', () => {
     const uri = buildWatermarkDataUri('whisper', 'DRAFT');
     const decoded = decodeURIComponent(uri);
     expect(decoded).toContain("font-family='sans-serif'");
+  });
+
+  it('produces valid SVG with empty string fontFamily', () => {
+    const uri = buildWatermarkDataUri('whisper', 'DRAFT', '');
+    expect(uri).toMatch(/^url\("data:image\/svg\+xml,/);
+    const decoded = decodeURIComponent(uri);
+    expect(decoded).toContain("font-family=''");
+  });
+
+  it('escapes single quotes in watermark text', () => {
+    const uri = buildWatermarkDataUri('loud', "DON'T COPY");
+    const decoded = decodeURIComponent(uri);
+    expect(decoded).toContain('DON&apos;T COPY');
   });
 });
 
@@ -437,5 +507,57 @@ describe('DynamicPdfPrintStyleManager', () => {
     const el = getLastStyleEl(dom.headAppendChild);
     manager.destroy();
     expect(el.remove).toHaveBeenCalledOnce();
+  });
+
+  // Security regression tests
+  it('quotes custom font-family to prevent CSS injection', () => {
+    manager.init(makeSettings({ fontFamily: 'Arial; } * { color: red } .x {' }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).toContain('"Arial; } * { color: red } .x {"');
+  });
+
+  it('clamps fontSize even if passed as string via tampered JSON', () => {
+    const settings = makeSettings() as Record<string, unknown>;
+    settings.fontSize = '200';
+    manager.init(settings as DocumentSettings);
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).toContain('72pt');
+  });
+
+  it('targets :root for line-height override', () => {
+    manager.init(makeSettings({ lineHeight: 1.8 }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).toContain(':root');
+    expect(css).not.toMatch(/\bbody\b/);
+  });
+
+  // Coverage gap tests
+  it('non-default font preset preserves DRAFT watermark text', () => {
+    manager.init(makeSettings({ fontFamily: 'mono' }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).toContain('.pdf-watermark-whisper');
+    expect(css).toContain('DRAFT');
+    expect(css).toContain('Consolas');
+  });
+
+  it('custom font string embeds raw font in watermark SVG', () => {
+    manager.init(makeSettings({ fontFamily: 'Fira Code' }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).toContain('.pdf-watermark-whisper');
+    expect(css).toContain('Fira%20Code');
+  });
+
+  it('generates all rule types when all flags are non-default', () => {
+    manager.init(makeSettings({
+      fontSize: 14,
+      fontFamily: 'Inter',
+      watermarkText: 'SECRET',
+      lineHeight: 1.8,
+    }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).toContain('14pt');
+    expect(css).toContain('font-family:');
+    expect(css).toContain('.pdf-watermark-');
+    expect(css).toContain('--print-line-height: 1.8');
   });
 });
