@@ -48,7 +48,7 @@ export const DEFAULT_DOCUMENT_SETTINGS: DocumentSettings = {
   copyPasteSafe: true,
   compactTables: true,
   pageNumbers: true,
-  lineHeight: 1.6,
+  lineHeight: 1.5,
   validateOnSave: true,
   showClassificationBanner: true,
   bannerPosition: 'top',

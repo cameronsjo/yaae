@@ -1,11 +1,21 @@
 import type { CustomClassification } from '../schemas/classification';
 import type { DocumentSettings, FontPreset } from './settings';
+import { DEFAULT_DOCUMENT_SETTINGS } from './settings';
+import { escapeCssString, sanitizeColor, clampNumber, sanitizeFontFamily, sanitizeCssId } from './css-sanitize';
 
 const STYLE_ID = 'yaae-custom-classification-print-styles';
 const HEADER_FOOTER_STYLE_ID = 'yaae-header-footer-print-styles';
 const DYNAMIC_PDF_STYLE_ID = 'yaae-dynamic-pdf-print-styles';
 
-const FONT_PRESETS: Set<string> = new Set<string>(['sans', 'serif', 'mono', 'system']);
+const FONT_PRESETS: Set<FontPreset> = new Set<FontPreset>(['sans', 'serif', 'mono', 'system']);
+
+/** Map named font presets to SVG-safe font-family values. */
+const FONT_PRESET_SVG: Record<FontPreset, string> = {
+  sans: 'sans-serif',
+  serif: 'Georgia, Times New Roman, serif',
+  mono: 'Consolas, Courier New, monospace',
+  system: 'sans-serif',
+};
 
 /**
  * Build a shared banner CSS rule for either top or bottom position.
@@ -48,7 +58,10 @@ export class ClassificationPrintStyleManager {
   update(customClassifications: CustomClassification[]): void {
     if (!this.styleEl) return;
 
-    if (customClassifications.length === 0) {
+    // Filter to entries with valid CSS-safe IDs
+    const valid = customClassifications.filter((c) => sanitizeCssId(c.id));
+
+    if (valid.length === 0) {
       this.styleEl.textContent = '';
       return;
     }
@@ -56,8 +69,7 @@ export class ClassificationPrintStyleManager {
     const rules: string[] = ['@media print {'];
 
     // Shared base styles for top banners
-    const topSelectors = customClassifications
-      .filter((c) => c.id)
+    const topSelectors = valid
       .map((c) => `.pdf-${c.id} .markdown-preview-view::before`);
 
     if (topSelectors.length > 0) {
@@ -65,8 +77,7 @@ export class ClassificationPrintStyleManager {
     }
 
     // Shared base styles for bottom banners
-    const bottomSelectors = customClassifications
-      .filter((c) => c.id)
+    const bottomSelectors = valid
       .map((c) => `.pdf-${c.id}:not(.pdf-signature-block) .markdown-preview-sizer::after`);
 
     if (bottomSelectors.length > 0) {
@@ -74,26 +85,24 @@ export class ClassificationPrintStyleManager {
     }
 
     // Per-classification color rules
-    for (const c of customClassifications) {
-      if (!c.id) continue;
-
-      // Only double-quotes need escaping — labels come from our settings UI,
-      // not arbitrary user input, so backslash escaping is unnecessary
-      const escapedLabel = c.label.replace(/"/g, '\\"');
+    for (const c of valid) {
+      const label = escapeCssString(c.label);
+      const color = sanitizeColor(c.color, '#000');
+      const bg = sanitizeColor(c.background, '#fff');
 
       // Top + bottom shared colors
       rules.push(`  .pdf-${c.id} .markdown-preview-view::before,
   .pdf-${c.id}:not(.pdf-signature-block) .markdown-preview-sizer::after {
-    content: "${escapedLabel}";
-    color: ${c.color};
-    background: ${c.background};
-    border-bottom: 2px solid ${c.color};
+    content: "${label}";
+    color: ${color};
+    background: ${bg};
+    border-bottom: 2px solid ${color};
   }`);
 
       // Bottom banner: swap border to top
       rules.push(`  .pdf-${c.id}:not(.pdf-signature-block) .markdown-preview-sizer::after {
     border-bottom: none;
-    border-top: 2px solid ${c.color};
+    border-top: 2px solid ${color};
   }`);
     }
 
@@ -144,56 +153,48 @@ export class HeaderFooterPrintStyleManager {
   update(settings: DocumentSettings): void {
     if (!this.styleEl) return;
 
-    const {
-      defaultHeaderLeft,
-      defaultHeaderRight,
-      defaultFooterLeft,
-      defaultFooterRight,
-    } = settings;
+    const headerLeft = settings.defaultHeaderLeft.trim();
+    const headerRight = settings.defaultHeaderRight.trim();
+    const footerLeft = settings.defaultFooterLeft.trim();
+    const footerRight = settings.defaultFooterRight.trim();
 
-    const hasAny = defaultHeaderLeft || defaultHeaderRight || defaultFooterLeft || defaultFooterRight;
-
-    if (!hasAny) {
+    if (!headerLeft && !headerRight && !footerLeft && !footerRight) {
       this.styleEl.textContent = '';
       return;
     }
 
     const rules: string[] = ['@media print {'];
 
-    if (defaultHeaderLeft) {
-      const escaped = defaultHeaderLeft.replace(/"/g, '\\"');
+    if (headerLeft) {
       rules.push(`  .print::before {
-    content: "${escaped}";
+    content: "${escapeCssString(headerLeft)}";
     position: fixed;
     top: 6px;
     left: 16px;${HEADER_FOOTER_BASE}
   }`);
     }
 
-    if (defaultHeaderRight) {
-      const escaped = defaultHeaderRight.replace(/"/g, '\\"');
+    if (headerRight) {
       rules.push(`  .markdown-preview-view::after {
-    content: "${escaped}";
+    content: "${escapeCssString(headerRight)}";
     position: fixed;
     top: 6px;
     right: 16px;${HEADER_FOOTER_BASE}
   }`);
     }
 
-    if (defaultFooterLeft) {
-      const escaped = defaultFooterLeft.replace(/"/g, '\\"');
+    if (footerLeft) {
       rules.push(`  .markdown-preview-sizer::before {
-    content: "${escaped}";
+    content: "${escapeCssString(footerLeft)}";
     position: fixed;
     bottom: 6px;
     left: 16px;${HEADER_FOOTER_BASE}
   }`);
     }
 
-    if (defaultFooterRight) {
-      const escaped = defaultFooterRight.replace(/"/g, '\\"');
+    if (footerRight) {
       rules.push(`  .print::after {
-    content: "${escaped}";
+    content: "${escapeCssString(footerRight)}";
     position: fixed;
     bottom: 6px;
     right: 16px;${HEADER_FOOTER_BASE}
@@ -225,23 +226,29 @@ export const WATERMARK_PRESETS = {
 
 type WatermarkPresetLevel = keyof typeof WATERMARK_PRESETS;
 
-/**
- * Build a tiling SVG data URI for the watermark overlay.
- * The text is URL-encoded so special characters (quotes, ampersands) are safe.
- */
-export function buildWatermarkDataUri(level: WatermarkPresetLevel, text: string): string {
-  const p = WATERMARK_PRESETS[level];
-  const half = p.tileSize / 2;
-  const encoded = text
+/** Escape all XML-special characters for safe embedding in SVG attributes and text. */
+function escapeXml(value: string): string {
+  return value
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&apos;');
+}
+
+/**
+ * Build a tiling SVG data URI for the watermark overlay.
+ * The text is URL-encoded so special characters (quotes, ampersands) are safe.
+ */
+export function buildWatermarkDataUri(level: WatermarkPresetLevel, text: string, fontFamily = 'sans-serif'): string {
+  const p = WATERMARK_PRESETS[level];
+  const half = p.tileSize / 2;
+  const encoded = escapeXml(text);
+  const escapedFont = escapeXml(fontFamily);
 
   const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${p.tileSize}' height='${p.tileSize}'>`
     + `<text x='50%' y='50%' text-anchor='middle' dominant-baseline='middle' `
-    + `font-family='sans-serif' font-size='${p.fontSize}' font-weight='${p.fontWeight}' `
+    + `font-family='${escapedFont}' font-size='${p.fontSize}' font-weight='${p.fontWeight}' `
     + `fill='rgba(0,0,0,${p.opacity})' `
     + `transform='rotate(${p.rotation},${half},${half})'>`
     + `${encoded}</text></svg>`;
@@ -268,12 +275,15 @@ export class DynamicPdfPrintStyleManager {
   update(settings: DocumentSettings): void {
     if (!this.styleEl) return;
 
-    const hasCustomFontSize = settings.fontSize !== 11;
-    const isCustomFont = !FONT_PRESETS.has(settings.fontFamily);
-    const hasCustomWatermarkText = settings.watermarkText !== 'DRAFT';
-    const hasCustomLineHeight = settings.lineHeight !== undefined && settings.lineHeight !== 1.6;
+    const fontSize = clampNumber(settings.fontSize, 6, 72, DEFAULT_DOCUMENT_SETTINGS.fontSize);
+    const lineHeight = clampNumber(settings.lineHeight, 1, 3, DEFAULT_DOCUMENT_SETTINGS.lineHeight);
+    const isCustomFont = !FONT_PRESETS.has(settings.fontFamily as FontPreset);
+    const hasCustomFontSize = fontSize !== DEFAULT_DOCUMENT_SETTINGS.fontSize;
+    const hasCustomWatermarkText = settings.watermarkText !== DEFAULT_DOCUMENT_SETTINGS.watermarkText;
+    const hasCustomLineHeight = lineHeight !== DEFAULT_DOCUMENT_SETTINGS.lineHeight;
+    const hasNonDefaultFont = settings.fontFamily !== 'sans' && settings.fontFamily !== 'system';
 
-    if (!hasCustomFontSize && !isCustomFont && !hasCustomWatermarkText && !hasCustomLineHeight) {
+    if (!hasCustomFontSize && !isCustomFont && !hasCustomWatermarkText && !hasCustomLineHeight && !hasNonDefaultFont) {
       this.styleEl.textContent = '';
       return;
     }
@@ -282,21 +292,24 @@ export class DynamicPdfPrintStyleManager {
 
     if (hasCustomFontSize) {
       rules.push(`  .markdown-preview-view {
-    font-size: ${settings.fontSize}pt !important;
+    font-size: ${fontSize}pt !important;
   }`);
     }
 
     if (isCustomFont) {
-      const escaped = settings.fontFamily.replace(/"/g, '\\"');
       rules.push(`  .markdown-preview-view {
-    font-family: ${escaped} !important;
+    font-family: ${sanitizeFontFamily(settings.fontFamily)} !important;
   }`);
     }
 
-    if (hasCustomWatermarkText) {
+    // Regenerate watermark SVGs when text or font differs from static defaults
+    if (hasCustomWatermarkText || hasNonDefaultFont) {
       const text = settings.watermarkText;
+      const svgFont = Object.hasOwn(FONT_PRESET_SVG, settings.fontFamily)
+        ? FONT_PRESET_SVG[settings.fontFamily as FontPreset]
+        : settings.fontFamily;
       for (const [level, _preset] of Object.entries(WATERMARK_PRESETS)) {
-        const uri = buildWatermarkDataUri(level as WatermarkPresetLevel, text);
+        const uri = buildWatermarkDataUri(level as WatermarkPresetLevel, text, svgFont);
         const size = WATERMARK_PRESETS[level as WatermarkPresetLevel].tileSize;
         rules.push(`  .pdf-watermark-${level} .print > div::before {
     background-image: ${uri};
@@ -306,8 +319,8 @@ export class DynamicPdfPrintStyleManager {
     }
 
     if (hasCustomLineHeight) {
-      rules.push(`  body {
-    --print-line-height: ${settings.lineHeight};
+      rules.push(`  :root {
+    --print-line-height: ${lineHeight};
   }`);
     }
 
