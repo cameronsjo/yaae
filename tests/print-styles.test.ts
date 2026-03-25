@@ -385,8 +385,8 @@ describe('DynamicPdfPrintStyleManager', () => {
     expect(css).toContain('--print-line-height: 1.8');
   });
 
-  it('does not emit line-height when at default 1.6', () => {
-    manager.init(makeSettings({ lineHeight: 1.6 }));
+  it('does not emit line-height when at default 1.5', () => {
+    manager.init(makeSettings({ lineHeight: 1.5 }));
     const css = getLastStyleEl(dom.headAppendChild).textContent!;
     expect(css).not.toContain('--print-line-height');
   });

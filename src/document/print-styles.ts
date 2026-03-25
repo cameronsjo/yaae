@@ -7,6 +7,14 @@ const DYNAMIC_PDF_STYLE_ID = 'yaae-dynamic-pdf-print-styles';
 
 const FONT_PRESETS: Set<string> = new Set<string>(['sans', 'serif', 'mono', 'system']);
 
+/** Map named font presets to SVG-safe font-family values. */
+const FONT_PRESET_SVG: Record<string, string> = {
+  sans: 'sans-serif',
+  serif: 'Georgia, Times New Roman, serif',
+  mono: 'Consolas, Courier New, monospace',
+  system: 'sans-serif',
+};
+
 /**
  * Build a shared banner CSS rule for either top or bottom position.
  * Only the `position` property (top/bottom) differs between the two.
@@ -229,7 +237,7 @@ type WatermarkPresetLevel = keyof typeof WATERMARK_PRESETS;
  * Build a tiling SVG data URI for the watermark overlay.
  * The text is URL-encoded so special characters (quotes, ampersands) are safe.
  */
-export function buildWatermarkDataUri(level: WatermarkPresetLevel, text: string): string {
+export function buildWatermarkDataUri(level: WatermarkPresetLevel, text: string, fontFamily = 'sans-serif'): string {
   const p = WATERMARK_PRESETS[level];
   const half = p.tileSize / 2;
   const encoded = text
@@ -239,9 +247,12 @@ export function buildWatermarkDataUri(level: WatermarkPresetLevel, text: string)
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&apos;');
 
+  // Escape single quotes in font family for SVG attribute context
+  const escapedFont = fontFamily.replace(/'/g, '&apos;');
+
   const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${p.tileSize}' height='${p.tileSize}'>`
     + `<text x='50%' y='50%' text-anchor='middle' dominant-baseline='middle' `
-    + `font-family='sans-serif' font-size='${p.fontSize}' font-weight='${p.fontWeight}' `
+    + `font-family='${escapedFont}' font-size='${p.fontSize}' font-weight='${p.fontWeight}' `
     + `fill='rgba(0,0,0,${p.opacity})' `
     + `transform='rotate(${p.rotation},${half},${half})'>`
     + `${encoded}</text></svg>`;
@@ -271,9 +282,10 @@ export class DynamicPdfPrintStyleManager {
     const hasCustomFontSize = settings.fontSize !== 11;
     const isCustomFont = !FONT_PRESETS.has(settings.fontFamily);
     const hasCustomWatermarkText = settings.watermarkText !== 'DRAFT';
-    const hasCustomLineHeight = settings.lineHeight !== undefined && settings.lineHeight !== 1.6;
+    const hasCustomLineHeight = settings.lineHeight !== undefined && settings.lineHeight !== 1.5;
+    const hasNonDefaultFont = settings.fontFamily !== 'sans' && settings.fontFamily !== 'system';
 
-    if (!hasCustomFontSize && !isCustomFont && !hasCustomWatermarkText && !hasCustomLineHeight) {
+    if (!hasCustomFontSize && !isCustomFont && !hasCustomWatermarkText && !hasCustomLineHeight && !hasNonDefaultFont) {
       this.styleEl.textContent = '';
       return;
     }
@@ -293,10 +305,12 @@ export class DynamicPdfPrintStyleManager {
   }`);
     }
 
-    if (hasCustomWatermarkText) {
+    // Regenerate watermark SVGs when text or font differs from static defaults
+    if (hasCustomWatermarkText || hasNonDefaultFont) {
       const text = settings.watermarkText;
+      const svgFont = FONT_PRESET_SVG[settings.fontFamily] ?? settings.fontFamily;
       for (const [level, _preset] of Object.entries(WATERMARK_PRESETS)) {
-        const uri = buildWatermarkDataUri(level as WatermarkPresetLevel, text);
+        const uri = buildWatermarkDataUri(level as WatermarkPresetLevel, text, svgFont);
         const size = WATERMARK_PRESETS[level as WatermarkPresetLevel].tileSize;
         rules.push(`  .pdf-watermark-${level} .print > div::before {
     background-image: ${uri};

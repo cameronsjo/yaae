@@ -1,4 +1,11 @@
 @media print {
+  /* Reserve margin space for headers, footers, and classification banners.
+     Without this, position:fixed chrome overlaps body content on every page.
+     !important overrides Obsidian/Electron defaults (see #11). */
+  @page {
+    margin: 0.75in !important;
+  }
+
   /* Prevent orphaned headings — a heading at the bottom of a page with
      content on the next page looks broken in formal documents */
   h1, h2, h3, h4 {
@@ -12,8 +19,8 @@
     break-before: avoid;
   }
 
-  /* Prevent breaking inside block elements */
-  pre, blockquote, table, img, .callout {
+  /* Prevent breaking inside block elements — figure keeps image+caption together */
+  pre, blockquote, table, img, figure, .callout {
     break-inside: avoid;
   }
 
@@ -69,7 +76,7 @@
   /* Print-optimized sizes via CSS variables */
   :root {
     --print-font-size: 11pt;
-    --print-line-height: 1.6;
+    --print-line-height: 1.5;
     --print-heading-scale: 1.2;
     /* Derived heading sizes: h6=1em, each level up multiplies by scale */
     --print-h6-size: 1em;
@@ -91,4 +98,15 @@
   h4 { font-size: var(--print-h4-size); }
   h5 { font-size: var(--print-h5-size); }
   h6 { font-size: var(--print-h6-size); }
+
+  /* Heading proximity — 3:1 ratio so headings visually associate with content below */
+  h1, h2, h3, h4, h5, h6 {
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+  }
+
+  /* Explicit paragraph spacing for print */
+  p + p {
+    margin-top: 0.5em;
+  }
 }
