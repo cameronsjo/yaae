@@ -10,11 +10,11 @@
     right: 0;
     display: block;
     text-align: center;
-    font-size: var(--yaae-print-banner-font-size);
+    font-size: var(--yaae-print-banner-font-size, 10px);
     font-weight: 700;
-    letter-spacing: var(--yaae-print-banner-letter-spacing);
+    letter-spacing: var(--yaae-print-banner-letter-spacing, 0.1em);
     text-transform: uppercase;
-    padding: var(--yaae-print-banner-padding);
+    padding: var(--yaae-print-banner-padding, 2px 0);
     z-index: 9999;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
@@ -33,11 +33,11 @@
     right: 0;
     display: block;
     text-align: center;
-    font-size: var(--yaae-print-banner-font-size);
+    font-size: var(--yaae-print-banner-font-size, 10px);
     font-weight: 700;
-    letter-spacing: var(--yaae-print-banner-letter-spacing);
+    letter-spacing: var(--yaae-print-banner-letter-spacing, 0.1em);
     text-transform: uppercase;
-    padding: var(--yaae-print-banner-padding);
+    padding: var(--yaae-print-banner-padding, 2px 0);
     z-index: 9999;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
@@ -95,11 +95,16 @@
     border-top: 2px solid #8b0000;
   }
 
-  /* Suppress banners */
-  .pdf-no-header .markdown-preview-view::before {
+  /* Suppress banners and header/footer pseudo-elements.
+     Guards prevent accidentally hiding the signature block's ::after. */
+  .pdf-no-header .markdown-preview-view::before,
+  .pdf-no-header .markdown-preview-view::after,
+  .pdf-no-header .print::before {
     display: none !important;
   }
-  .pdf-no-footer .markdown-preview-sizer::after {
+  .pdf-no-footer:not(.pdf-signature-block) .markdown-preview-sizer::after,
+  .pdf-no-footer .markdown-preview-sizer::before,
+  .pdf-no-footer .print::after {
     display: none !important;
   }
 }

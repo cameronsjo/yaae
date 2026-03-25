@@ -1,4 +1,13 @@
 @media print {
+  /* Establish containing block for the absolute-positioned watermark overlay.
+     Self-sufficient — does not depend on page-numbers.css being loaded. */
+  .pdf-watermark-whisper .print > div,
+  .pdf-watermark-heads-up .print > div,
+  .pdf-watermark-loud .print > div,
+  .pdf-watermark-screaming .print > div {
+    position: relative;
+  }
+
   /* Base watermark layer on each page div */
   .pdf-watermark-whisper .print > div::before,
   .pdf-watermark-heads-up .print > div::before,

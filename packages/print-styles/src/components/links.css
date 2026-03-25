@@ -30,11 +30,6 @@
     content: none;
   }
 
-  /* Stripped-only: cursor hint that text is not clickable */
-  .pdf-links-stripped a {
-    cursor: text;
-  }
-
   /* Defanged: neutralized URLs for security documents */
   .pdf-links-defanged .yaae-defanged-link {
     font-family: var(--font-monospace);
