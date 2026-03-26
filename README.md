@@ -9,34 +9,35 @@ An Obsidian plugin for writers who care about prose. Combines iA Writer-style pr
 Color-code your writing by part of speech — adjectives, nouns, adverbs, verbs, and conjunctions — to see the structure of your prose at a glance. Inspired by [iA Writer's syntax highlighting](https://ia.net/writer).
 
 - Per-category color customization
-- Custom word lists with regex support
+- Custom word lists
 - Works in both Editor/Live Preview and Reading View
 - Automatically hidden in PDF export
+- Excludes code blocks, frontmatter, and table headers
 
 ### Readability
 
 - **Syntax dimming** — Reduce opacity of markdown formatting characters (`**`, `*`, `#`, etc.) while keeping them visible
-- **Guttered headings** — Outdent `#` markers into the left gutter so heading text aligns with body text
+- **Guttered headings** — Outdent `#` markers into the left gutter so heading text aligns with body text (Source Mode only)
 - **Focus mode** — Dim all text except the active sentence or paragraph
 
 ### Document Management
 
 Frontmatter-driven document management with Zod-validated schemas:
 
-- **Classification taxonomy** — Public, Internal, Confidential, Restricted — with color-coded banners in reading view
-- **Watermark levels** — Five presets (off → screaming) for draft documents
+- **Classification taxonomy** — Public, Internal, Confidential, Restricted — with banners in PDF export
+- **Watermark levels** — Four presets (whisper, heads-up, loud, screaming) with opacity-based intensity
 - **Schema validation** — Auto-validate frontmatter on save with smart warnings (e.g., "draft without watermark", "confidential without reviewers")
-- **Specialized schemas** — ADR, threat model, runbook, and slides templates with required field validation
+- **Specialized schemas** — ADR, threat model, runbook, and slides with required field validation
 - **Table of contents** — Generate GitHub-compatible TOC from headings, inserted after frontmatter
-- **CSS class derivation** — Apply `cssclass` values from frontmatter for PDF export styling
+- **CSS class derivation** — Apply `cssclasses` values from frontmatter for PDF export styling (merges with existing user classes)
 
 ### Print Styles
 
-CSS snippets for Obsidian's PDF export (`@yaae/print-styles`):
+Plugin-injected styles for Obsidian's PDF export:
 
-- Classification banners and watermarks
-- Typography presets
-- TOC, links, code blocks, page breaks, page numbers, and image handling
+- Watermarks (SVG tiling, opacity-based presets)
+- Classification banners, headers, and footers (requires Obsidian with Chrome 131+, see [#29](https://github.com/cameronsjo/yaae/issues/29))
+- Page numbers via `@page` margin boxes (requires Chrome 131+)
 
 ## Installation
 
@@ -59,11 +60,11 @@ CSS snippets for Obsidian's PDF export (`@yaae/print-styles`):
 |---------|-------------|
 | Toggle prose highlighting | Enable/disable part-of-speech coloring |
 | Toggle syntax dimming | Dim markdown formatting characters |
-| Toggle guttered headings | Outdent heading markers to gutter |
+| Toggle guttered headings | Outdent heading markers to gutter (Source Mode) |
 | Cycle focus mode | Off → Sentence → Paragraph |
 | Validate frontmatter | Check active file against Zod schemas |
 | Generate table of contents | Insert/replace TOC from headings |
-| Apply CSS classes from frontmatter | Derive and set `cssclass` for PDF export |
+| Apply CSS classes from frontmatter | Derive and set `cssclasses` for PDF export |
 
 ## Development
 
@@ -74,6 +75,7 @@ pnpm run build           # Production plugin bundle
 pnpm test                # Run all tests
 pnpm run test:watch      # Watch mode tests
 pnpm run test:coverage   # Coverage report
+pnpm run test:e2e        # E2E tests (launches Obsidian via WebdriverIO)
 ```
 
 ### Project Structure
@@ -89,7 +91,9 @@ pnpm run test:coverage   # Coverage report
 ├── packages/
 │   └── print-styles/         # @yaae/print-styles — PDF export CSS
 ├── templates/                # Document templates (ADR, threat model, etc.)
-└── tests/                    # Vitest tests
+├── tests/                    # Vitest unit tests
+├── e2e/                      # WebdriverIO E2E tests
+└── test-vault/               # Manual smoke test vault
 ```
 
 ## License
