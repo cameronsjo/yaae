@@ -93,7 +93,7 @@ settings:
     title: Gutter width
     description: Width reserved for heading markers in the gutter
     type: variable-text
-    default: 4em
+    default: 4.5rem
     format: px
   -
     id: yaae-print-heading
@@ -344,8 +344,8 @@ body {
   --yaae-dimmed-color: var(--text-faint);
   --yaae-dimmed-transition: 0.15s;
 
-  /* Guttered headings — 4em fits ###### (6 markers + space) and scales with font size */
-  --yaae-gutter-width: 4em;
+  /* Guttered headings — rem so the gutter doesn't scale with heading font sizes */
+  --yaae-gutter-width: 4.5rem;
 
   /* PDF Print — Code Blocks */
   --yaae-print-code-border-color: #ddd;
