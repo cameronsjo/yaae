@@ -247,12 +247,14 @@ describe('buildWatermarkDataUri', () => {
     expect(decoded).toContain('&quot;');
   });
 
-  it('produces different tile sizes per level', () => {
-    const whisperUri = buildWatermarkDataUri('whisper', 'X');
-    const screamingUri = buildWatermarkDataUri('screaming', 'X');
-    // Whisper should have larger tile (400) than screaming (150)
-    expect(whisperUri).toContain("width%3D'400'");
-    expect(screamingUri).toContain("width%3D'150'");
+  it('produces different opacity per level with consistent tile size', () => {
+    const whisperUri = decodeURIComponent(buildWatermarkDataUri('whisper', 'X'));
+    const screamingUri = decodeURIComponent(buildWatermarkDataUri('screaming', 'X'));
+    // Same tile size, different opacity
+    expect(whisperUri).toContain("width='400'");
+    expect(screamingUri).toContain("width='400'");
+    expect(whisperUri).toContain('0.03');
+    expect(screamingUri).toContain('0.25');
   });
 
   it('uses custom font-family when provided', () => {

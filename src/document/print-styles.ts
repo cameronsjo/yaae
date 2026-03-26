@@ -187,10 +187,10 @@ ${marginBoxes.join('\n')}
  * Intensity increases from whisper → screaming.
  */
 export const WATERMARK_PRESETS = {
-  whisper:   { opacity: 0.04, fontSize: 48,  fontWeight: 500, tileSize: 400, rotation: -30 },
-  'heads-up': { opacity: 0.08, fontSize: 80,  fontWeight: 700, tileSize: 300, rotation: -35 },
-  loud:      { opacity: 0.14, fontSize: 110, fontWeight: 800, tileSize: 220, rotation: -40 },
-  screaming: { opacity: 0.22, fontSize: 140, fontWeight: 900, tileSize: 150, rotation: -45 },
+  whisper:    { opacity: 0.03, fontSize: 100, fontWeight: 700, tileSize: 400, rotation: -35 },
+  'heads-up': { opacity: 0.07, fontSize: 100, fontWeight: 700, tileSize: 400, rotation: -35 },
+  loud:       { opacity: 0.14, fontSize: 100, fontWeight: 700, tileSize: 400, rotation: -35 },
+  screaming:  { opacity: 0.25, fontSize: 100, fontWeight: 700, tileSize: 400, rotation: -35 },
 } as const;
 
 type WatermarkPresetLevel = keyof typeof WATERMARK_PRESETS;
