@@ -92,11 +92,8 @@ settings:
     id: yaae-gutter-width
     title: Gutter width
     description: Width reserved for heading markers in the gutter
-    type: variable-number-slider
-    default: 40
-    min: 20
-    max: 80
-    step: 4
+    type: variable-text
+    default: 4em
     format: px
   -
     id: yaae-print-heading
@@ -347,8 +344,8 @@ body {
   --yaae-dimmed-color: var(--text-faint);
   --yaae-dimmed-transition: 0.15s;
 
-  /* Guttered headings */
-  --yaae-gutter-width: 40px;
+  /* Guttered headings — 4em fits ###### (6 markers + space) and scales with font size */
+  --yaae-gutter-width: 4em;
 
   /* PDF Print — Code Blocks */
   --yaae-print-code-border-color: #ddd;
@@ -464,12 +461,14 @@ body.yaae-syntax-dimming .cm-active .cm-formatting {
 /* ==========================================================================
    Guttered Headings
    Push # heading markers into the left gutter so heading text aligns
-   with body text. Uses negative margin on the formatting span.
+   with body text. Padding is on .cm-content (not .cm-line) so the
+   gutter space lives inside the content container — negative margins
+   pull headers into that padding without being clipped by overflow.
    Scoped to body.yaae-guttered-headings.
    ========================================================================== */
 
-body.yaae-guttered-headings .cm-content .cm-line {
-  padding-left: var(--yaae-gutter-width);
+body.yaae-guttered-headings .cm-editor .cm-content {
+  padding-left: var(--yaae-gutter-width) !important;
 }
 
 body.yaae-guttered-headings .cm-content .cm-line .cm-formatting-header {
