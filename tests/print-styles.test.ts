@@ -177,10 +177,11 @@ describe('PageChromeManager', () => {
     expect(css).not.toContain('injection');
   });
 
-  it('omits banner when showClassificationBanner is false', () => {
+  it('still shows PDF banner when showClassificationBanner is false (only affects reading view)', () => {
     manager.init(makeChrome({ classification: 'confidential', showClassificationBanner: false }));
     const css = getLastStyleEl(dom.headAppendChild).textContent!;
-    expect(css).toBe('');
+    expect(css).toContain('@top-center');
+    expect(css).toContain('CONFIDENTIAL');
   });
 
   it('trims whitespace-only header/footer fields', () => {

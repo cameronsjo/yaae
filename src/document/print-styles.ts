@@ -84,8 +84,9 @@ export class PageChromeManager {
     const footerLeft = state.footerLeft.trim();
     const footerRight = state.footerRight.trim();
 
-    // Resolve classification metadata (built-in or custom)
-    const meta = state.classification && state.showClassificationBanner
+    // Always resolve classification for PDF @page margin boxes.
+    // showClassificationBanner only controls the reading view post-processor banner.
+    const meta = state.classification
       ? getClassificationMeta(state.classification, state.customClassifications)
       : null;
 

@@ -4,9 +4,9 @@ import { CLASSIFICATION_TAXONOMY } from '../src/schemas';
 import type { CustomClassification } from '../src/schemas';
 import { DEFAULT_DOCUMENT_SETTINGS, type DocumentSettings } from '../src/document/settings';
 
-/** Helper to build a settings getter for tests */
+/** Helper to build a settings getter for tests — enables the banner since default is off */
 function settingsGetter(overrides: Partial<DocumentSettings> = {}): () => DocumentSettings {
-  const settings = { ...DEFAULT_DOCUMENT_SETTINGS, ...overrides };
+  const settings = { ...DEFAULT_DOCUMENT_SETTINGS, showClassificationBanner: true, ...overrides };
   return () => settings;
 }
 

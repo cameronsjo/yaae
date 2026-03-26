@@ -79,8 +79,8 @@ describe('DocumentSettings defaults', () => {
     expect(DEFAULT_DOCUMENT_SETTINGS.validateOnSave).toBe(true);
   });
 
-  it('should enable classification banner by default', () => {
-    expect(DEFAULT_DOCUMENT_SETTINGS.showClassificationBanner).toBe(true);
+  it('should disable reading view classification banner by default', () => {
+    expect(DEFAULT_DOCUMENT_SETTINGS.showClassificationBanner).toBe(false);
   });
 
   it('should default banner position to top', () => {

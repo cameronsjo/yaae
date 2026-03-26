@@ -436,7 +436,7 @@ export default class YaaePlugin extends Plugin {
     const classes = deriveCssClasses(result.data);
 
     await this.app.fileManager.processFrontMatter(file, (fm) => {
-      fm.cssclass = classes;
+      fm.cssclasses = classes;
     });
 
     new Notice(`Applied CSS classes: ${classes.join(', ')}`);
