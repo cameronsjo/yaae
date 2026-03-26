@@ -10,6 +10,15 @@ export:
 
 ## Table of Contents
 
+  - [Introduction](#introduction)
+  - [Features](#features)
+    - [Feature A](#feature-a)
+    - [Feature B](#feature-b)
+  - [Implementation](#implementation)
+    - [Phase 1](#phase-1)
+    - [Phase 2](#phase-2)
+  - [Conclusion](#conclusion)
+
 ---
 
 ## Introduction

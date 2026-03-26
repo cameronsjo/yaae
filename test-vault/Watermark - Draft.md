@@ -6,6 +6,13 @@ created: 2026-03-26
 export:
   pdf:
     watermark: heads-up
+cssclasses:
+  - pdf-internal
+  - pdf-draft
+  - pdf-watermark-heads-up
+  - pdf-font-sans
+  - pdf-copy-safe
+  - pdf-compact-tables
 cssclass:
   - pdf-internal
   - pdf-draft
