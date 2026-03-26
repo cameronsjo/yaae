@@ -1,6 +1,7 @@
 ---
 title: TOC Generation Test
 classification: internal
+created: "2026-03-26"
 export:
   pdf:
     toc: true

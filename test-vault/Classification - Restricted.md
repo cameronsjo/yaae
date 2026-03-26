@@ -4,6 +4,7 @@ classification: restricted
 status: draft
 author: Test Author
 reviewers: ["Reviewer A", "Reviewer B"]
+created: "2026-03-26"
 ---
 
 # Restricted Document

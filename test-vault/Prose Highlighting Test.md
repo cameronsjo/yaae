@@ -1,6 +1,7 @@
 ---
 title: Prose Highlighting Test
 classification: internal
+created: "2026-03-26"
 ---
 
 # Prose Highlighting Test

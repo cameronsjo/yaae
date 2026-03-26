@@ -54,8 +54,17 @@ EOF
   echo "  Created app.json"
 fi
 
+# Install print-styles as a CSS snippet (concatenate all files)
+SNIPPETS_DIR="$VAULT_DIR/.obsidian/snippets"
+mkdir -p "$SNIPPETS_DIR"
+cat "$PROJECT_ROOT"/packages/print-styles/src/presets/*.css \
+    "$PROJECT_ROOT"/packages/print-styles/src/components/*.css \
+    > "$SNIPPETS_DIR/yaae-print-styles.css"
+echo "  Installed print-styles CSS snippet"
+
 echo ""
 echo "Done. To use:"
 echo "  1. pnpm run build     (or pnpm run dev for watch mode)"
 echo "  2. Open '$VAULT_DIR' as a vault in Obsidian"
 echo "  3. Enable YAAE in Settings > Community Plugins"
+echo "  4. Enable 'yaae-print-styles' in Settings > Appearance > CSS Snippets"

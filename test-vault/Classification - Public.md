@@ -3,6 +3,7 @@ title: Public Document
 classification: public
 status: final
 author: Test Author
+created: "2026-03-26"
 ---
 
 # Public Document

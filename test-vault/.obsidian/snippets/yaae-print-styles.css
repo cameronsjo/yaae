@@ -1,0 +1,415 @@
+@media print {
+  /* @page margin is now set dynamically by PageChromeManager (1in),
+     which generates all margin box content. See print-styles.ts. */
+
+  /* Prevent orphaned headings — a heading at the bottom of a page with
+     content on the next page looks broken in formal documents */
+  h1, h2, h3, h4 {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
+  /* Adjacent sibling selector ensures the first element after a heading
+     stays on the same page — both rules work together to prevent splits */
+  h1 + *, h2 + *, h3 + *, h4 + * {
+    break-before: avoid;
+  }
+
+  /* Prevent breaking inside block elements — figure keeps image+caption together */
+  pre, blockquote, table, img, figure, .callout {
+    break-inside: avoid;
+  }
+
+  /* Widow and orphan control */
+  p {
+    widows: var(--yaae-print-widows);
+    orphans: var(--yaae-print-orphans);
+  }
+
+  /* Repeat table headers across pages */
+  thead {
+    display: table-header-group;
+  }
+
+  /* Prevent row splitting */
+  table tr {
+    break-inside: avoid;
+  }
+
+  /* Prevent horizontal overflow — PDF pages can't scroll, so any content
+     wider than the page silently disappears from the right edge */
+  * {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* pre-wrap preserves whitespace but allows wrapping at container edge;
+     overflow-wrap: break-word breaks long tokens only when necessary */
+  pre, code {
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+  }
+
+  /* fixed layout + 100% width prevents tables from overflowing the page;
+     without this, wide tables extend past the right margin and get clipped */
+  table {
+    table-layout: fixed;
+    width: 100%;
+    overflow-wrap: break-word;
+  }
+
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+
+  a {
+    /* break-all is intentional — URLs have no natural break points,
+       so overflow-wrap: break-word would leave them overflowing */
+    word-break: break-all;
+  }
+
+  /* Print-optimized sizes via CSS variables */
+  :root {
+    --print-font-size: 11pt;
+    --print-line-height: 1.5;
+    --print-heading-scale: 1.2;
+    /* Derived heading sizes: h6=1em, each level up multiplies by scale */
+    --print-h6-size: 1em;
+    --print-h5-size: calc(var(--print-h6-size) * var(--print-heading-scale));
+    --print-h4-size: calc(var(--print-h5-size) * var(--print-heading-scale));
+    --print-h3-size: calc(var(--print-h4-size) * var(--print-heading-scale));
+    --print-h2-size: calc(var(--print-h3-size) * var(--print-heading-scale));
+    --print-h1-size: calc(var(--print-h2-size) * var(--print-heading-scale));
+  }
+
+  body {
+    font-size: var(--print-font-size);
+    line-height: var(--print-line-height);
+  }
+
+  h1 { font-size: var(--print-h1-size); }
+  h2 { font-size: var(--print-h2-size); }
+  h3 { font-size: var(--print-h3-size); }
+  h4 { font-size: var(--print-h4-size); }
+  h5 { font-size: var(--print-h5-size); }
+  h6 { font-size: var(--print-h6-size); }
+
+  /* Heading proximity — 3:1 ratio so headings visually associate with content below */
+  h1, h2, h3, h4, h5, h6 {
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+  }
+
+  /* Explicit paragraph spacing for print */
+  p + p {
+    margin-top: 0.5em;
+  }
+}
+@media print {
+  /* Establish containing block for the absolute-positioned watermark overlay.
+     Self-sufficient — does not depend on page-numbers.css being loaded. */
+  .pdf-watermark-whisper .print > div,
+  .pdf-watermark-heads-up .print > div,
+  .pdf-watermark-loud .print > div,
+  .pdf-watermark-screaming .print > div {
+    position: relative;
+  }
+
+  /* Base watermark layer on each page div */
+  .pdf-watermark-whisper .print > div::before,
+  .pdf-watermark-heads-up .print > div::before,
+  .pdf-watermark-loud .print > div::before,
+  .pdf-watermark-screaming .print > div::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 9998;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Default watermark text: "DRAFT"
+   * These static SVG data URIs provide the default. When custom watermark
+   * text is configured, DynamicPdfPrintStyleManager overrides background-image
+   * with dynamically generated SVGs containing the user's text.
+   */
+
+  /* WHISPER: opacity 0.04, font-size 48, weight 500, gap 400, rotation -30 */
+  .pdf-watermark-whisper .print > div::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dominant-baseline='middle' font-family='sans-serif' font-size='48' font-weight='500' fill='rgba(0,0,0,0.04)' transform='rotate(-30,200,200)'%3EDRAFT%3C/text%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 400px 400px;
+  }
+
+  /* HEADS-UP: opacity 0.08, font-size 80, weight 700, gap 300, rotation -35 */
+  .pdf-watermark-heads-up .print > div::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dominant-baseline='middle' font-family='sans-serif' font-size='80' font-weight='700' fill='rgba(0,0,0,0.08)' transform='rotate(-35,150,150)'%3EDRAFT%3C/text%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 300px 300px;
+  }
+
+  /* LOUD: opacity 0.14, font-size 110, weight 800, gap 220, rotation -40 */
+  .pdf-watermark-loud .print > div::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dominant-baseline='middle' font-family='sans-serif' font-size='110' font-weight='800' fill='rgba(0,0,0,0.14)' transform='rotate(-40,110,110)'%3EDRAFT%3C/text%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 220px 220px;
+  }
+
+  /* SCREAMING: opacity 0.22, font-size 140, weight 900, gap 150, rotation -45 */
+  .pdf-watermark-screaming .print > div::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dominant-baseline='middle' font-family='sans-serif' font-size='140' font-weight='900' fill='rgba(0,0,0,0.22)' transform='rotate(-45,75,75)'%3EDRAFT%3C/text%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 150px 150px;
+  }
+}
+@media print {
+  /* Dark theme: force dark background + light text */
+  .pdf-theme-dark {
+    background: var(--yaae-print-dark-bg) !important;
+    color: var(--yaae-print-dark-text) !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .pdf-theme-dark h1,
+  .pdf-theme-dark h2,
+  .pdf-theme-dark h3,
+  .pdf-theme-dark h4,
+  .pdf-theme-dark h5,
+  .pdf-theme-dark h6 {
+    color: var(--yaae-print-dark-heading-color) !important;
+  }
+
+  .pdf-theme-dark code {
+    background: var(--yaae-print-dark-code-bg) !important;
+    color: var(--yaae-print-dark-text) !important;
+  }
+
+  .pdf-theme-dark pre {
+    background: var(--yaae-print-dark-code-bg) !important;
+  }
+
+  .pdf-theme-dark table th {
+    background: var(--yaae-print-dark-code-bg) !important;
+    color: var(--yaae-print-dark-text) !important;
+  }
+
+  .pdf-theme-dark table td {
+    border-color: var(--yaae-print-dark-table-border) !important;
+  }
+
+  /* Auto theme: follow OS preference */
+  @media (prefers-color-scheme: dark) {
+    .pdf-theme-auto {
+      background: var(--yaae-print-dark-bg) !important;
+      color: var(--yaae-print-dark-text) !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .pdf-theme-auto h1,
+    .pdf-theme-auto h2,
+    .pdf-theme-auto h3,
+    .pdf-theme-auto h4,
+    .pdf-theme-auto h5,
+    .pdf-theme-auto h6 {
+      color: var(--yaae-print-dark-heading-color) !important;
+    }
+
+    .pdf-theme-auto code {
+      background: var(--yaae-print-dark-code-bg) !important;
+      color: var(--yaae-print-dark-text) !important;
+    }
+
+    .pdf-theme-auto pre {
+      background: var(--yaae-print-dark-code-bg) !important;
+    }
+  }
+
+  /* Font family presets */
+  .pdf-font-sans {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+  }
+
+  .pdf-font-serif {
+    font-family: Georgia, "Times New Roman", Times, serif !important;
+  }
+
+  .pdf-font-mono {
+    font-family: SFMono-Regular, Consolas, "Courier New", monospace !important;
+  }
+}
+@media print {
+  pre {
+    border: 1px solid var(--yaae-print-code-border-color);
+    border-radius: var(--yaae-print-code-border-radius);
+    padding: var(--yaae-print-code-padding);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: normal;
+    background-color: var(--yaae-print-code-bg) !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  code {
+    font-size: var(--yaae-print-code-font-size);
+  }
+}
+@media print {
+  /* Disable ligatures for copy-paste safety.
+   * Ligatures like fi, fl, ffi can copy as garbled characters
+   * in many PDF viewers. Disabling them preserves fidelity. */
+  .pdf-copy-safe {
+    font-variant-ligatures: no-common-ligatures;
+    font-feature-settings: "liga" 0, "clig" 0;
+  }
+}
+@media print {
+  img {
+    max-width: 100%;
+    height: auto;
+    break-inside: avoid;
+  }
+
+  .image-embed {
+    text-align: center;
+    break-inside: avoid;
+  }
+}
+@media print {
+  /* Landscape orientation placeholder.
+   * Note: @page { size: landscape } cannot be scoped to a CSS class —
+   * it applies globally to the entire print job. This class serves as
+   * a marker for frontmatter-driven tooling. Actual @page orientation
+   * requires a pre-print script or Obsidian API integration. */
+  .pdf-landscape {
+    /* Marker class — no visual effect from CSS alone */
+  }
+}
+@media print {
+  /* Default (expand): Show URLs after external links */
+  a.external-link::after {
+    content: " [" attr(href) "]";
+    font-size: var(--yaae-print-link-url-font-size);
+    font-style: italic;
+    color: var(--yaae-print-link-url-color);
+    word-break: break-all;
+  }
+
+  /* Styled: suppress URL expansion, keep link styling */
+  .pdf-links-styled a.external-link::after {
+    content: none;
+  }
+
+  /* Plain + Stripped: shared reset — strip link styling, keep <a> */
+  .pdf-links-plain a,
+  .pdf-links-plain a.external-link,
+  .pdf-links-plain a.internal-link,
+  .pdf-links-stripped a,
+  .pdf-links-stripped a.external-link,
+  .pdf-links-stripped a.internal-link {
+    color: inherit !important;
+    text-decoration: none !important;
+    pointer-events: none;
+  }
+
+  .pdf-links-plain a.external-link::after,
+  .pdf-links-stripped a.external-link::after {
+    content: none;
+  }
+
+  /* Defanged: neutralized URLs for security documents */
+  .pdf-links-defanged .yaae-defanged-link {
+    font-family: var(--font-monospace);
+    font-size: 0.9em;
+    color: inherit;
+    word-break: break-all;
+  }
+
+  .pdf-links-defanged a.external-link::after {
+    content: none;
+  }
+}
+@media print {
+  /* Explicit page break — use <div class="page-break"></div> in markdown */
+  .page-break {
+    page-break-before: always;
+    break-before: page;
+    height: 0;
+    margin: 0;
+    padding: 0;
+    border: none;
+  }
+
+  /* Optional: uncomment to use <hr> as page break */
+  /* hr { page-break-before: always; break-before: page; visibility: hidden; } */
+
+  /* Hide elements from PDF output */
+  .no-print {
+    display: none !important;
+  }
+}
+@media print {
+  .pdf-signature-block .markdown-preview-sizer::after {
+    display: block;
+    margin-top: var(--yaae-print-sig-margin-top, 3em);
+    padding-top: 1.5em;
+    border-top: 1px solid #ccc;
+    font-size: var(--yaae-print-sig-font-size, 10pt);
+    white-space: pre-line;
+    line-height: 2.8;
+    content:
+      "Prepared by:  ______________________________    Date:  ________________\A"
+      "Reviewed by:  ______________________________    Date:  ________________\A"
+      "Approved by:  ______________________________    Date:  ________________";
+  }
+}
+
+@media screen {
+  .pdf-signature-block .markdown-preview-sizer::after {
+    display: none;
+  }
+}
+@media print {
+  /* Compact table styling: smaller font, tighter padding, auto layout */
+  .pdf-compact-tables table {
+    font-size: var(--yaae-print-table-font-size);
+    table-layout: auto;
+  }
+
+  .pdf-compact-tables th,
+  .pdf-compact-tables td {
+    padding: var(--yaae-print-table-cell-padding);
+  }
+}
+@media print {
+  .table-of-contents {
+    page-break-after: always;
+    break-after: page;
+  }
+
+  .table-of-contents ul {
+    list-style: none;
+    padding-left: 0;
+  }
+
+  .table-of-contents ul ul {
+    padding-left: var(--yaae-print-toc-indent);
+  }
+
+  .table-of-contents li {
+    margin-bottom: var(--yaae-print-toc-item-margin);
+    line-height: var(--yaae-print-toc-line-height);
+  }
+
+  .table-of-contents a {
+    text-decoration: none;
+    color: inherit;
+  }
+}

@@ -3,6 +3,7 @@ title: Print Export Test
 classification: confidential
 status: draft
 author: Test Author
+created: "2026-03-26"
 export:
   pdf:
     watermark: heads-up

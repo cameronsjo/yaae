@@ -4,6 +4,7 @@ classification: confidential
 status: draft
 author: Test Author
 reviewers: ["Reviewer A"]
+created: "2026-03-26"
 ---
 
 # Confidential Document

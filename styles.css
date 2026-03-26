@@ -464,20 +464,23 @@ body.yaae-syntax-dimming .cm-active .cm-formatting {
    with body text. Padding is on .cm-content (not .cm-line) so the
    gutter space lives inside the content container — negative margins
    pull headers into that padding without being clipped by overflow.
-   Scoped to body.yaae-guttered-headings.
+   Scoped to body.yaae-guttered-headings, Source Mode only.
+   Live Preview hides # markers when the cursor is elsewhere,
+   leaving an empty gutter — so we exclude .is-live-preview.
    ========================================================================== */
 
-body.yaae-guttered-headings .cm-editor .cm-content {
+body.yaae-guttered-headings .markdown-source-view:not(.is-live-preview) .cm-content {
   padding-left: var(--yaae-gutter-width) !important;
 }
 
-body.yaae-guttered-headings .cm-content .cm-line .cm-formatting-header {
+body.yaae-guttered-headings .markdown-source-view:not(.is-live-preview) .cm-content .cm-line .cm-formatting-header {
   display: inline-block;
   width: var(--yaae-gutter-width);
   margin-left: calc(-1 * var(--yaae-gutter-width));
   text-align: right;
-  padding-right: 0.5em;
+  padding-right: 0.5rem;
   box-sizing: border-box;
+  white-space: nowrap;
 }
 
 /* ==========================================================================

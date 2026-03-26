@@ -1,6 +1,7 @@
 ---
 title: Readability Test
 classification: internal
+created: "2026-03-26"
 ---
 
 # Heading Level 1

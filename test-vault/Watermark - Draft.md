@@ -2,9 +2,17 @@
 title: Draft Watermark Test
 classification: internal
 status: draft
+created: 2026-03-26
 export:
   pdf:
     watermark: heads-up
+cssclass:
+  - pdf-internal
+  - pdf-draft
+  - pdf-watermark-heads-up
+  - pdf-font-sans
+  - pdf-copy-safe
+  - pdf-compact-tables
 ---
 
 # Draft Watermark Test
