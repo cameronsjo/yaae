@@ -37,6 +37,11 @@ const EXCLUDED_NODE_TYPES = new Set([
   'comment',
   'CommentBlock',
   'HTMLTag',
+  // Table headers — structural, not prose
+  'HyperMD-table-title',
+  'HyperMD-table-title-line',
+  'table-header',
+  'TableHeader',
 ]);
 
 /** Node types that indicate their children should also be excluded */

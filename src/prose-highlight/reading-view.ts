@@ -7,7 +7,7 @@ import type { WordListMatch } from './word-lists';
 import type { POSCategory } from '../types';
 
 /** Elements whose text content should not be processed */
-const SKIP_SELECTORS = 'code, pre, .frontmatter, .math, .MathJax';
+const SKIP_SELECTORS = 'code, pre, .frontmatter, .metadata-container, th, .math, .MathJax';
 
 /** POS category → CSS class */
 const POS_CLASS: Record<POSCategory, string> = {
