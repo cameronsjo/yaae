@@ -321,10 +321,13 @@ describe('DynamicPdfPrintStyleManager', () => {
     expect(el.id).toBe('yaae-dynamic-pdf-print-styles');
   });
 
-  it('generates empty styles with all defaults', () => {
+  it('always generates watermark rules even with defaults', () => {
     manager.init(makeSettings());
-    const el = getLastStyleEl(dom.headAppendChild);
-    expect(el.textContent).toBe('');
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).toContain('.pdf-watermark-whisper');
+    expect(css).toContain('.pdf-watermark-heads-up');
+    expect(css).toContain('.pdf-watermark-loud');
+    expect(css).toContain('.pdf-watermark-screaming');
   });
 
   it('emits font-size rule when fontSize differs from default', () => {
@@ -350,10 +353,11 @@ describe('DynamicPdfPrintStyleManager', () => {
     expect(css).toContain('CONFIDENTIAL');
   });
 
-  it('does not emit watermark overrides when text is DRAFT (default)', () => {
+  it('emits watermark rules with DRAFT text when using default', () => {
     manager.init(makeSettings({ watermarkText: 'DRAFT' }));
     const css = getLastStyleEl(dom.headAppendChild).textContent!;
-    expect(css).not.toContain('.pdf-watermark-');
+    expect(css).toContain('.pdf-watermark-');
+    expect(css).toContain('DRAFT');
   });
 
   it('emits watermark overrides for non-default font preset', () => {
@@ -363,10 +367,10 @@ describe('DynamicPdfPrintStyleManager', () => {
     expect(css).toContain('Georgia');
   });
 
-  it('does not emit watermark overrides for system font preset', () => {
+  it('emits watermark rules for system font preset', () => {
     manager.init(makeSettings({ fontFamily: 'system' }));
     const css = getLastStyleEl(dom.headAppendChild).textContent!;
-    expect(css).not.toContain('.pdf-watermark-whisper');
+    expect(css).toContain('.pdf-watermark-whisper');
   });
 
   it('emits line-height override when lineHeight differs from default', () => {
@@ -384,7 +388,6 @@ describe('DynamicPdfPrintStyleManager', () => {
   it('updates styles dynamically', () => {
     manager.init(makeSettings());
     const el = getLastStyleEl(dom.headAppendChild);
-    expect(el.textContent).toBe('');
 
     manager.update(makeSettings({ fontSize: 16 }));
     expect(el.textContent).toContain('16pt');

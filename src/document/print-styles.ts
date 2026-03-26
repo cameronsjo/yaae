@@ -251,10 +251,8 @@ export class DynamicPdfPrintStyleManager {
     const hasCustomLineHeight = lineHeight !== DEFAULT_DOCUMENT_SETTINGS.lineHeight;
     const hasNonDefaultFont = settings.fontFamily !== 'sans' && settings.fontFamily !== 'system';
 
-    if (!hasCustomFontSize && !isCustomFont && !hasCustomWatermarkText && !hasCustomLineHeight && !hasNonDefaultFont) {
-      this.styleEl.textContent = '';
-      return;
-    }
+    // No early return — watermark rules must always be emitted since
+    // CSS snippets don't reach Obsidian's PDF export pipeline.
 
     const rules: string[] = ['@media print {'];
 
@@ -270,8 +268,10 @@ export class DynamicPdfPrintStyleManager {
   }`);
     }
 
-    // Regenerate watermark SVGs when text or font differs from static defaults
-    if (hasCustomWatermarkText || hasNonDefaultFont) {
+    // Always generate watermark SVGs — CSS snippets don't reach PDF export.
+    // Apply background-image directly to the cssclass element (Obsidian
+    // preserves background-image on the view container during PDF export).
+    {
       const text = settings.watermarkText;
       const svgFont = Object.hasOwn(FONT_PRESET_SVG, settings.fontFamily)
         ? FONT_PRESET_SVG[settings.fontFamily as FontPreset]
@@ -279,9 +279,12 @@ export class DynamicPdfPrintStyleManager {
       for (const [level, _preset] of Object.entries(WATERMARK_PRESETS)) {
         const uri = buildWatermarkDataUri(level as WatermarkPresetLevel, text, svgFont);
         const size = WATERMARK_PRESETS[level as WatermarkPresetLevel].tileSize;
-        rules.push(`  .pdf-watermark-${level} .print > div::before {
+        rules.push(`  .pdf-watermark-${level} {
     background-image: ${uri};
+    background-repeat: repeat;
     background-size: ${size}px ${size}px;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }`);
       }
     }

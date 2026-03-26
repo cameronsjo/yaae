@@ -14,8 +14,8 @@ const ROOT = join(__dirname, '..');
 const STYLES_CSS = readFileSync(join(ROOT, 'styles.css'), 'utf-8');
 
 describe('styles.css — guttered headings', () => {
-  it('has padding rule for all editor lines', () => {
-    expect(STYLES_CSS).toContain('body.yaae-guttered-headings .cm-content .cm-line');
+  it('has padding rule scoped to Source Mode', () => {
+    expect(STYLES_CSS).toContain('body.yaae-guttered-headings .markdown-source-view:not(.is-live-preview) .cm-content');
     expect(STYLES_CSS).toMatch(/padding-left:\s*var\(--yaae-gutter-width\)/);
   });
 

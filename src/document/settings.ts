@@ -50,7 +50,7 @@ export const DEFAULT_DOCUMENT_SETTINGS: DocumentSettings = {
   pageNumbers: true,
   lineHeight: 1.5,
   validateOnSave: true,
-  showClassificationBanner: true,
+  showClassificationBanner: false,
   bannerPosition: 'top',
   customClassifications: [],
   expandLinks: true,
