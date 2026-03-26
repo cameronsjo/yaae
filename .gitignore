@@ -52,3 +52,6 @@ test-vault/.obsidian/plugins/yaae/data.json
 
 # WebdriverIO Obsidian cache (downloaded Obsidian binaries)
 .obsidian-cache/
+
+# Test vault PDFs (generated during smoke testing)
+test-vault/*.pdf

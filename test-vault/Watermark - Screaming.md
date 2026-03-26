@@ -2,10 +2,17 @@
 title: Screaming Watermark Test
 classification: internal
 status: draft
-created: "2026-03-26"
+created: 2026-03-26
 export:
   pdf:
     watermark: screaming
+cssclasses:
+  - pdf-internal
+  - pdf-draft
+  - pdf-watermark-screaming
+  - pdf-font-sans
+  - pdf-copy-safe
+  - pdf-compact-tables
 ---
 
 # Screaming Watermark Test
