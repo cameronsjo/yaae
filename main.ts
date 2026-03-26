@@ -8,7 +8,8 @@ import { createHighlighterExtension } from './src/prose-highlight/highlighter-pl
 import { createReadingViewPostProcessor } from './src/prose-highlight/reading-view';
 import { renderProseHighlightSettings } from './src/prose-highlight/settings-tab';
 import { focusExtension } from './src/cm6/focus-mode';
-import { typewriterExtension } from './src/cm6/typewriter-scroll';
+// TODO(#24): typewriter scroll disabled pending fix
+// import { typewriterExtension } from './src/cm6/typewriter-scroll';
 import { validateMarkdown, deriveCssClasses } from './src/schemas';
 import { generateToc } from './src/document/toc-generator';
 import { createClassificationBannerProcessor } from './src/document/classification-banner';
@@ -25,7 +26,8 @@ const BODY_CLASS_SYNTAX_DIMMING = 'yaae-syntax-dimming';
 const BODY_CLASS_GUTTERED_HEADINGS = 'yaae-guttered-headings';
 
 const focusCompartment = new Compartment();
-const typewriterCompartment = new Compartment();
+// TODO(#24): typewriter scroll disabled pending fix
+// const typewriterCompartment = new Compartment();
 
 export default class YaaePlugin extends Plugin {
   settings: YaaeSettings = DEFAULT_SETTINGS;
@@ -86,9 +88,6 @@ export default class YaaePlugin extends Plugin {
           ? focusExtension(this.settings.focusMode)
           : []
       ),
-      typewriterCompartment.of(
-        this.settings.typewriterScroll ? typewriterExtension() : []
-      ),
     ]);
 
     // --- Commands ---
@@ -120,12 +119,6 @@ export default class YaaePlugin extends Plugin {
       id: 'cycle-focus-mode',
       name: 'Cycle focus mode',
       callback: () => this.cycleFocusMode(),
-    });
-
-    this.addCommand({
-      id: 'toggle-typewriter-scroll',
-      name: 'Toggle typewriter scroll',
-      callback: () => this.toggleTypewriterScroll(),
     });
 
     // --- Document Commands ---
@@ -233,7 +226,6 @@ export default class YaaePlugin extends Plugin {
     this.pageChromeManager.destroy();
     document.body.classList.remove(BODY_CLASS_SYNTAX_DIMMING);
     document.body.classList.remove(BODY_CLASS_GUTTERED_HEADINGS);
-    this.removeTypewriterPadding();
   }
 
   async loadSettings() {
@@ -341,30 +333,6 @@ export default class YaaePlugin extends Plugin {
     });
   }
 
-  reconfigureTypewriter() {
-    this.app.workspace.iterateAllLeaves((leaf) => {
-      if (leaf.view instanceof MarkdownView) {
-        const cm = (leaf.view.editor as any).cm;
-        if (cm) {
-          cm.dispatch({
-            effects: typewriterCompartment.reconfigure(
-              this.settings.typewriterScroll ? typewriterExtension() : []
-            ),
-          });
-        }
-      }
-    });
-    if (!this.settings.typewriterScroll) {
-      this.removeTypewriterPadding();
-    }
-  }
-
-  removeTypewriterPadding() {
-    document.querySelectorAll('.cm-sizer').forEach((el) => {
-      (el as HTMLElement).style.paddingBottom = '';
-    });
-  }
-
   async toggleSyntaxDimming() {
     this.settings.syntaxDimming = !this.settings.syntaxDimming;
     this.applyBodyClasses();
@@ -384,12 +352,6 @@ export default class YaaePlugin extends Plugin {
     this.settings.focusMode = cycle[(idx + 1) % cycle.length];
     this.reconfigureFocus();
     this.updateFocusModeStatus();
-    await this.saveSettings();
-  }
-
-  async toggleTypewriterScroll() {
-    this.settings.typewriterScroll = !this.settings.typewriterScroll;
-    this.reconfigureTypewriter();
     await this.saveSettings();
   }
 
@@ -625,20 +587,6 @@ class YaaeSettingTab extends PluginSettingTab {
           })
       );
 
-    new Setting(readabilityContent)
-      .setName('Typewriter scroll')
-      .setDesc(
-        'Keep the cursor vertically centered in the viewport as you type.'
-      )
-      .addToggle((toggle) =>
-        toggle
-          .setValue(this.plugin.settings.typewriterScroll)
-          .onChange(async (value) => {
-            this.plugin.settings.typewriterScroll = value;
-            this.plugin.reconfigureTypewriter();
-            await this.plugin.saveSettings();
-          })
-      );
   }
 
   private renderAboutTab(containerEl: HTMLElement): void {

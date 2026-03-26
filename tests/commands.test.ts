@@ -18,7 +18,6 @@ const EXPECTED_COMMANDS = [
   { id: 'toggle-syntax-dimming', name: 'Toggle syntax dimming' },
   { id: 'toggle-guttered-headings', name: 'Toggle guttered headings' },
   { id: 'cycle-focus-mode', name: 'Cycle focus mode' },
-  { id: 'toggle-typewriter-scroll', name: 'Toggle typewriter scroll' },
   { id: 'yaae-validate', name: 'Validate frontmatter' },
   { id: 'yaae-generate-toc', name: 'Generate table of contents' },
   { id: 'yaae-apply-css-classes', name: 'Apply CSS classes from frontmatter' },
@@ -33,13 +32,13 @@ while ((m = COMMAND_ID_PATTERN.exec(MAIN_TS)) !== null) {
 }
 
 describe('command registration (structural)', () => {
-  it('main.ts contains addCommand calls for all 8 documented commands', () => {
+  it('main.ts contains addCommand calls for all 7 documented commands', () => {
     for (const cmd of EXPECTED_COMMANDS) {
       expect(registeredIds, `missing command: ${cmd.id}`).toContain(cmd.id);
     }
   });
 
-  it('registers exactly 8 commands', () => {
+  it('registers exactly 7 commands', () => {
     expect(registeredIds).toHaveLength(EXPECTED_COMMANDS.length);
   });
 

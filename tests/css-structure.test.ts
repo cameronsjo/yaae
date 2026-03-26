@@ -31,7 +31,7 @@ describe('styles.css — guttered headings', () => {
   });
 
   it('defines the gutter width CSS variable', () => {
-    expect(STYLES_CSS).toMatch(/--yaae-gutter-width:\s*\d+\w+/);
+    expect(STYLES_CSS).toMatch(/--yaae-gutter-width:\s*[\d.]+\w+/);
   });
 });
 

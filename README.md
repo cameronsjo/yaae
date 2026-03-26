@@ -18,7 +18,6 @@ Color-code your writing by part of speech — adjectives, nouns, adverbs, verbs,
 - **Syntax dimming** — Reduce opacity of markdown formatting characters (`**`, `*`, `#`, etc.) while keeping them visible
 - **Guttered headings** — Outdent `#` markers into the left gutter so heading text aligns with body text
 - **Focus mode** — Dim all text except the active sentence or paragraph
-- **Typewriter scroll** — Keep the cursor vertically centered as you type
 
 ### Document Management
 
@@ -62,7 +61,6 @@ CSS snippets for Obsidian's PDF export (`@yaae/print-styles`):
 | Toggle syntax dimming | Dim markdown formatting characters |
 | Toggle guttered headings | Outdent heading markers to gutter |
 | Cycle focus mode | Off → Sentence → Paragraph |
-| Toggle typewriter scroll | Keep cursor vertically centered |
 | Validate frontmatter | Check active file against Zod schemas |
 | Generate table of contents | Insert/replace TOC from headings |
 | Apply CSS classes from frontmatter | Derive and set `cssclass` for PDF export |
