@@ -172,6 +172,7 @@ ${marginBoxes.join('\n')}
 }`;
 
     this.styleEl.textContent = css;
+    console.debug('[yaae] PageChromeManager updated. CSS:', css);
   }
 
   destroy(): void {

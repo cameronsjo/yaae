@@ -179,6 +179,7 @@ export default class YaaePlugin extends Plugin {
     this.dynamicPdfPrintStyles.init(this.settings.document);
 
     // @page margin box manager for classification banners, headers, footers, page numbers
+    // NOTE: @page margin boxes require Chrome 131+ (Obsidian ships Chrome 120) — see #29
     this.pageChromeManager.init(this.buildPageChromeState());
 
     // Update page chrome when active document changes (classification comes from frontmatter)
