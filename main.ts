@@ -138,9 +138,10 @@ export default class YaaePlugin extends Plugin {
     this.addCommand({
       id: 'yaae-generate-toc',
       name: 'Generate table of contents',
-      editorCheckCallback: (checking, editor) => {
-        if (checking) return true;
-        this.generateTocForCurrentFile();
+      editorCheckCallback: (checking, _editor) => {
+        const file = this.app.workspace.getActiveFile();
+        if (!file || file.extension !== 'md') return false;
+        if (!checking) this.generateTocForCurrentFile();
         return true;
       },
     });

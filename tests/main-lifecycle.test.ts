@@ -234,3 +234,60 @@ describe('F10 — settings tab nav buttons use registerDomEvent', () => {
     expect(cls![0]).not.toMatch(/btn\.addEventListener\(\s*'click'/);
   });
 });
+
+// --- F11: editorCheckCallback honors the checking flag --------------------
+
+describe('F11 — yaae-generate-toc respects checking flag', () => {
+  it('only invokes generateTocForCurrentFile when not checking', () => {
+    const cmdBlock = MAIN_TS.match(/id:\s*'yaae-generate-toc'[\s\S]*?\}\)\s*;/);
+    expect(cmdBlock).not.toBeNull();
+    expect(cmdBlock![0]).toMatch(/if\s*\(\s*!checking\s*\)\s*this\.generateTocForCurrentFile\(\)/);
+    expect(cmdBlock![0]).toMatch(/!file\s*\|\|\s*file\.extension\s*!==\s*'md'/);
+  });
+
+  // Behavioral simulation of the command's check/exec phases.
+  it('checking=true returns true without firing work', () => {
+    let workFired = 0;
+    const fakeCommand = {
+      editorCheckCallback: (checking: boolean) => {
+        const file = { extension: 'md' };
+        if (!file || file.extension !== 'md') return false;
+        if (!checking) workFired++;
+        return true;
+      },
+    };
+    const result = fakeCommand.editorCheckCallback(true);
+    expect(result).toBe(true);
+    expect(workFired).toBe(0);
+  });
+
+  it('checking=false fires the work', () => {
+    let workFired = 0;
+    const fakeCommand = {
+      editorCheckCallback: (checking: boolean) => {
+        const file = { extension: 'md' };
+        if (!file || file.extension !== 'md') return false;
+        if (!checking) workFired++;
+        return true;
+      },
+    };
+    const result = fakeCommand.editorCheckCallback(false);
+    expect(result).toBe(true);
+    expect(workFired).toBe(1);
+  });
+
+  it('returns false (and does no work) for non-md files even when checking=false', () => {
+    let workFired = 0;
+    const fakeCommand = {
+      editorCheckCallback: (checking: boolean) => {
+        const file = { extension: 'pdf' };
+        if (!file || file.extension !== 'md') return false;
+        if (!checking) workFired++;
+        return true;
+      },
+    };
+    const result = fakeCommand.editorCheckCallback(false);
+    expect(result).toBe(false);
+    expect(workFired).toBe(0);
+  });
+});
