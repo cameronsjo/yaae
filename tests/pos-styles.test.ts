@@ -32,6 +32,23 @@ function setupDOM() {
   return { styleEl, headAppendChild, bodySetProperty };
 }
 
+/** Deep clone DEFAULT_PROSE_HIGHLIGHT_SETTINGS — the migration mutates the
+ * input to set posColorsMigrated, so passing the module-level constant
+ * directly poisons subsequent tests via shared state. */
+function freshDefaults(): ProseHighlightSettings {
+  return {
+    ...DEFAULT_PROSE_HIGHLIGHT_SETTINGS,
+    categories: {
+      adjective: { ...DEFAULT_PROSE_HIGHLIGHT_SETTINGS.categories.adjective },
+      noun: { ...DEFAULT_PROSE_HIGHLIGHT_SETTINGS.categories.noun },
+      adverb: { ...DEFAULT_PROSE_HIGHLIGHT_SETTINGS.categories.adverb },
+      verb: { ...DEFAULT_PROSE_HIGHLIGHT_SETTINGS.categories.verb },
+      conjunction: { ...DEFAULT_PROSE_HIGHLIGHT_SETTINGS.categories.conjunction },
+    },
+    customWordLists: [...DEFAULT_PROSE_HIGHLIGHT_SETTINGS.customWordLists],
+  };
+}
+
 describe('POSStyleManager', () => {
   let manager: POSStyleManager;
   let dom: ReturnType<typeof setupDOM>;
@@ -48,13 +65,13 @@ describe('POSStyleManager', () => {
   // --- Style element lifecycle ---
 
   it('should create a <style> element on init', () => {
-    manager.init(DEFAULT_PROSE_HIGHLIGHT_SETTINGS);
+    manager.init(freshDefaults());
     expect(document.createElement).toHaveBeenCalledWith('style');
     expect(dom.headAppendChild).toHaveBeenCalled();
   });
 
   it('should not emit .yaae-pos-* class selectors (static in styles.css)', () => {
-    manager.init(DEFAULT_PROSE_HIGHLIGHT_SETTINGS);
+    manager.init(freshDefaults());
     const css = dom.styleEl.textContent;
 
     expect(css).not.toContain('.yaae-pos-adjective');
@@ -62,7 +79,7 @@ describe('POSStyleManager', () => {
   });
 
   it('should not emit POS variable rules into <style> (defaults live in styles.css)', () => {
-    manager.init(DEFAULT_PROSE_HIGHLIGHT_SETTINGS);
+    manager.init(freshDefaults());
     const css = dom.styleEl.textContent;
 
     expect(css).not.toContain('--yaae-pos-adjective-color');
@@ -70,12 +87,12 @@ describe('POSStyleManager', () => {
   });
 
   it('should emit empty <style> textContent when no custom word lists exist', () => {
-    manager.init(DEFAULT_PROSE_HIGHLIGHT_SETTINGS);
+    manager.init(freshDefaults());
     expect(dom.styleEl.textContent).toBe('');
   });
 
   it('should remove <style> element on destroy', () => {
-    manager.init(DEFAULT_PROSE_HIGHLIGHT_SETTINGS);
+    manager.init(freshDefaults());
     manager.destroy();
     expect(dom.styleEl.remove).toHaveBeenCalled();
   });
@@ -83,15 +100,15 @@ describe('POSStyleManager', () => {
   // --- Migration (legacy POS color → body.style --yaae-pos-*-color-light) ---
 
   it('should not migrate when POS colors match defaults', () => {
-    manager.init(DEFAULT_PROSE_HIGHLIGHT_SETTINGS);
+    manager.init(freshDefaults());
     expect(dom.bodySetProperty).not.toHaveBeenCalled();
   });
 
   it('should migrate non-default POS color to --yaae-pos-*-color-light on body', () => {
     const customized: ProseHighlightSettings = {
-      ...DEFAULT_PROSE_HIGHLIGHT_SETTINGS,
+      ...freshDefaults(),
       categories: {
-        ...DEFAULT_PROSE_HIGHLIGHT_SETTINGS.categories,
+        ...freshDefaults().categories,
         adjective: { enabled: true, color: '#ff0000' },
       },
     };
@@ -101,7 +118,7 @@ describe('POSStyleManager', () => {
 
   it('should migrate multiple non-default POS colors', () => {
     const customized: ProseHighlightSettings = {
-      ...DEFAULT_PROSE_HIGHLIGHT_SETTINGS,
+      ...freshDefaults(),
       categories: {
         adjective: { enabled: true, color: '#ff0000' },
         noun: { enabled: true, color: '#00ff00' },
@@ -116,11 +133,62 @@ describe('POSStyleManager', () => {
     expect(dom.bodySetProperty).toHaveBeenCalledTimes(2);
   });
 
+  // --- F1: Migration latch (posColorsMigrated flag) ---
+
+  it('migration is one-shot: second init with the flag set does NOT re-stamp inline styles', () => {
+    const customized: ProseHighlightSettings = {
+      ...freshDefaults(),
+      categories: {
+        ...freshDefaults().categories,
+        adjective: { enabled: true, color: '#ff0000' },
+      },
+    };
+
+    // First init runs migration and flips the latch
+    manager.init(customized);
+    expect(dom.bodySetProperty).toHaveBeenCalledTimes(1);
+    expect(customized.posColorsMigrated).toBe(true);
+
+    // Second init must NOT re-stamp — would clobber Style Settings overrides
+    dom.bodySetProperty.mockClear();
+    manager.destroy();
+    manager.init(customized);
+    expect(dom.bodySetProperty).not.toHaveBeenCalled();
+  });
+
+  it('skips migration entirely when posColorsMigrated flag is already set', () => {
+    const previouslyMigrated: ProseHighlightSettings = {
+      ...freshDefaults(),
+      categories: {
+        ...freshDefaults().categories,
+        adjective: { enabled: true, color: '#deadbeef' },
+      },
+      posColorsMigrated: true,
+    };
+
+    manager.init(previouslyMigrated);
+    expect(dom.bodySetProperty).not.toHaveBeenCalled();
+  });
+
+  it('init() returns true when migration ran, false on subsequent runs', () => {
+    const customized: ProseHighlightSettings = {
+      ...freshDefaults(),
+      categories: {
+        ...freshDefaults().categories,
+        adjective: { enabled: true, color: '#ff0000' },
+      },
+    };
+
+    expect(manager.init(customized)).toBe(true);
+    manager.destroy();
+    expect(manager.init(customized)).toBe(false);
+  });
+
   // --- Custom word list rules ---
 
   it('should include custom word list CSS rules as direct class selectors', () => {
     const settings: ProseHighlightSettings = {
-      ...DEFAULT_PROSE_HIGHLIGHT_SETTINGS,
+      ...freshDefaults(),
       customWordLists: [
         {
           name: 'Cloud Providers',
@@ -141,7 +209,7 @@ describe('POSStyleManager', () => {
 
   it('should handle multiple word lists', () => {
     const settings: ProseHighlightSettings = {
-      ...DEFAULT_PROSE_HIGHLIGHT_SETTINGS,
+      ...freshDefaults(),
       customWordLists: [
         { name: 'List A', words: ['foo'], color: '#aaa', enabled: true, caseSensitive: false },
         { name: 'List B', words: ['bar'], color: '#bbb', enabled: true, caseSensitive: false },
@@ -159,14 +227,14 @@ describe('POSStyleManager', () => {
 
   it('update() should replace old list rules with new ones', () => {
     manager.init({
-      ...DEFAULT_PROSE_HIGHLIGHT_SETTINGS,
+      ...freshDefaults(),
       customWordLists: [
         { name: 'Old', words: ['x'], color: '#111', enabled: true, caseSensitive: false },
       ],
     });
 
     manager.update({
-      ...DEFAULT_PROSE_HIGHLIGHT_SETTINGS,
+      ...freshDefaults(),
       customWordLists: [
         { name: 'New', words: ['y'], color: '#222', enabled: true, caseSensitive: false },
       ],
@@ -181,7 +249,7 @@ describe('POSStyleManager', () => {
   // --- Unhappy paths ---
 
   it('update() before init() should be a no-op', () => {
-    manager.update(DEFAULT_PROSE_HIGHLIGHT_SETTINGS);
+    manager.update(freshDefaults());
     expect(dom.styleEl.textContent).toBe('');
   });
 
@@ -190,14 +258,14 @@ describe('POSStyleManager', () => {
   });
 
   it('destroy() called twice should not throw', () => {
-    manager.init(DEFAULT_PROSE_HIGHLIGHT_SETTINGS);
+    manager.init(freshDefaults());
     manager.destroy();
     expect(() => manager.destroy()).not.toThrow();
   });
 
   it('should skip word lists with empty name', () => {
     const settings: ProseHighlightSettings = {
-      ...DEFAULT_PROSE_HIGHLIGHT_SETTINGS,
+      ...freshDefaults(),
       customWordLists: [
         { name: '', words: ['x'], color: '#abc', enabled: true, caseSensitive: false },
       ],
@@ -212,7 +280,7 @@ describe('POSStyleManager', () => {
 
   it('should skip word lists whose name sanitizes to empty', () => {
     const settings: ProseHighlightSettings = {
-      ...DEFAULT_PROSE_HIGHLIGHT_SETTINGS,
+      ...freshDefaults(),
       customWordLists: [
         { name: '!!!', words: ['x'], color: '#abc', enabled: true, caseSensitive: false },
       ],
@@ -226,8 +294,23 @@ describe('POSStyleManager', () => {
   });
 
   it('update() after destroy() should be a no-op', () => {
-    manager.init(DEFAULT_PROSE_HIGHLIGHT_SETTINGS);
+    manager.init(freshDefaults());
     manager.destroy();
-    expect(() => manager.update(DEFAULT_PROSE_HIGHLIGHT_SETTINGS)).not.toThrow();
+    expect(() => manager.update(freshDefaults())).not.toThrow();
+  });
+
+  // --- F5: Idempotent init (no orphan <style> on double-init) ---
+
+  it('init() called twice removes the first <style> element before creating the second', () => {
+    manager.init(freshDefaults());
+    const firstEl = dom.styleEl;
+    const firstRemove = firstEl.remove;
+
+    // Second init must destroy the prior element so it does not orphan
+    manager.init(freshDefaults());
+
+    expect(firstRemove).toHaveBeenCalled();
+    // setupDOM() reuses the same mock for createElement; called once per init()
+    expect(document.createElement).toHaveBeenCalledTimes(2);
   });
 });

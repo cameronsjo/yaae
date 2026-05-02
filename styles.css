@@ -117,14 +117,12 @@ settings:
     description: Color applied to unfocused text in light theme (defaults to --text-faint)
     type: variable-color
     format: hex
-    default: '#'
   -
     id: yaae-dimmed-color-dark
     title: Dimmed text color (dark)
     description: Color applied to unfocused text in dark theme (defaults to --text-faint)
     type: variable-color
     format: hex
-    default: '#'
   -
     id: yaae-dimmed-transition
     title: Fade transition
