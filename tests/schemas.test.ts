@@ -13,6 +13,9 @@ import type { CustomClassification } from '../src/schemas';
 const wrap = (yaml: string, body = '') =>
   `---\n${yaml}\n---\n${body}`;
 
+/** Matches strings safe for use as CSS class names (no whitespace, no selector chars). */
+const SAFE_CSS_FRAGMENT_RE = /^[a-zA-Z0-9_-]+$/;
+
 // ---------------------------------------------------------------------------
 // extractFrontmatter
 // ---------------------------------------------------------------------------
@@ -587,6 +590,32 @@ describe('deriveCssClasses', () => {
     expect(classes).toContain('pdf-copy-safe');
     expect(classes).toContain('pdf-compact-tables');
     expect(classes).toContain('pdf-font-sans');
+  });
+
+  // F4: data.json can be tampered directly to bypass Zod, so deriveCssClasses
+  // must sanitize before interpolating into class strings. Otherwise
+  // classList.add() will throw on whitespace-bearing class names.
+  it('skips classification class when value contains injection characters', () => {
+    const tampered = {
+      classification: 'internal extra-class',
+      status: 'draft',
+      export: { pdf: {} },
+    } as any;
+    const classes = deriveCssClasses(tampered);
+    // No `pdf-internal extra-class` token (would explode on classList.add)
+    expect(classes.every((c) => !c.includes(' '))).toBe(true);
+    expect(classes.find((c) => c.startsWith('pdf-internal'))).toBeUndefined();
+  });
+
+  it('skips status class when value contains injection characters', () => {
+    const tampered = {
+      classification: 'internal',
+      status: 'draft } * { display: none',
+      export: { pdf: {} },
+    } as any;
+    const classes = deriveCssClasses(tampered);
+    expect(classes.every((c) => SAFE_CSS_FRAGMENT_RE.test(c))).toBe(true);
+    expect(classes.find((c) => c.startsWith('pdf-draft '))).toBeUndefined();
   });
 
   it('includes watermark class when set', () => {
