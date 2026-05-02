@@ -1,6 +1,6 @@
 import type { CustomClassification } from '../schemas/classification';
 import { getClassificationMeta } from '../schemas/classification';
-import type { DocumentSettings, FontPreset } from './settings';
+import type { DocumentSettings, FontPreset, ThemeMode } from './settings';
 import { DEFAULT_DOCUMENT_SETTINGS } from './settings';
 import { escapeCssString, sanitizeColor, clampNumber, sanitizeFontFamily, sanitizeCssId } from './css-sanitize';
 
@@ -38,7 +38,7 @@ export interface PageChromeState {
    * overrides propagate here from `YaaePlugin.updatePageChromeFromActiveFile`;
    * absent that, the global setting from `buildPageChromeState` is used.
    */
-  theme: 'light' | 'dark' | 'auto';
+  theme: ThemeMode;
 }
 
 /** Shared base styles for banner margin boxes.

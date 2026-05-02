@@ -98,6 +98,9 @@ export class WordListMatcher {
 
       const pattern = sorted.map(escapeRegex).join('|');
       const flags = list.caseSensitive ? 'g' : 'gi';
+      // ReDoS-safe: every entry is escapeRegex'd (literalizes `.*+?^${}()|[]\`),
+      // alternation is a non-capturing group, and `\b` doesn't backtrack.
+      // Adversarial input is moot — words come from this user's own settings.
       const regex = new RegExp(`\\b(?:${pattern})\\b`, flags);
 
       this.compiled.push({

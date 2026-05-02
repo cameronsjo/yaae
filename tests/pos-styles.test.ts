@@ -321,7 +321,7 @@ describe('POSStyleManager', () => {
     // POSStyleManager would emit two rules for the same selector, and the
     // second list's color would silently overwrite the first's.
     const settings: ProseHighlightSettings = {
-      ...DEFAULT_PROSE_HIGHLIGHT_SETTINGS,
+      ...freshDefaults(),
       customWordLists: [
         { name: 'My List', words: ['x'], color: '#aaaaaa', enabled: true, caseSensitive: false },
         { name: 'my-list', words: ['y'], color: '#bbbbbb', enabled: true, caseSensitive: false },

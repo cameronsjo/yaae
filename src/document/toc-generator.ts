@@ -59,7 +59,7 @@ function parseHeadings(content: string, maxDepth: number): TocEntry[] {
   const lines = content.split('\n');
   const entries: TocEntry[] = [];
   let inFrontmatter = false;
-  let inCodeBlock = false;
+  let activeFence: '```' | '~~~' | null = null;
   let frontmatterClosed = false;
 
   for (const line of lines) {
@@ -75,12 +75,17 @@ function parseHeadings(content: string, maxDepth: number): TocEntry[] {
     }
     if (inFrontmatter) continue;
 
-    // Track code blocks (both backtick and tilde fences)
-    if (/^(```|~~~)/.test(line.trimStart())) {
-      inCodeBlock = !inCodeBlock;
+    // Track code blocks. A `~~~` line inside a backtick fence (or vice versa)
+    // must NOT close the outer block, so track which marker opened the fence
+    // and only close on a matching marker.
+    const fenceMatch = line.trimStart().match(/^(```+|~~~+)/);
+    if (fenceMatch) {
+      const marker = fenceMatch[1].startsWith('`') ? '```' : '~~~';
+      if (activeFence === null) activeFence = marker;
+      else if (activeFence === marker) activeFence = null;
       continue;
     }
-    if (inCodeBlock) continue;
+    if (activeFence !== null) continue;
 
     // Match headings
     const match = line.match(/^(#{1,6})\s+(.+)$/);

@@ -134,14 +134,26 @@ export function renderDocumentSettings(
           .onChange(async (value) => {
             entry.id = sanitizeClassificationId(value);
             const valid = isValidClassificationId(entry.id);
-            row.setDesc(
-              valid
-                ? `Frontmatter value: ${entry.id}`
-                : 'ID required — at least one letter or digit',
+            // Frontmatter resolution returns the first matching custom, so a
+            // duplicate ID silently shadows the older entry. Block save on
+            // collision and surface the conflict instead.
+            const duplicate = valid && customs.some(
+              (c, i) =>
+                c.id === entry.id &&
+                !(source.kind === 'persisted' && i === source.index),
             );
-            row.settingEl.toggleClass('is-invalid', !valid);
+            row.setDesc(
+              !valid
+                ? 'ID required — at least one letter or digit'
+                : duplicate
+                  ? `ID "${entry.id}" already in use — choose a different ID`
+                  : `Frontmatter value: ${entry.id}`,
+            );
+            row.settingEl.toggleClass('is-invalid', !valid || duplicate);
 
-            if (source.kind === 'draft' && valid) {
+            if (!valid || duplicate) return;
+
+            if (source.kind === 'draft') {
               // Commit the draft into the persisted list. Re-render so the
               // row is now backed by the array (gets a real index, trash
               // button works, future edits hit the correct slot).
@@ -152,10 +164,7 @@ export function renderDocumentSettings(
               return;
             }
 
-            if (source.kind === 'persisted' && valid) {
-              await saveAndRefreshPrintStyles();
-            }
-            // Otherwise: invalid ID — keep editing in memory, do not persist.
+            await saveAndRefreshPrintStyles();
           }),
       );
 

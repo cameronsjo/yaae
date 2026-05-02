@@ -20,16 +20,21 @@ describe('sanitizeClassificationId', () => {
     expect(sanitizeClassificationId('non!@#sensitive')).toBe('nonsensitive');
   });
 
-  it('produces a hyphen for whitespace-only input (documenting the F3 bug surface)', () => {
-    // The sanitizer collapses any run of whitespace into a single hyphen
-    // via `\s+`. The result is non-empty — passing the prior truthy save
-    // guard `if (entry.id)` and persisting `id: '-'`. isValidClassificationId
-    // is what protects us going forward.
-    expect(sanitizeClassificationId('   ')).toBe('-');
+  it('produces empty string for whitespace-only input', () => {
+    // Sanitizer trims edge whitespace and strips edge hyphens, so
+    // whitespace-only input collapses to ''. isValidClassificationId then
+    // rejects it as a save guard.
+    expect(sanitizeClassificationId('   ')).toBe('');
   });
 
   it('produces empty string for input with no allowed chars', () => {
     expect(sanitizeClassificationId('!@#$%')).toBe('');
+  });
+
+  it('trims edge whitespace and strips edge hyphens', () => {
+    expect(sanitizeClassificationId(' non sensitive ')).toBe('non-sensitive');
+    expect(sanitizeClassificationId('-foo-')).toBe('foo');
+    expect(sanitizeClassificationId('--foo--bar--')).toBe('foo-bar');
   });
 });
 
@@ -52,7 +57,7 @@ describe('isValidClassificationId (F3 save guard)', () => {
 
   it('end-to-end: whitespace-only input is sanitized then rejected', () => {
     const sanitized = sanitizeClassificationId('   ');
-    expect(sanitized).toBe('-');
+    expect(sanitized).toBe('');
     expect(isValidClassificationId(sanitized)).toBe(false);
   });
 

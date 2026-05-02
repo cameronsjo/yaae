@@ -34,8 +34,9 @@ describe('F1 — export.pdf.theme propagates to PageChromeManager', () => {
     // Field is required — consumed by PageChromeManager.update for the
     // auto-theme branch. Per-document `export.pdf.theme` frontmatter
     // overrides still propagate; main.ts spreads the override on top of
-    // the global default from buildPageChromeState.
-    expect(printStyles).toMatch(/theme:\s*'light'\s*\|\s*'dark'\s*\|\s*'auto'/);
+    // the global default from buildPageChromeState. Type aliased to
+    // ThemeMode (imported from ./settings) so the union lives in one place.
+    expect(printStyles).toMatch(/theme:\s*ThemeMode/);
   });
 });
 

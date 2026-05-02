@@ -80,11 +80,16 @@ export function getClassificationMeta(
   const trimmed = level.trim();
   if (!trimmed) return null;
 
-  // Custom classifications override built-ins
-  const custom = customClassifications.find((c) => c.id === trimmed);
+  // Custom classifications override built-ins. Trim both sides — a stored
+  // custom ID like ' sensitive ' must resolve the same as `sensitive`, and
+  // the returned `level` must be the canonical (trimmed) form so that
+  // downstream class derivation is stable.
+  const custom = customClassifications.find(
+    (c) => typeof c.id === 'string' && c.id.trim() === trimmed,
+  );
   if (custom) {
     return {
-      level: custom.id,
+      level: custom.id.trim(),
       label: custom.label,
       color: custom.color,
       background: custom.background,
@@ -114,8 +119,8 @@ export function getAllClassificationIds(
 ): string[] {
   const builtinIds = Object.keys(CLASSIFICATION_TAXONOMY);
   const customIds = customClassifications
-    .map((c) => c.id)
-    .filter((id): id is string => typeof id === 'string' && id.trim() !== '');
+    .map((c) => (typeof c.id === 'string' ? c.id.trim() : ''))
+    .filter((id) => id !== '');
   // Custom IDs can shadow built-in ones; deduplicate
   return [...new Set([...builtinIds, ...customIds])];
 }

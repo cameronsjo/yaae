@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   buildSpans,
   createReadingViewPostProcessor,
@@ -38,6 +38,14 @@ function makeList(overrides: Partial<CustomWordList> = {}): CustomWordList {
 function makePlugin(s: ProseHighlightSettings) {
   return { settings: { proseHighlight: s } } as never;
 }
+
+// Restore globalThis stubs after each test so the file is self-contained
+// and any future test added to this suite can't accidentally inherit
+// half-mocked DOM globals from a prior test.
+afterEach(() => {
+  delete (globalThis as Record<string, unknown>).document;
+  delete (globalThis as Record<string, unknown>).NodeFilter;
+});
 
 function makeBlockEl(text: string): HTMLElement {
   // jsdom is not enabled — fabricate the minimum shape the post-processor

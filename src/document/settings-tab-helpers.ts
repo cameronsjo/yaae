@@ -8,13 +8,19 @@
 
 /**
  * Sanitize a classification ID input into a slug-safe string.
- * Lowercases, replaces whitespace runs with hyphens, strips non `[a-z0-9-]`.
- *
- * Note: This does NOT guarantee a meaningful ID. Use {@link isValidClassificationId}
- * to gate persistence — whitespace-only input sanitizes to a hyphen.
+ * Lowercases, replaces whitespace runs with hyphens, strips non `[a-z0-9-]`,
+ * collapses hyphen runs, and trims edge hyphens. The trim matters because
+ * leading/trailing whitespace in user paste must not become semantically
+ * significant — `' foo '` and `'foo'` resolve to the same ID.
  */
 export function sanitizeClassificationId(input: string): string {
-  return input.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  return input
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
 
 /**
@@ -26,24 +32,19 @@ export function isValidClassificationId(id: string): boolean {
   return /[a-z0-9]/.test(id);
 }
 
+/** Named font dropdown presets. Source of truth — UI dropdown derives from this. */
+export const FONT_PRESETS = ['sans', 'serif', 'mono', 'system'] as const;
+
+export type FontPreset = (typeof FONT_PRESETS)[number];
+
 /**
  * Whether a font value is one of the named dropdown presets.
  * Arbitrary strings (e.g. "Inter", "Helvetica Neue") return false and
  * should be displayed via the "Custom" branch of the dropdown UI so a
  * stray click on the dropdown doesn't silently overwrite the stored value.
  */
-export function isFontPreset(
-  value: string,
-): value is 'sans' | 'serif' | 'mono' | 'system' {
-  switch (value) {
-    case 'sans':
-    case 'serif':
-    case 'mono':
-    case 'system':
-      return true;
-    default:
-      return false;
-  }
+export function isFontPreset(value: string): value is FontPreset {
+  return (FONT_PRESETS as readonly string[]).includes(value);
 }
 
 /** Sentinel value used by the font dropdown to surface a custom string. */
