@@ -3,6 +3,7 @@ import type YaaePlugin from '../../main';
 import {
   getAllClassificationIds,
   getClassificationMeta,
+  type CustomClassification,
   type WatermarkLevel,
 } from '../schemas';
 import type { LinksMode, ThemeMode } from './settings';
@@ -88,16 +89,41 @@ export function renderDocumentSettings(
     plugin.pageChromeManager.update(plugin.buildPageChromeState());
   }
 
+  // Draft entry for the "Add classification" flow. Held outside
+  // `customClassifications` until it has a valid ID, so partial entries
+  // never get persisted to disk (and an interrupted edit can't load a
+  // half-written `id: ''` row on next reload).
+  let draftEntry: CustomClassification | null = null;
+
   function renderCustomClassifications() {
     customListEl.empty();
     const customs = plugin.settings.document.customClassifications;
 
-    for (let i = 0; i < customs.length; i++) {
-      const entry = customs[i];
+    type RowSource =
+      | { kind: 'persisted'; entry: CustomClassification; index: number }
+      | { kind: 'draft'; entry: CustomClassification };
+
+    const rows: RowSource[] = customs.map((entry, index) => ({
+      kind: 'persisted',
+      entry,
+      index,
+    }));
+    if (draftEntry) rows.push({ kind: 'draft', entry: draftEntry });
+
+    for (const source of rows) {
+      const entry = source.entry;
+      const isDraft = source.kind === 'draft';
 
       const row = new Setting(customListEl)
         .setName(entry.label || entry.id || 'New classification')
-        .setDesc(entry.id ? `Frontmatter value: ${entry.id}` : '');
+        .setDesc(
+          isDraft
+            ? 'ID required — type a slug (e.g., non-sensitive)'
+            : entry.id
+              ? `Frontmatter value: ${entry.id}`
+              : '',
+        );
+      if (isDraft) row.settingEl.toggleClass('is-invalid', true);
 
       row.addText((text) =>
         text
@@ -112,7 +138,22 @@ export function renderDocumentSettings(
                 : 'ID required — at least one letter or digit',
             );
             row.settingEl.toggleClass('is-invalid', !valid);
-            if (valid) await saveAndRefreshPrintStyles();
+
+            if (source.kind === 'draft' && valid) {
+              // Commit the draft into the persisted list. Re-render so the
+              // row is now backed by the array (gets a real index, trash
+              // button works, future edits hit the correct slot).
+              customs.push(entry);
+              draftEntry = null;
+              await saveAndRefreshPrintStyles();
+              renderCustomClassifications();
+              return;
+            }
+
+            if (source.kind === 'persisted' && valid) {
+              await saveAndRefreshPrintStyles();
+            }
+            // Otherwise: invalid ID — keep editing in memory, do not persist.
           }),
       );
 
@@ -123,14 +164,21 @@ export function renderDocumentSettings(
           .onChange(async (value) => {
             entry.label = value;
             row.setName(value || entry.id || 'New classification');
-            await saveAndRefreshPrintStyles();
+            // Only persist when the entry has a real, valid ID. Drafts and
+            // entries with placeholder IDs stay in memory until a valid ID
+            // is typed.
+            if (!isDraft && isValidClassificationId(entry.id)) {
+              await saveAndRefreshPrintStyles();
+            }
           }),
       );
 
       const colorPicker = row.addColorPicker((picker) =>
         picker.setValue(entry.color).onChange(async (value) => {
           entry.color = value;
-          await saveAndRefreshPrintStyles();
+          if (!isDraft && isValidClassificationId(entry.id)) {
+            await saveAndRefreshPrintStyles();
+          }
         }),
       );
       setTooltip(colorPicker.colorPickerEl, 'Text color');
@@ -138,33 +186,43 @@ export function renderDocumentSettings(
       const bgPicker = row.addColorPicker((picker) =>
         picker.setValue(entry.background).onChange(async (value) => {
           entry.background = value;
-          await saveAndRefreshPrintStyles();
+          if (!isDraft && isValidClassificationId(entry.id)) {
+            await saveAndRefreshPrintStyles();
+          }
         }),
       );
       setTooltip(bgPicker.colorPickerEl, 'Background color');
 
       row.addExtraButton((btn) =>
         btn.setIcon('trash').setTooltip('Remove').onClick(async () => {
-          customs.splice(i, 1);
+          if (source.kind === 'draft') {
+            draftEntry = null;
+            renderCustomClassifications();
+            return;
+          }
+          customs.splice(source.index, 1);
           await saveAndRefreshPrintStyles();
           renderCustomClassifications();
         }),
       );
     }
 
-    // Add button
-    new Setting(customListEl).addButton((btn) =>
-      btn.setButtonText('Add classification').onClick(async () => {
-        customs.push({
+    // "Add classification" creates an in-memory draft only — disabled while
+    // a draft is already pending so the UI stays honest about what's
+    // persisted vs. what's still being typed.
+    new Setting(customListEl).addButton((btn) => {
+      btn.setButtonText('Add classification').onClick(() => {
+        if (draftEntry) return;
+        draftEntry = {
           id: '',
           label: '',
           color: '#666666',
           background: '#f5f5f5',
-        });
-        await plugin.saveSettings();
+        };
         renderCustomClassifications();
-      }),
-    );
+      });
+      if (draftEntry) btn.setDisabled(true);
+    });
   }
 
   renderCustomClassifications();

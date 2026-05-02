@@ -60,3 +60,30 @@ describe('isValidClassificationId (F3 save guard)', () => {
     expect(isValidClassificationId(sanitized)).toBe(true);
   });
 });
+
+describe('draft-entry persistence gate (F2)', () => {
+  // The Add classification flow holds an in-memory draft until the user types
+  // a valid ID. Persisting hinges on isValidClassificationId — these tests
+  // document the per-keystroke save decision.
+  type Stage = 'create' | 'typing' | 'invalid' | 'valid';
+  const shouldPersist = (id: string, stage: Stage) =>
+    stage !== 'create' && isValidClassificationId(id);
+
+  it('does not persist on initial Add click', () => {
+    expect(shouldPersist('', 'create')).toBe(false);
+  });
+
+  it('does not persist while ID is empty', () => {
+    expect(shouldPersist('', 'typing')).toBe(false);
+  });
+
+  it('does not persist while ID is whitespace-only (post-sanitize: hyphen)', () => {
+    const sanitized = sanitizeClassificationId('   ');
+    expect(shouldPersist(sanitized, 'invalid')).toBe(false);
+  });
+
+  it('persists once ID has at least one alphanumeric char', () => {
+    const sanitized = sanitizeClassificationId('non sensitive');
+    expect(shouldPersist(sanitized, 'valid')).toBe(true);
+  });
+});
