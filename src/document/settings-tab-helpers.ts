@@ -25,3 +25,26 @@ export function sanitizeClassificationId(input: string): string {
 export function isValidClassificationId(id: string): boolean {
   return /[a-z0-9]/.test(id);
 }
+
+/**
+ * Whether a font value is one of the named dropdown presets.
+ * Arbitrary strings (e.g. "Inter", "Helvetica Neue") return false and
+ * should be displayed via the "Custom" branch of the dropdown UI so a
+ * stray click on the dropdown doesn't silently overwrite the stored value.
+ */
+export function isFontPreset(
+  value: string,
+): value is 'sans' | 'serif' | 'mono' | 'system' {
+  switch (value) {
+    case 'sans':
+    case 'serif':
+    case 'mono':
+    case 'system':
+      return true;
+    default:
+      return false;
+  }
+}
+
+/** Sentinel value used by the font dropdown to surface a custom string. */
+export const FONT_CUSTOM_SENTINEL = 'custom';

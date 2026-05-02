@@ -9,6 +9,8 @@ import {
 import type { LinksMode, ThemeMode } from './settings';
 import { createCollapsibleSection } from '../settings/collapsible-section';
 import {
+  FONT_CUSTOM_SENTINEL,
+  isFontPreset,
   isValidClassificationId,
   sanitizeClassificationId,
 } from './settings-tab-helpers';
@@ -249,6 +251,36 @@ export function renderDocumentSettings(
         }),
     );
 
+  // Font family: named presets pipe to static CSS classes; arbitrary strings
+  // go through DynamicPdfPrintStyleManager. The dropdown surfaces a
+  // "Custom..." option that reveals the text input row below — this prevents
+  // the prior bug where opening the dropdown to inspect would silently
+  // overwrite an arbitrary `fontFamily` (e.g. "Inter") with "sans" because
+  // the dropdown fell back to "sans" on first render.
+  const currentFont = plugin.settings.document.fontFamily;
+  const fontIsCustom = !isFontPreset(currentFont);
+
+  // Build the custom-font row first so we can reference its element from
+  // the dropdown's onChange handler.
+  let focusCustomFontInput: (() => void) | null = null;
+  const customFontRow = new Setting(appearanceContent)
+    .setName('Custom font')
+    .setDesc('Comma-separated font stack (e.g., "Inter", -apple-system, sans-serif).')
+    .addText((text) => {
+      focusCustomFontInput = () => text.inputEl.focus();
+      text
+        .setPlaceholder('"Inter", -apple-system, sans-serif')
+        .setValue(fontIsCustom ? currentFont : '')
+        .onChange(async (value) => {
+          const trimmed = value.trim();
+          if (!trimmed) return;
+          plugin.settings.document.fontFamily = trimmed;
+          plugin.dynamicPdfPrintStyles.update(plugin.settings.document);
+          await plugin.saveSettings();
+        });
+    });
+  if (!fontIsCustom) customFontRow.settingEl.setAttribute('hidden', '');
+
   new Setting(appearanceContent)
     .setName('Font family')
     .setDesc('Font stack for PDF export. Named presets use safe system fonts.')
@@ -258,15 +290,22 @@ export function renderDocumentSettings(
         .addOption('serif', 'Serif')
         .addOption('mono', 'Monospace')
         .addOption('system', 'System default')
-        .setValue(
-          ['sans', 'serif', 'mono', 'system'].includes(plugin.settings.document.fontFamily)
-            ? plugin.settings.document.fontFamily
-            : 'sans'
-        )
+        .addOption(FONT_CUSTOM_SENTINEL, 'Custom...')
+        .setValue(fontIsCustom ? FONT_CUSTOM_SENTINEL : currentFont)
         .onChange(async (value) => {
+          if (value === FONT_CUSTOM_SENTINEL) {
+            // Reveal the custom input but DO NOT overwrite the stored
+            // fontFamily. If the stored value was already a custom string,
+            // this is a no-op for state; if it was a preset, the user must
+            // type a value before anything is persisted.
+            customFontRow.settingEl.removeAttribute('hidden');
+            focusCustomFontInput?.();
+            return;
+          }
           plugin.settings.document.fontFamily = value;
           plugin.dynamicPdfPrintStyles.update(plugin.settings.document);
           await plugin.saveSettings();
+          customFontRow.settingEl.setAttribute('hidden', '');
         }),
     );
 

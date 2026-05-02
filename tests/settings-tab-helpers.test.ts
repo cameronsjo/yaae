@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
+  FONT_CUSTOM_SENTINEL,
+  isFontPreset,
   isValidClassificationId,
   sanitizeClassificationId,
 } from '../src/document/settings-tab-helpers';
@@ -85,5 +87,57 @@ describe('draft-entry persistence gate (F2)', () => {
   it('persists once ID has at least one alphanumeric char', () => {
     const sanitized = sanitizeClassificationId('non sensitive');
     expect(shouldPersist(sanitized, 'valid')).toBe(true);
+  });
+});
+
+describe('isFontPreset (F4 dropdown detection)', () => {
+  it('recognizes the four named presets', () => {
+    expect(isFontPreset('sans')).toBe(true);
+    expect(isFontPreset('serif')).toBe(true);
+    expect(isFontPreset('mono')).toBe(true);
+    expect(isFontPreset('system')).toBe(true);
+  });
+
+  it('rejects arbitrary font strings', () => {
+    expect(isFontPreset('Inter')).toBe(false);
+    expect(isFontPreset('"Helvetica Neue", sans-serif')).toBe(false);
+    expect(isFontPreset('')).toBe(false);
+  });
+
+  it('rejects the custom sentinel itself (UI-only marker)', () => {
+    // The sentinel is a UI-only marker — it must never round-trip into
+    // settings as if it were a real preset.
+    expect(isFontPreset(FONT_CUSTOM_SENTINEL)).toBe(false);
+  });
+});
+
+describe('font-family persistence behavior (F4)', () => {
+  // These tests document the contract: arbitrary `fontFamily` values must
+  // survive a no-op dropdown interaction. The dropdown UI uses isFontPreset
+  // to decide whether to render the value as a preset selection or as the
+  // custom sentinel.
+  it('arbitrary font value displays via the Custom branch', () => {
+    const stored = 'Inter';
+    const displayValue = isFontPreset(stored) ? stored : FONT_CUSTOM_SENTINEL;
+    expect(displayValue).toBe(FONT_CUSTOM_SENTINEL);
+  });
+
+  it('preset value displays as itself', () => {
+    const stored = 'serif';
+    const displayValue = isFontPreset(stored) ? stored : FONT_CUSTOM_SENTINEL;
+    expect(displayValue).toBe('serif');
+  });
+
+  it('arbitrary fontFamily survives a no-op dropdown interaction', () => {
+    // Simulating: user has 'Inter' stored, opens the dropdown (which shows
+    // 'Custom...' selected), clicks 'Custom...' again. The new dropdown
+    // value is the sentinel, which the onChange handler treats as "reveal
+    // input, do not overwrite".
+    let stored = 'Inter';
+    const newDropdownValue = FONT_CUSTOM_SENTINEL;
+    if (newDropdownValue !== FONT_CUSTOM_SENTINEL) {
+      stored = newDropdownValue;
+    }
+    expect(stored).toBe('Inter');
   });
 });
