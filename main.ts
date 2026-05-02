@@ -393,6 +393,7 @@ export default class YaaePlugin extends Plugin {
   async validateCurrentFile() {
     const file = this.app.workspace.getActiveFile();
     if (!file) return;
+    if (!(file instanceof TFile)) return;
     const content = await this.app.vault.read(file);
     const result = validateMarkdown(content);
 
@@ -423,6 +424,7 @@ export default class YaaePlugin extends Plugin {
   async generateTocForCurrentFile() {
     const file = this.app.workspace.getActiveFile();
     if (!file) return;
+    if (!(file instanceof TFile)) return;
     const content = await this.app.vault.read(file);
 
     // Race guard: if the user switched files during the read, do NOT modify
@@ -445,6 +447,7 @@ export default class YaaePlugin extends Plugin {
   async applyCssClassesFromFrontmatter() {
     const file = this.app.workspace.getActiveFile();
     if (!file) return;
+    if (!(file instanceof TFile)) return;
     const content = await this.app.vault.read(file);
     const result = validateMarkdown(content);
 

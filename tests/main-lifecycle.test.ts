@@ -124,3 +124,27 @@ describe('F6 — non-markdown active leaf preserves last markdown chrome', () =>
     expect(branchBody).toMatch(/return/);
   });
 });
+
+// --- F7: TFile type guards -----------------------------------------------
+
+describe('F7 — vault.read call sites guard with TFile instanceof', () => {
+  it('validateCurrentFile checks instanceof TFile', () => {
+    const fn = MAIN_TS.match(/async\s+validateCurrentFile\s*\(\s*\)\s*\{[\s\S]*?\n\s{2}\}/);
+    expect(fn).not.toBeNull();
+    expect(fn![0]).toMatch(/if\s*\(\s*!\(\s*file\s+instanceof\s+TFile\s*\)\s*\)\s*return/);
+  });
+
+  it('generateTocForCurrentFile checks instanceof TFile', () => {
+    const fn = MAIN_TS.match(/async\s+generateTocForCurrentFile\s*\(\s*\)\s*\{[\s\S]*?\n\s{2}\}/);
+    expect(fn).not.toBeNull();
+    expect(fn![0]).toMatch(/if\s*\(\s*!\(\s*file\s+instanceof\s+TFile\s*\)\s*\)\s*return/);
+  });
+
+  it('applyCssClassesFromFrontmatter checks instanceof TFile', () => {
+    const fn = MAIN_TS.match(
+      /async\s+applyCssClassesFromFrontmatter\s*\(\s*\)\s*\{[\s\S]*?\n\s{2}\}/,
+    );
+    expect(fn).not.toBeNull();
+    expect(fn![0]).toMatch(/if\s*\(\s*!\(\s*file\s+instanceof\s+TFile\s*\)\s*\)\s*return/);
+  });
+});
