@@ -4,7 +4,7 @@ import { CompromiseTagger } from './tagger';
 import { WordListMatcher } from './word-lists';
 import type { POSTag } from './tagger';
 import type { WordListMatch } from './word-lists';
-import type { POSCategory } from '../types';
+import type { CustomWordList, POSCategory } from '../types';
 
 /** Elements whose text content should not be processed */
 const SKIP_SELECTORS = 'code, pre, .frontmatter, .metadata-container, th, .math, .MathJax';
@@ -22,17 +22,31 @@ const POS_CLASS: Record<POSCategory, string> = {
  * Creates a MarkdownPostProcessor that highlights prose in Reading View.
  * Uses TreeWalker to find text nodes, runs POS tagger + word list matcher,
  * then wraps matched words in <span> elements with CSS classes.
+ *
+ * The tagger and matcher are constructed once and reused across blocks.
+ * Word-list regexes are only recompiled when the underlying settings array
+ * reference changes — a 40-block document with 5 lists × 50 words used to
+ * trigger 200 regex compiles per render; now it triggers one (or zero on a
+ * settings-stable run).
  */
 export function createReadingViewPostProcessor(plugin: YaaePlugin) {
   const tagger = new CompromiseTagger();
   const listMatcher = new WordListMatcher();
+  let compiledFor: CustomWordList[] | null = null;
+
+  function ensureCompiled(lists: CustomWordList[]): void {
+    if (compiledFor === lists) return;
+    listMatcher.compile(lists);
+    compiledFor = lists;
+  }
 
   return (el: HTMLElement, _ctx: MarkdownPostProcessorContext) => {
     const settings = plugin.settings.proseHighlight;
     if (!settings.enabled || !settings.readingViewEnabled) return;
 
-    // Recompile word lists (cheap if unchanged, safe if settings changed)
-    listMatcher.compile(settings.customWordLists);
+    // Recompile only when the settings array reference changes. Tests and
+    // production both rely on Obsidian replacing the array on save.
+    ensureCompiled(settings.customWordLists);
 
     // Collect text nodes, skipping code/pre/frontmatter
     const textNodes: Text[] = [];
@@ -104,7 +118,7 @@ export function createReadingViewPostProcessor(plugin: YaaePlugin) {
   };
 }
 
-interface HighlightSpan {
+export interface HighlightSpan {
   start: number;
   end: number;
   cssClass: string;
@@ -113,8 +127,13 @@ interface HighlightSpan {
 /**
  * Merge POS tags and word list matches into non-overlapping spans.
  * Word list matches take precedence over POS tags.
+ *
+ * Overlap is checked per-character, not just at the tag's start. A list
+ * match like "oo" inside the POS tag "good" must suppress the tag even
+ * though the tag's start position is outside the list match — otherwise
+ * both spans get emitted and the resulting DOM fragment is corrupt.
  */
-function buildSpans(
+export function buildSpans(
   posTags: POSTag[],
   listMatches: WordListMatch[],
   settings: { categories: Record<POSCategory, { enabled: boolean }> },
@@ -128,10 +147,19 @@ function buildSpans(
     for (let i = m.start; i < m.end; i++) covered.add(i);
   }
 
-  // Add POS tags that don't overlap with list matches
+  // Add POS tags that don't overlap with list matches.
   for (const tag of posTags) {
     if (!settings.categories[tag.pos]?.enabled) continue;
-    if (covered.has(tag.start)) continue;
+
+    let overlaps = false;
+    for (let p = tag.start; p < tag.end; p++) {
+      if (covered.has(p)) {
+        overlaps = true;
+        break;
+      }
+    }
+    if (overlaps) continue;
+
     spans.push({
       start: tag.start,
       end: tag.end,
