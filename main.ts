@@ -206,16 +206,17 @@ export default class YaaePlugin extends Plugin {
       createDefangedLinksProcessor(() => this.settings.document),
     );
 
-    // Validate on save
-    if (this.settings.document.validateOnSave) {
-      this.registerEvent(
-        this.app.vault.on('modify', (file) => {
-          if (file instanceof TFile && file.extension === 'md') {
-            this.validateFileQuietly(file);
-          }
-        }),
-      );
-    }
+    // Validate on save. Listener is always registered; gate the work on the
+    // *current* setting value so toggling validateOnSave in the UI takes
+    // effect without requiring a plugin reload.
+    this.registerEvent(
+      this.app.vault.on('modify', (file) => {
+        if (!this.settings.document.validateOnSave) return;
+        if (file instanceof TFile && file.extension === 'md') {
+          this.validateFileQuietly(file);
+        }
+      }),
+    );
 
     // Settings tab
     this.addSettingTab(new YaaeSettingTab(this.app, this));

@@ -34,3 +34,27 @@ describe('F1 — export.pdf.theme propagates to PageChromeManager', () => {
     expect(printStyles).toMatch(/theme\?:\s*'light'\s*\|\s*'dark'\s*\|\s*'auto'/);
   });
 });
+
+// --- F2: validateOnSave toggle is reactive --------------------------------
+
+describe('F2 — validateOnSave toggle takes effect without reload', () => {
+  it('does not gate the modify handler on startup setting value', () => {
+    // The buggy form was: if (this.settings.document.validateOnSave) { registerEvent(...) }
+    // The fix gates *inside* the handler. So the registerEvent(vault.on('modify', ...))
+    // should not be wrapped in an outer if (this.settings.document.validateOnSave).
+    const validateBlock = MAIN_TS.match(
+      /\/\/ Validate on save[\s\S]*?this\.registerEvent\([\s\S]*?\)\s*\)\s*;/,
+    );
+    expect(validateBlock).not.toBeNull();
+    const block = validateBlock![0];
+    expect(block).not.toMatch(
+      /if\s*\(\s*this\.settings\.document\.validateOnSave\s*\)\s*\{[\s\S]*?this\.registerEvent/,
+    );
+  });
+
+  it('checks validateOnSave inside the modify handler at runtime', () => {
+    expect(MAIN_TS).toMatch(
+      /this\.app\.vault\.on\(\s*'modify'[\s\S]*?if\s*\(\s*!this\.settings\.document\.validateOnSave\s*\)\s*return/,
+    );
+  });
+});
