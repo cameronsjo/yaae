@@ -92,3 +92,35 @@ describe('F4 — generateTocForCurrentFile is race-safe', () => {
     expect(MAIN_TS).toMatch(/console\.debug\([^)]*TOC abort/);
   });
 });
+
+// --- F5: bootstrap on layout ready ----------------------------------------
+
+describe('F5 — page chrome bootstraps from active file on startup', () => {
+  it('calls updatePageChromeFromActiveFile from onLayoutReady', () => {
+    expect(MAIN_TS).toMatch(
+      /onLayoutReady\(\s*\(\)\s*=>\s*\{[\s\S]*?this\.updatePageChromeFromActiveFile\(\)/,
+    );
+  });
+});
+
+// --- F6: non-markdown active leaf does not clobber chrome ----------------
+
+describe('F6 — non-markdown active leaf preserves last markdown chrome', () => {
+  it('returns early without updating chrome for non-md files', () => {
+    // After the startFile null/extension check, when extension !== 'md',
+    // we must NOT call pageChromeManager.update — we just `return`.
+    const fn = MAIN_TS.match(
+      /async\s+updatePageChromeFromActiveFile\s*\(\s*\)\s*:\s*Promise<void>\s*\{[\s\S]*?\n\s{2}\}/,
+    );
+    expect(fn).not.toBeNull();
+    const body = fn![0];
+
+    const nonMdBranch = body.match(
+      /if\s*\(\s*startFile\.extension\s*!==\s*'md'\s*\)\s*\{[\s\S]*?\}/,
+    );
+    expect(nonMdBranch).not.toBeNull();
+    const branchBody = nonMdBranch![0];
+    expect(branchBody).not.toMatch(/pageChromeManager\.update/);
+    expect(branchBody).toMatch(/return/);
+  });
+});

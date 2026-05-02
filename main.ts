@@ -191,6 +191,16 @@ export default class YaaePlugin extends Plugin {
       }),
     );
 
+    // Bootstrap from the currently-active file. active-leaf-change does not
+    // fire for the leaf already open at startup, so without this the page
+    // chrome would reflect default classification instead of the open
+    // document's frontmatter.
+    this.app.workspace.onLayoutReady(() => {
+      this.updatePageChromeFromActiveFile().catch((err) => {
+        console.warn('[yaae] Failed to bootstrap page chrome from active file:', err);
+      });
+    });
+
     // Classification banner in reading view (always registered; checks setting at runtime)
     this.registerMarkdownPostProcessor(
       createClassificationBannerProcessor(() => this.settings.document),
@@ -482,11 +492,22 @@ export default class YaaePlugin extends Plugin {
    *
    * Race-aware: if the active file changes during the async vault.read,
    * we abort the update so the chrome doesn't reflect a stale file.
+   *
+   * Non-markdown active leaves (PDF, canvas, image preview) leave the
+   * chrome untouched so the last markdown classification is preserved
+   * for export.
    */
   async updatePageChromeFromActiveFile(): Promise<void> {
     const startFile = this.app.workspace.getActiveFile();
-    if (!startFile || startFile.extension !== 'md') {
+    if (!startFile) {
+      // No active file at all — fall back to defaults so chrome reflects settings.
       this.pageChromeManager.update(this.buildPageChromeState());
+      return;
+    }
+    if (startFile.extension !== 'md') {
+      // Active leaf is non-markdown (e.g., embedded PDF, canvas). Leave the
+      // existing page chrome alone so the last markdown file's classification
+      // is preserved for export.
       return;
     }
 
