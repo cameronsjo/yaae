@@ -14,8 +14,13 @@ export class POSStyleManager {
   private styleEl: HTMLStyleElement | null = null;
 
   /** Create the <style> element, run one-shot POS migration, inject rules.
-   * Returns true when migration ran (caller should persist settings). */
+   * Re-init is idempotent: any prior <style> is removed first so a
+   * partial-init failure or hot reload cannot leave orphaned elements
+   * behind. Returns true when migration ran (caller should persist). */
   init(settings: ProseHighlightSettings): boolean {
+    if (this.styleEl) {
+      this.destroy();
+    }
     this.styleEl = document.createElement('style');
     this.styleEl.id = STYLE_ID;
     document.head.appendChild(this.styleEl);

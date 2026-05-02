@@ -71,6 +71,11 @@ export class PageChromeManager {
   private styleEl: HTMLStyleElement | null = null;
 
   init(state: PageChromeState): void {
+    // Idempotent re-init: destroy any prior <style> first so a partial
+    // init failure or hot reload cannot leave orphaned elements in <head>.
+    if (this.styleEl) {
+      this.destroy();
+    }
     this.styleEl = document.createElement('style');
     this.styleEl.id = PAGE_CHROME_STYLE_ID;
     document.head.appendChild(this.styleEl);
@@ -286,6 +291,11 @@ export class DynamicPdfPrintStyleManager {
   private styleEl: HTMLStyleElement | null = null;
 
   init(settings: DocumentSettings): void {
+    // Idempotent re-init: destroy any prior <style> first so a partial
+    // init failure or hot reload cannot leave orphaned elements in <head>.
+    if (this.styleEl) {
+      this.destroy();
+    }
     this.styleEl = document.createElement('style');
     this.styleEl.id = DYNAMIC_PDF_STYLE_ID;
     document.head.appendChild(this.styleEl);

@@ -298,4 +298,19 @@ describe('POSStyleManager', () => {
     manager.destroy();
     expect(() => manager.update(freshDefaults())).not.toThrow();
   });
+
+  // --- F5: Idempotent init (no orphan <style> on double-init) ---
+
+  it('init() called twice removes the first <style> element before creating the second', () => {
+    manager.init(freshDefaults());
+    const firstEl = dom.styleEl;
+    const firstRemove = firstEl.remove;
+
+    // Second init must destroy the prior element so it does not orphan
+    manager.init(freshDefaults());
+
+    expect(firstRemove).toHaveBeenCalled();
+    // setupDOM() reuses the same mock for createElement; called once per init()
+    expect(document.createElement).toHaveBeenCalledTimes(2);
+  });
 });

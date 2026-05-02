@@ -288,6 +288,21 @@ describe('PageChromeManager', () => {
     // block must still be emitted with fallback light values
     expect(css).toContain('@media (prefers-color-scheme: dark)');
   });
+
+  // --- F5: Idempotent init (no orphan <style> on double-init) ---
+
+  it('PageChromeManager.init() called twice removes the first <style> before creating the second', () => {
+    manager.init(makeChrome());
+    const first = getLastStyleEl(dom.headAppendChild);
+    const callsBefore = dom.headAppendChild.mock.calls.length;
+
+    manager.init(makeChrome({ classification: 'confidential' }));
+
+    expect(first.remove).toHaveBeenCalled();
+    // One additional appendChild for the new element — and the old one
+    // is gone, so only one <style> with PAGE_CHROME_STYLE_ID is in <head>
+    expect(dom.headAppendChild.mock.calls.length).toBe(callsBefore + 1);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -529,5 +544,18 @@ describe('DynamicPdfPrintStyleManager', () => {
     expect(css).toContain('font-family:');
     expect(css).toContain('.pdf-watermark-');
     expect(css).toContain('--print-line-height: 1.8');
+  });
+
+  // --- F5: Idempotent init (no orphan <style> on double-init) ---
+
+  it('init() called twice removes the first <style> before creating the second', () => {
+    manager.init(makeSettings());
+    const first = getLastStyleEl(dom.headAppendChild);
+    const callsBefore = dom.headAppendChild.mock.calls.length;
+
+    manager.init(makeSettings({ fontSize: 16 }));
+
+    expect(first.remove).toHaveBeenCalled();
+    expect(dom.headAppendChild.mock.calls.length).toBe(callsBefore + 1);
   });
 });
