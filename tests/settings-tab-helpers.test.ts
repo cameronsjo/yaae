@@ -85,7 +85,7 @@ describe('draft-entry persistence gate (F2)', () => {
     expect(shouldPersist('', 'typing')).toBe(false);
   });
 
-  it('does not persist while ID is whitespace-only (post-sanitize: hyphen)', () => {
+  it('does not persist while ID is whitespace-only (post-sanitize: empty string)', () => {
     const sanitized = sanitizeClassificationId('   ');
     expect(shouldPersist(sanitized, 'invalid')).toBe(false);
   });
