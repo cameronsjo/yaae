@@ -303,6 +303,81 @@ describe('PageChromeManager', () => {
     // is gone, so only one <style> with PAGE_CHROME_STYLE_ID is in <head>
     expect(dom.headAppendChild.mock.calls.length).toBe(callsBefore + 1);
   });
+
+  // --- Round-2: deeper structural assertions for auto-theme override ---
+
+  it('auto theme with no classification: no override block is emitted', () => {
+    // The override block is gated on `meta` being non-null — a doc with
+    // chrome but no classification (e.g. headers only) must not emit a
+    // dangling @media (prefers-color-scheme) referencing nothing.
+    manager.init(makeChrome({
+      theme: 'auto',
+      headerLeft: 'Acme',
+      pageNumbers: true,
+    }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).toContain('@top-left');
+    expect(css).not.toContain('prefers-color-scheme');
+  });
+
+  it('auto theme override block contains @page with @top-center inside', () => {
+    // Structural sanity — the nested override must wrap a complete
+    // @page { ... } so Chromium accepts it. Asserting the substring
+    // "@page {" appears AFTER "@media (prefers-color-scheme: dark)"
+    // protects against a regression that lifts the override block out
+    // of the @media print scope or drops the @page wrapper.
+    manager.init(makeChrome({ classification: 'confidential', theme: 'auto' }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    const darkIdx = css.indexOf('@media (prefers-color-scheme: dark)');
+    expect(darkIdx).toBeGreaterThan(0);
+    const overrideTail = css.slice(darkIdx);
+    expect(overrideTail).toMatch(/@page\s*\{/);
+    expect(overrideTail).toContain('@top-center');
+  });
+
+  it('auto theme with bannerPosition both: dark override emits both @top-center and @bottom-center', () => {
+    manager.init(makeChrome({
+      classification: 'confidential',
+      theme: 'auto',
+      bannerPosition: 'both',
+    }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    const darkIdx = css.indexOf('@media (prefers-color-scheme: dark)');
+    const overrideTail = css.slice(darkIdx);
+    expect(overrideTail).toContain('@top-center');
+    expect(overrideTail).toContain('@bottom-center');
+  });
+
+  it('dark theme bakes built-in colorDark statically (not the light values)', () => {
+    // Confidential built-in: light=#c41e1e, dark=#ff7777. Theme=dark must
+    // emit #ff7777 in the *base* @page block, not the light value.
+    manager.init(makeChrome({ classification: 'confidential', theme: 'dark' }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).toContain('#ff7777');
+    expect(css).toContain('#3a1818');
+    // Light values must not appear in the dark-theme baked output for the
+    // same banner — would mean we emitted the wrong base.
+    expect(css).not.toContain('#c41e1e');
+    expect(css).not.toContain('#fff5f5');
+  });
+
+  it('dark theme falls back to light color when colorDark is absent', () => {
+    // Custom classification with no dark variants — `theme: dark` should
+    // pass the light values through (sanitized).
+    const customs: CustomClassification[] = [
+      { id: 'orange', label: 'ORANGE', color: '#ff8800', background: '#fff0e0' },
+    ];
+    manager.init(makeChrome({
+      classification: 'orange',
+      customClassifications: customs,
+      theme: 'dark',
+    }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).toContain('#ff8800');
+    expect(css).toContain('#fff0e0');
+    // No prefers-color-scheme block in pure dark theme
+    expect(css).not.toContain('prefers-color-scheme');
+  });
 });
 
 // ---------------------------------------------------------------------------

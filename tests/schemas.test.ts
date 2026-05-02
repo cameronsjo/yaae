@@ -1131,6 +1131,78 @@ describe('getClassificationMeta', () => {
     expect(getClassificationMeta('   ')).toBeNull();
     expect(getClassificationMeta('\t\n')).toBeNull();
   });
+
+  // Round-2: trim BOTH the lookup level AND the stored custom ID. A user can
+  // (via direct data.json edit, or paste-with-spaces in a future settings UI)
+  // end up with `id: ' sensitive '` in their custom list. Without trimming
+  // the stored id, a frontmatter `classification: sensitive` would miss the
+  // match and silently leave the document unclassified.
+  it('trims whitespace from stored custom ID before matching', () => {
+    const customs: CustomClassification[] = [
+      { id: '  sensitive  ', label: 'SENSITIVE', color: '#b8860b', background: '#fff8e7' },
+    ];
+    const meta = getClassificationMeta('sensitive', customs);
+    expect(meta).not.toBeNull();
+    expect(meta!.label).toBe('SENSITIVE');
+    // Returned level must be the canonical (trimmed) form so downstream
+    // class derivation (e.g. `pdf-${level}`) is stable.
+    expect(meta!.level).toBe('sensitive');
+  });
+
+  it('matches when both lookup level and stored ID have surrounding whitespace', () => {
+    const customs: CustomClassification[] = [
+      { id: ' top-secret ', label: 'TOP SECRET', color: '#800000', background: '#fee' },
+    ];
+    const meta = getClassificationMeta('\ttop-secret\n', customs);
+    expect(meta).not.toBeNull();
+    expect(meta!.level).toBe('top-secret');
+  });
+
+  it('ignores custom entries whose ID is whitespace-only', () => {
+    // A custom row in mid-edit with id=' ' must not shadow built-ins or
+    // resolve as a wildcard — getClassificationMeta returns null for the
+    // whitespace input above, so this confirms the negative case for a
+    // non-empty lookup against a malformed custom row.
+    const customs: CustomClassification[] = [
+      { id: '   ', label: 'BLANK', color: '#000', background: '#fff' },
+      { id: 'real', label: 'REAL', color: '#111', background: '#eee' },
+    ];
+    expect(getClassificationMeta('real', customs)?.label).toBe('REAL');
+    // The blank-ID entry must not collide with non-empty lookups
+    expect(getClassificationMeta('blank', customs)).toBeNull();
+  });
+
+  it('preserves dark-theme overrides on custom classifications', () => {
+    // Round-2: ClassificationMeta gained colorDark/backgroundDark; the
+    // lookup must propagate them so PageChromeManager + banner CSS can
+    // select dark variants.
+    const customs: CustomClassification[] = [
+      {
+        id: 'topsec',
+        label: 'TOP SECRET',
+        color: '#660000',
+        background: '#fff0f0',
+        colorDark: '#ff8888',
+        backgroundDark: '#330000',
+      },
+    ];
+    const meta = getClassificationMeta('topsec', customs);
+    expect(meta).not.toBeNull();
+    expect(meta!.colorDark).toBe('#ff8888');
+    expect(meta!.backgroundDark).toBe('#330000');
+  });
+
+  it('leaves dark fields undefined when custom classification omits them', () => {
+    // Inheritance contract — undefined here signals "fall back to light
+    // values" downstream (PageChromeManager uses `colorDark ?? color`).
+    const customs: CustomClassification[] = [
+      { id: 'plain', label: 'PLAIN', color: '#000', background: '#fff' },
+    ];
+    const meta = getClassificationMeta('plain', customs);
+    expect(meta).not.toBeNull();
+    expect(meta!.colorDark).toBeUndefined();
+    expect(meta!.backgroundDark).toBeUndefined();
+  });
 });
 
 // ---------------------------------------------------------------------------

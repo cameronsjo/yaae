@@ -250,4 +250,108 @@ describe('generateToc', () => {
     expect(result).toContain('- [Section](#section)');
     expect(result).toContain('    - [Detail](#detail)');
   });
+
+  // --- Round-2: marker-aware fence tracking (boolean → marker refactor) ---
+  // Old `inCodeBlock` boolean treated any ``` or ~~~ as toggle, so a tilde
+  // line embedded inside a backtick fence (illustrative markdown showing
+  // alternative fences) would close the outer block early and headings
+  // after it would erroneously land in the TOC.
+
+  it('does not close a backtick fence when a tilde line appears inside', () => {
+    const content = fm(
+      [
+        '',
+        '## Real Heading',
+        '',
+        '```markdown',
+        '~~~',
+        '## Hidden Inner',
+        '~~~',
+        '## Still Hidden',
+        '```',
+        '',
+        '## Tail Heading',
+        '',
+      ].join('\n'),
+    );
+    const { content: result, entryCount } = generateToc(content);
+    // Only the two real headings; the inner ones are inside the backtick fence
+    expect(entryCount).toBe(2);
+    const tocStart = result.indexOf('## Table of Contents');
+    const tocEnd = result.indexOf('\n---', tocStart);
+    const tocBlock = result.slice(tocStart, tocEnd);
+    expect(tocBlock).toContain('Real Heading');
+    expect(tocBlock).toContain('Tail Heading');
+    expect(tocBlock).not.toContain('Hidden Inner');
+    expect(tocBlock).not.toContain('Still Hidden');
+  });
+
+  it('does not close a tilde fence when a backtick line appears inside', () => {
+    const content = fm(
+      [
+        '',
+        '## Real Heading',
+        '',
+        '~~~markdown',
+        '```',
+        '## Hidden Inner',
+        '```',
+        '## Still Hidden',
+        '~~~',
+        '',
+        '## Tail Heading',
+        '',
+      ].join('\n'),
+    );
+    const { content: result, entryCount } = generateToc(content);
+    expect(entryCount).toBe(2);
+    const tocStart = result.indexOf('## Table of Contents');
+    const tocEnd = result.indexOf('\n---', tocStart);
+    const tocBlock = result.slice(tocStart, tocEnd);
+    expect(tocBlock).toContain('Real Heading');
+    expect(tocBlock).toContain('Tail Heading');
+    expect(tocBlock).not.toContain('Hidden Inner');
+    expect(tocBlock).not.toContain('Still Hidden');
+  });
+
+  it('treats a fence that never closes as swallowing all subsequent headings', () => {
+    // Defensive: if the document leaves a fence open, headings after it
+    // shouldn't escape into the TOC. Better to under-include than to leak
+    // code into the TOC.
+    const content = fm(
+      ['', '## Before', '', '```', '## Trapped', '## Also Trapped', ''].join(
+        '\n',
+      ),
+    );
+    const { entryCount } = generateToc(content);
+    expect(entryCount).toBe(1);
+  });
+
+  it('handles multiple back-to-back fences with no trailing content', () => {
+    const content = fm(
+      [
+        '',
+        '## A',
+        '',
+        '```',
+        '## hidden a',
+        '```',
+        '',
+        '~~~',
+        '## hidden b',
+        '~~~',
+        '',
+        '## B',
+        '',
+      ].join('\n'),
+    );
+    const { content: result, entryCount } = generateToc(content);
+    expect(entryCount).toBe(2);
+    const tocStart = result.indexOf('## Table of Contents');
+    const tocEnd = result.indexOf('\n---', tocStart);
+    const tocBlock = result.slice(tocStart, tocEnd);
+    expect(tocBlock).toContain('- [A]');
+    expect(tocBlock).toContain('- [B]');
+    expect(tocBlock).not.toContain('hidden');
+  });
 });

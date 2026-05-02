@@ -211,4 +211,67 @@ describe('buildUniqueClassSuffixes', () => {
       buildUniqueClassSuffixes(['My List', 'my-list-2', 'my-list']),
     ).toEqual(['my-list', 'my-list-2', 'my-list-3']);
   });
+
+  // --- Round-2 edge cases (per /polish branch review) ---
+
+  it('returns empty array for empty input', () => {
+    expect(buildUniqueClassSuffixes([])).toEqual([]);
+  });
+
+  it('preserves index order when all names sanitize to empty', () => {
+    // When every name collapses to '', no collisions are tracked but every
+    // slot stays present so caller's `suffixes[i]` mapping holds.
+    expect(buildUniqueClassSuffixes(['', '   ', '!!!', '###'])).toEqual([
+      '',
+      '',
+      '',
+      '',
+    ]);
+  });
+
+  it('treats leading/trailing whitespace in names as a collision', () => {
+    // sanitizeListName trims edge non-alnum runs, so '  Cloud  ' and 'Cloud'
+    // sanitize identically. Without dedup, both lists would share a class.
+    expect(
+      buildUniqueClassSuffixes(['  Cloud  ', 'Cloud']),
+    ).toEqual(['cloud', 'cloud-2']);
+  });
+
+  it('does not let an empty entry break collision counter for later names', () => {
+    // An empty slot in the middle must not consume a numeric suffix slot
+    // for downstream colliding names.
+    expect(
+      buildUniqueClassSuffixes(['Tools', '', 'TOOLS']),
+    ).toEqual(['tools', '', 'tools-2']);
+  });
+
+  it('keeps three-way mixed-casing collision deterministic', () => {
+    // First wins; later collisions get the next free numeric suffix in input
+    // order — important so the rendered settings list matches the CSS rule
+    // table.
+    const result = buildUniqueClassSuffixes([
+      'Acronyms',
+      'ACRONYMS',
+      'acronyms',
+      'AcRoNyMs',
+    ]);
+    expect(result).toEqual([
+      'acronyms',
+      'acronyms-2',
+      'acronyms-3',
+      'acronyms-4',
+    ]);
+    // All four classes must be unique so each list gets its own color rule.
+    expect(new Set(result).size).toBe(4);
+  });
+
+  it('handles a name that already ends in -2 and collides with base', () => {
+    // 'My List 2' sanitizes to 'my-list-2' (no special-cased counter
+    // semantics in sanitizeListName). When 'my-list' arrives later it
+    // takes the base, then 'My List' would normally claim 'my-list-2'
+    // but that's taken — so it gets 'my-list-3'.
+    expect(
+      buildUniqueClassSuffixes(['My List 2', 'my-list', 'My List']),
+    ).toEqual(['my-list-2', 'my-list', 'my-list-3']);
+  });
 });

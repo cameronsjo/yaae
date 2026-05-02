@@ -26,6 +26,7 @@ export class POSStyleManager {
     document.head.appendChild(this.styleEl);
     const migrated = this.migrateLegacyPOSColors(settings);
     this.update(settings);
+    console.debug('[yaae] POSStyleManager initialized.');
     return migrated;
   }
 
@@ -78,6 +79,7 @@ export class POSStyleManager {
     }
 
     settings.posColorsMigrated = true;
+    console.info('[yaae] Migrated legacy POS colors to light/dark CSS variables.');
     return true;
   }
 

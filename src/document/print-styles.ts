@@ -240,6 +240,7 @@ ${marginBoxes.join('\n')}
     if (this.styleEl) {
       this.styleEl.remove();
       this.styleEl = null;
+      console.debug('[yaae] PageChromeManager destroyed.');
     }
   }
 }
@@ -374,6 +375,7 @@ export class DynamicPdfPrintStyleManager {
     if (this.styleEl) {
       this.styleEl.remove();
       this.styleEl = null;
+      console.debug('[yaae] DynamicPdfPrintStyleManager destroyed.');
     }
   }
 }

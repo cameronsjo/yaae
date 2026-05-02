@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   FONT_CUSTOM_SENTINEL,
+  FONT_PRESETS,
   isFontPreset,
   isValidClassificationId,
   sanitizeClassificationId,
@@ -144,5 +145,43 @@ describe('font-family persistence behavior (F4)', () => {
       stored = newDropdownValue;
     }
     expect(stored).toBe('Inter');
+  });
+});
+
+// --- Round-2: FONT_PRESETS / isFontPreset coupling ---
+// FONT_PRESETS is the source of truth for the dropdown; isFontPreset is the
+// runtime check the settings UI uses to decide between the preset branch
+// and the custom-input branch. They must agree on every entry, both
+// directions, or the dropdown will overwrite arbitrary font strings.
+
+describe('FONT_PRESETS / isFontPreset agreement', () => {
+  it('isFontPreset accepts every member of FONT_PRESETS', () => {
+    for (const preset of FONT_PRESETS) {
+      expect(isFontPreset(preset)).toBe(true);
+    }
+  });
+
+  it('FONT_PRESETS contains exactly the four named presets in stable order', () => {
+    // Order matters — the dropdown is rendered from this list. Lock it in
+    // so a refactor that reorders or trims silently fails the test.
+    expect([...FONT_PRESETS]).toEqual(['sans', 'serif', 'mono', 'system']);
+  });
+
+  it('FONT_CUSTOM_SENTINEL is not a member of FONT_PRESETS', () => {
+    // The sentinel must never collide with a real preset, otherwise the
+    // dropdown's "Custom..." option would be indistinguishable from a
+    // preset selection on first render.
+    expect((FONT_PRESETS as readonly string[]).includes(FONT_CUSTOM_SENTINEL))
+      .toBe(false);
+  });
+
+  it('isFontPreset rejects values that look like preset names but differ in case', () => {
+    // Settings round-trip is case-sensitive; "Sans" stored from a tampered
+    // data.json must take the Custom branch so it surfaces in the input
+    // (and the user can fix or accept it).
+    expect(isFontPreset('Sans')).toBe(false);
+    expect(isFontPreset('SERIF')).toBe(false);
+    expect(isFontPreset(' sans')).toBe(false);
+    expect(isFontPreset('sans ')).toBe(false);
   });
 });

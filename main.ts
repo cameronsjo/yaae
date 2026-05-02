@@ -52,6 +52,7 @@ export default class YaaePlugin extends Plugin {
   private syntaxDimmingStatusEl: HTMLElement | null = null;
 
   async onload() {
+    console.debug('[yaae] onload: starting plugin initialization');
     await this.loadSettings();
 
     // --- Prose Highlight ---
@@ -237,9 +238,11 @@ export default class YaaePlugin extends Plugin {
 
     // Settings tab
     this.addSettingTab(new YaaeSettingTab(this.app, this));
+    console.debug('[yaae] onload: plugin initialization complete');
   }
 
   onunload() {
+    console.debug('[yaae] onunload: tearing down plugin');
     this.styleManager.destroy();
     this.dynamicPdfPrintStyles.destroy();
     this.pageChromeManager.destroy();
@@ -437,6 +440,8 @@ export default class YaaePlugin extends Plugin {
       console.warn(`[yaae] ${file.path}: validation errors`, result.errors?.issues);
     } else if (result.warnings.length > 0) {
       console.warn(`[yaae] ${file.path}: warnings`, result.warnings);
+    } else {
+      console.debug(`[yaae] ${file.path}: frontmatter valid`);
     }
   }
 
@@ -460,6 +465,7 @@ export default class YaaePlugin extends Plugin {
 
     const { content: updated, entryCount } = generateToc(content, depth);
     await this.app.vault.modify(file, updated);
+    console.info(`[yaae] Successfully generated TOC. File: ${file.path}, Entries: ${entryCount}, Depth: ${depth}`);
     new Notice(`Table of Contents generated with ${entryCount} entries`);
   }
 
@@ -494,6 +500,7 @@ export default class YaaePlugin extends Plugin {
       fm.cssclasses = [...userClasses, ...classes];
     });
 
+    console.info(`[yaae] Successfully applied CSS classes from frontmatter. File: ${file.path}, Classes: ${classes.join(', ')}`);
     new Notice(`Applied CSS classes: ${classes.join(', ')}`);
   }
 

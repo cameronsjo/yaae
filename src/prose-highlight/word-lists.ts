@@ -76,6 +76,7 @@ export class WordListMatcher {
 
   /** Recompile regexes from the current list definitions */
   compile(lists: CustomWordList[]): void {
+    console.debug(`[yaae] Preparing to compile word lists. Count: ${lists.length}`);
     this.compiled = [];
 
     // Compute unique class suffixes once so collisions get distinct classes
@@ -109,6 +110,7 @@ export class WordListMatcher {
         regex,
       });
     }
+    console.debug(`[yaae] Word lists compiled. Active: ${this.compiled.length}/${lists.length}`);
   }
 
   /** Match all compiled lists against text, returning non-overlapping matches */

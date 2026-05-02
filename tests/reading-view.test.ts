@@ -35,8 +35,12 @@ function makeList(overrides: Partial<CustomWordList> = {}): CustomWordList {
 // Minimal stub for the post-processor's HTMLElement / TreeWalker contract.
 // We only care that text nodes are processed; tests for F5 spy on the
 // matcher to confirm compile-rate, and tests for F7 hit buildSpans directly.
-function makePlugin(s: ProseHighlightSettings) {
-  return { settings: { proseHighlight: s } } as never;
+type ReadingViewPluginArg = Parameters<typeof createReadingViewPostProcessor>[0];
+type ReadingViewProcessor = ReturnType<typeof createReadingViewPostProcessor>;
+type ReadingViewProcessorContext = Parameters<ReadingViewProcessor>[1];
+
+function makePlugin(s: ProseHighlightSettings): ReadingViewPluginArg {
+  return { settings: { proseHighlight: s } } as ReadingViewPluginArg;
 }
 
 // Restore globalThis stubs after each test so the file is self-contained
@@ -100,9 +104,10 @@ describe('reading-view post-processor (F5: regex compile rate)', () => {
     // Three calls = three render cycles for three blocks. The settings
     // array reference is the same across all three, so compile must run
     // exactly once total.
-    processor(makeBlockEl('foo bar'), {} as never);
-    processor(makeBlockEl('foo baz'), {} as never);
-    processor(makeBlockEl('foo qux'), {} as never);
+    const ctx = {} as ReadingViewProcessorContext;
+    processor(makeBlockEl('foo bar'), ctx);
+    processor(makeBlockEl('foo baz'), ctx);
+    processor(makeBlockEl('foo qux'), ctx);
 
     expect(compileSpy).toHaveBeenCalledTimes(1);
     compileSpy.mockRestore();
@@ -116,17 +121,18 @@ describe('reading-view post-processor (F5: regex compile rate)', () => {
 
     const lists1: CustomWordList[] = [makeList({ words: ['foo'] })];
     const settings1 = settings({ customWordLists: lists1 });
-    const plugin = { settings: { proseHighlight: settings1 } } as never;
+    const plugin = { settings: { proseHighlight: settings1 } } as ReadingViewPluginArg;
     const processor = createReadingViewPostProcessor(plugin);
 
-    processor(makeBlockEl('foo bar'), {} as never);
+    const ctx = {} as ReadingViewProcessorContext;
+    processor(makeBlockEl('foo bar'), ctx);
     expect(compileSpy).toHaveBeenCalledTimes(1);
 
     // Swap to a new lists array (simulates settings save).
     const lists2: CustomWordList[] = [makeList({ words: ['baz'] })];
     plugin.settings.proseHighlight = settings({ customWordLists: lists2 });
 
-    processor(makeBlockEl('foo bar'), {} as never);
+    processor(makeBlockEl('foo bar'), ctx);
     expect(compileSpy).toHaveBeenCalledTimes(2);
 
     compileSpy.mockRestore();
