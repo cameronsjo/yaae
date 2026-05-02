@@ -467,7 +467,10 @@ export default class YaaePlugin extends Plugin {
     };
   }
 
-  /** Read active document's frontmatter and update page chrome with its classification. */
+  /**
+   * Read active document's frontmatter and update page chrome with its
+   * classification + signature block + per-document theme override.
+   */
   async updatePageChromeFromActiveFile(): Promise<void> {
     const file = this.app.workspace.getActiveFile();
     if (!file || file.extension !== 'md') {
@@ -480,10 +483,12 @@ export default class YaaePlugin extends Plugin {
 
     const classification = result.data?.classification ?? this.settings.document.defaultClassification;
     const signatureBlock = result.data?.export?.pdf?.signatureBlock ?? false;
+    const theme = result.data?.export?.pdf?.theme;
 
     this.pageChromeManager.update({
       ...this.buildPageChromeState(classification),
       signatureBlock,
+      ...(theme ? { theme } : {}),
     });
   }
 }

@@ -32,6 +32,15 @@ export interface PageChromeState {
   signatureBlock: boolean;
   bannerPosition: 'top' | 'both';
   showClassificationBanner: boolean;
+  /**
+   * PDF theme override. Currently unused by the @page CSS itself
+   * (theme is applied via cssclasses on the document body), but tracked
+   * here so per-document `export.pdf.theme` frontmatter overrides
+   * propagate from {@link YaaePlugin.updatePageChromeFromActiveFile}
+   * and don't get silently dropped. Future work may consume this in
+   * margin-box styling.
+   */
+  theme?: 'light' | 'dark' | 'auto';
 }
 
 /** Shared base styles for banner margin boxes.
