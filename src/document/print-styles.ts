@@ -1,6 +1,6 @@
 import type { CustomClassification } from '../schemas/classification';
 import { getClassificationMeta } from '../schemas/classification';
-import type { DocumentSettings, FontPreset } from './settings';
+import type { DocumentSettings, FontPreset, ThemeMode } from './settings';
 import { DEFAULT_DOCUMENT_SETTINGS } from './settings';
 import { escapeCssString, sanitizeColor, clampNumber, sanitizeFontFamily, sanitizeCssId } from './css-sanitize';
 
@@ -32,6 +32,13 @@ export interface PageChromeState {
   signatureBlock: boolean;
   bannerPosition: 'top' | 'both';
   showClassificationBanner: boolean;
+  /**
+   * Theme mode — picks light/dark colors for classification banners in
+   * @page margin boxes. Per-document `export.pdf.theme` frontmatter
+   * overrides propagate here from `YaaePlugin.updatePageChromeFromActiveFile`;
+   * absent that, the global setting from `buildPageChromeState` is used.
+   */
+  theme: ThemeMode;
 }
 
 /** Shared base styles for banner margin boxes.
@@ -69,6 +76,11 @@ export class PageChromeManager {
   private styleEl: HTMLStyleElement | null = null;
 
   init(state: PageChromeState): void {
+    // Idempotent re-init: destroy any prior <style> first so a partial
+    // init failure or hot reload cannot leave orphaned elements in <head>.
+    if (this.styleEl) {
+      this.destroy();
+    }
     this.styleEl = document.createElement('style');
     this.styleEl.id = PAGE_CHROME_STYLE_ID;
     document.head.appendChild(this.styleEl);
@@ -104,10 +116,16 @@ export class PageChromeManager {
     const marginBoxes: string[] = [];
 
     // --- Classification banners ---
+    // @page margin boxes do not support var(), so colors are baked in statically.
+    // For 'dark' theme, use colorDark/backgroundDark (with light fallback).
+    // For 'auto', emit base (light) here; an @media override is appended below.
+    const useDarkBase = state.theme === 'dark';
     if (meta) {
       const label = escapeCssString(meta.label);
-      const color = sanitizeColor(meta.color, '#000');
-      const bg = sanitizeColor(meta.background, '#fff');
+      const baseColor = useDarkBase ? (meta.colorDark ?? meta.color) : meta.color;
+      const baseBg = useDarkBase ? (meta.backgroundDark ?? meta.background) : meta.background;
+      const color = sanitizeColor(baseColor, '#000');
+      const bg = sanitizeColor(baseBg, '#fff');
 
       if (hasTopBanner) {
         marginBoxes.push(`    @top-center {
@@ -164,11 +182,54 @@ export class PageChromeManager {
     }`);
     }
 
+    // 'auto' theme — emit a *nested* `@media (prefers-color-scheme: dark)`
+    // inside the outer `@media print` block. The combined form
+    // `@media print and (prefers-color-scheme: dark)` is silently ignored
+    // by Chromium's print engine, so nesting is required for the dark
+    // override to take effect during PDF export. Only banner colors swap;
+    // headers/footers/page numbers stay neutral.
+    //
+    // Always emit the override block when theme is 'auto', even if no
+    // explicit dark colors are defined — fall back to the light values.
+    // This way 'auto' never silently degrades to 'light' for custom
+    // classifications that haven't filled in their dark variants yet.
+    let autoOverride = '';
+    if (state.theme === 'auto' && meta) {
+      const altColor = sanitizeColor(meta.colorDark ?? meta.color, '#000');
+      const altBg = sanitizeColor(meta.backgroundDark ?? meta.background, '#fff');
+      const altBoxes: string[] = [];
+      const altLabel = escapeCssString(meta.label);
+      if (hasTopBanner) {
+        altBoxes.push(`      @top-center {
+        content: "${altLabel}";
+        color: ${altColor};
+        background: ${altBg};
+        border-bottom: 2px solid ${altColor};${BANNER_BASE}
+      }`);
+      }
+      if (hasBottomBanner) {
+        altBoxes.push(`      @bottom-center {
+        content: "${altLabel}";
+        color: ${altColor};
+        background: ${altBg};
+        border-top: 2px solid ${altColor};${BANNER_BASE}
+      }`);
+      }
+      if (altBoxes.length > 0) {
+        autoOverride = `
+  @media (prefers-color-scheme: dark) {
+    @page {
+${altBoxes.join('\n')}
+    }
+  }`;
+      }
+    }
+
     const css = `@media print {
   @page {
     margin: 1in !important;
 ${marginBoxes.join('\n')}
-  }
+  }${autoOverride}
 }`;
 
     this.styleEl.textContent = css;
@@ -179,6 +240,7 @@ ${marginBoxes.join('\n')}
     if (this.styleEl) {
       this.styleEl.remove();
       this.styleEl = null;
+      console.debug('[yaae] PageChromeManager destroyed.');
     }
   }
 }
@@ -235,6 +297,11 @@ export class DynamicPdfPrintStyleManager {
   private styleEl: HTMLStyleElement | null = null;
 
   init(settings: DocumentSettings): void {
+    // Idempotent re-init: destroy any prior <style> first so a partial
+    // init failure or hot reload cannot leave orphaned elements in <head>.
+    if (this.styleEl) {
+      this.destroy();
+    }
     this.styleEl = document.createElement('style');
     this.styleEl.id = DYNAMIC_PDF_STYLE_ID;
     document.head.appendChild(this.styleEl);
@@ -308,6 +375,7 @@ export class DynamicPdfPrintStyleManager {
     if (this.styleEl) {
       this.styleEl.remove();
       this.styleEl = null;
+      console.debug('[yaae] DynamicPdfPrintStyleManager destroyed.');
     }
   }
 }

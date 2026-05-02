@@ -13,6 +13,7 @@ export const POS_CATEGORIES: POSCategory[] = [
 /** Per-POS toggle and color settings */
 export interface POSCategorySettings {
   enabled: boolean;
+  /** @deprecated Customize via Style Settings or `--yaae-pos-*-color-{light,dark}` overrides. Read by one-shot migration in POSStyleManager. */
   color: string;
 }
 
@@ -35,6 +36,12 @@ export interface ProseHighlightSettings {
   readingViewEnabled: boolean;
   /** Custom word lists */
   customWordLists: CustomWordList[];
+  /**
+   * One-shot migration latch for legacy POS color customizations. Once set
+   * to true, the migration in POSStyleManager.init no longer fires, leaving
+   * Style Settings as the sole writer of `--yaae-pos-*-color-{light,dark}`.
+   */
+  posColorsMigrated?: boolean;
 }
 
 /** Default colors matching iA Writer's palette */

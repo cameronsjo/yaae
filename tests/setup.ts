@@ -6,7 +6,10 @@ import { vi } from 'vitest';
 // Mock document for DOM operations
 const mockDocument = {
   createElement: vi.fn((tag: string) => ({
-    style: {},
+    style: {
+      cssText: '',
+      setProperty: vi.fn(),
+    },
     classList: { add: vi.fn(), remove: vi.fn() },
     setAttribute: vi.fn(),
     appendChild: vi.fn(),
@@ -17,6 +20,9 @@ const mockDocument = {
   body: {
     appendChild: vi.fn(),
     removeChild: vi.fn(),
+    style: {
+      setProperty: vi.fn(),
+    },
   },
 };
 

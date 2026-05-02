@@ -10,35 +10,77 @@ settings:
     level: 1
     collapsed: true
   -
-    id: yaae-pos-adjective-color
-    title: Adjective color
+    id: yaae-prose-light-heading
+    title: Light theme colors
+    type: heading
+    level: 2
+    collapsed: false
+  -
+    id: yaae-pos-adjective-color-light
+    title: Adjective color (light)
     type: variable-color
     format: hex
     default: '#b97a0a'
   -
-    id: yaae-pos-noun-color
-    title: Noun color
+    id: yaae-pos-noun-color-light
+    title: Noun color (light)
     type: variable-color
     format: hex
     default: '#ce4924'
   -
-    id: yaae-pos-adverb-color
-    title: Adverb color
+    id: yaae-pos-adverb-color-light
+    title: Adverb color (light)
     type: variable-color
     format: hex
     default: '#c333a7'
   -
-    id: yaae-pos-verb-color
-    title: Verb color
+    id: yaae-pos-verb-color-light
+    title: Verb color (light)
     type: variable-color
     format: hex
-    default: '#177eB8'
+    default: '#177eb8'
   -
-    id: yaae-pos-conjunction-color
-    title: Conjunction color
+    id: yaae-pos-conjunction-color-light
+    title: Conjunction color (light)
     type: variable-color
     format: hex
     default: '#01934e'
+  -
+    id: yaae-prose-dark-heading
+    title: Dark theme colors
+    type: heading
+    level: 2
+    collapsed: false
+  -
+    id: yaae-pos-adjective-color-dark
+    title: Adjective color (dark)
+    type: variable-color
+    format: hex
+    default: '#f0b150'
+  -
+    id: yaae-pos-noun-color-dark
+    title: Noun color (dark)
+    type: variable-color
+    format: hex
+    default: '#e87a5f'
+  -
+    id: yaae-pos-adverb-color-dark
+    title: Adverb color (dark)
+    type: variable-color
+    format: hex
+    default: '#e07cc8'
+  -
+    id: yaae-pos-verb-color-dark
+    title: Verb color (dark)
+    type: variable-color
+    format: hex
+    default: '#5cb0e8'
+  -
+    id: yaae-pos-conjunction-color-dark
+    title: Conjunction color (dark)
+    type: variable-color
+    format: hex
+    default: '#4cc887'
   -
     id: yaae-syntax-heading
     title: Syntax Dimming
@@ -70,12 +112,17 @@ settings:
     level: 1
     collapsed: true
   -
-    id: yaae-dimmed-color
-    title: Dimmed text color
-    description: Color applied to unfocused text (defaults to --text-faint)
+    id: yaae-dimmed-color-light
+    title: Dimmed text color (light)
+    description: Color applied to unfocused text in light theme (defaults to --text-faint)
     type: variable-color
     format: hex
-    default: '#'
+  -
+    id: yaae-dimmed-color-dark
+    title: Dimmed text color (dark)
+    description: Color applied to unfocused text in dark theme (defaults to --text-faint)
+    type: variable-color
+    format: hex
   -
     id: yaae-dimmed-transition
     title: Fade transition
@@ -329,19 +376,22 @@ settings:
    ========================================================================== */
 
 body {
-  /* Prose highlighting — default iA Writer palette */
-  --yaae-pos-adjective-color: #b97a0a;
-  --yaae-pos-noun-color: #ce4924;
-  --yaae-pos-adverb-color: #c333a7;
-  --yaae-pos-verb-color: #177eB8;
-  --yaae-pos-conjunction-color: #01934e;
+  /* Prose highlighting — public variables consumed by feature CSS.
+     Light/dark variants below are the override knobs for Style Settings,
+     theme authors, and snippet authors. The unsuffixed names below are
+     resolved layers — override `--yaae-pos-*-color-{light,dark}` instead. */
+  --yaae-pos-adjective-color: var(--yaae-pos-adjective-color-light, #b97a0a);
+  --yaae-pos-noun-color: var(--yaae-pos-noun-color-light, #ce4924);
+  --yaae-pos-adverb-color: var(--yaae-pos-adverb-color-light, #c333a7);
+  --yaae-pos-verb-color: var(--yaae-pos-verb-color-light, #177eb8);
+  --yaae-pos-conjunction-color: var(--yaae-pos-conjunction-color-light, #01934e);
 
   /* Syntax dimming */
   --yaae-syntax-dimming-opacity: 0.3;
   --yaae-syntax-dimming-active-opacity: 0.7;
 
-  /* Focus mode */
-  --yaae-dimmed-color: var(--text-faint);
+  /* Focus mode — layered, defaults fall through to Obsidian's --text-faint */
+  --yaae-dimmed-color: var(--yaae-dimmed-color-light, var(--text-faint));
   --yaae-dimmed-transition: 0.15s;
 
   /* Guttered headings — rem so the gutter doesn't scale with heading font sizes */
@@ -394,6 +444,18 @@ body {
   --yaae-print-orphans: 3;
 }
 
+/* Dark-theme overrides for editor-side colors. Theme authors can override
+   any --yaae-pos-*-color-dark or --yaae-dimmed-color-dark to recolor for
+   their dark theme without fighting plugin specificity. */
+body.theme-dark {
+  --yaae-pos-adjective-color: var(--yaae-pos-adjective-color-dark, #f0b150);
+  --yaae-pos-noun-color: var(--yaae-pos-noun-color-dark, #e87a5f);
+  --yaae-pos-adverb-color: var(--yaae-pos-adverb-color-dark, #e07cc8);
+  --yaae-pos-verb-color: var(--yaae-pos-verb-color-dark, #5cb0e8);
+  --yaae-pos-conjunction-color: var(--yaae-pos-conjunction-color-dark, #4cc887);
+  --yaae-dimmed-color: var(--yaae-dimmed-color-dark, var(--text-faint));
+}
+
 /* ==========================================================================
    Prose Highlighting — POS category and custom list class rules
    ========================================================================== */
@@ -403,6 +465,26 @@ body {
 .yaae-pos-adverb { color: var(--yaae-pos-adverb-color); }
 .yaae-pos-verb { color: var(--yaae-pos-verb-color); }
 .yaae-pos-conjunction { color: var(--yaae-pos-conjunction-color); }
+
+/* ==========================================================================
+   Classification Banner — reading view
+   Banner element carries `--yaae-banner-{color,bg}` and optional `-dark`
+   variants as inline custom properties. The rules below switch which pair
+   is used based on the active theme. Theme/snippet authors can override
+   these on `.yaae-classification-banner` directly.
+   ========================================================================== */
+
+.yaae-classification-banner {
+  background: var(--yaae-banner-bg);
+  color: var(--yaae-banner-color);
+  border: 1px solid var(--yaae-banner-color);
+}
+
+body.theme-dark .yaae-classification-banner {
+  background: var(--yaae-banner-bg-dark, var(--yaae-banner-bg));
+  color: var(--yaae-banner-color-dark, var(--yaae-banner-color));
+  border-color: var(--yaae-banner-color-dark, var(--yaae-banner-color));
+}
 
 /* ===== Print / PDF Export Suppression =====
  * Hide all prose highlighting decorations when printing or exporting to PDF.

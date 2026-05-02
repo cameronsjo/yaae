@@ -55,3 +55,7 @@ test-vault/.obsidian/plugins/yaae/data.json
 
 # Test vault PDFs (generated during smoke testing)
 test-vault/*.pdf
+
+# Beads runtime artifacts (issue tracker internals)
+.beads/backup/
+.beads/embeddeddolt/

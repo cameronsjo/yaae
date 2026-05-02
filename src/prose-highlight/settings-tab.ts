@@ -1,6 +1,6 @@
 import { Setting } from 'obsidian';
 import type YaaePlugin from '../../main';
-import { POS_CATEGORIES, DEFAULT_POS_COLORS } from '../types';
+import { POS_CATEGORIES } from '../types';
 import type { POSCategory, CustomWordList } from '../types';
 import { createCollapsibleSection } from '../settings/collapsible-section';
 
@@ -64,10 +64,19 @@ export function renderProseHighlightSettings(
     containerEl, expandedSections, 'writing-pos', 'Parts of Speech',
   );
 
+  const hint = posContent.createEl('p', { cls: 'setting-item-description' });
+  hint.appendText('Toggle which categories highlight. Customize colors via the ');
+  hint.createEl('strong', { text: 'Style Settings' });
+  hint.appendText(' plugin, or override ');
+  hint.createEl('code', { text: '--yaae-pos-*-color-light' });
+  hint.appendText(' / ');
+  hint.createEl('code', { text: '-dark' });
+  hint.appendText(' in your theme or CSS snippet.');
+
   for (const cat of POS_CATEGORIES) {
     const catSettings = settings.categories[cat];
 
-    const setting = new Setting(posContent)
+    new Setting(posContent)
       .setName(POS_LABELS[cat])
       .addToggle((toggle) =>
         toggle.setValue(catSettings.enabled).onChange(async (value) => {
@@ -76,31 +85,6 @@ export function renderProseHighlightSettings(
           plugin.refreshHighlighting();
         }),
       );
-
-    // Color picker via native <input type="color">
-    const colorInput = setting.controlEl.createEl('input', {
-      type: 'color',
-      value: catSettings.color,
-    });
-    colorInput.style.marginLeft = '8px';
-    colorInput.style.cursor = 'pointer';
-    colorInput.addEventListener('input', async () => {
-      catSettings.color = colorInput.value;
-      await plugin.saveSettings();
-      plugin.refreshStyles();
-    });
-
-    // Reset color button
-    if (catSettings.color !== DEFAULT_POS_COLORS[cat]) {
-      setting.addButton((btn) =>
-        btn.setButtonText('Reset').onClick(async () => {
-          catSettings.color = DEFAULT_POS_COLORS[cat];
-          colorInput.value = DEFAULT_POS_COLORS[cat];
-          await plugin.saveSettings();
-          plugin.refreshStyles();
-        }),
-      );
-    }
   }
 
   // --- Custom Word Lists section ---

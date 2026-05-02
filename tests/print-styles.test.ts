@@ -47,6 +47,7 @@ const DEFAULT_CHROME: PageChromeState = {
   signatureBlock: false,
   bannerPosition: 'both',
   showClassificationBanner: true,
+  theme: 'light',
 };
 
 function makeChrome(overrides: Partial<PageChromeState> = {}): PageChromeState {
@@ -211,6 +212,171 @@ describe('PageChromeManager', () => {
     manager.init(makeChrome({ classification: 'nonexistent-level' }));
     const css = getLastStyleEl(dom.headAppendChild).textContent!;
     expect(css).toBe('');
+  });
+
+  // --- F2: nested @media (prefers-color-scheme: dark), not the combined form ---
+
+  it('auto theme: nests @media (prefers-color-scheme: dark) inside @media print', () => {
+    const customs: CustomClassification[] = [
+      // Trigger the dark override path with explicit dark colors so the
+      // current `colorDark || backgroundDark` guard emits the block
+      { id: 'topsec', label: 'TOP SECRET', color: '#660000', background: '#fff0f0', colorDark: '#ff8888', backgroundDark: '#330000' },
+    ];
+    manager.init(makeChrome({
+      classification: 'topsec',
+      customClassifications: customs,
+      theme: 'auto',
+    }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+
+    // The combined form is silently ignored by Chromium's print engine
+    expect(css).not.toContain('@media print and (prefers-color-scheme: dark)');
+
+    // Working form: outer @media print { ... @media (prefers-color-scheme: dark) { ... } }
+    expect(css).toContain('@media print {');
+    expect(css).toContain('@media (prefers-color-scheme: dark)');
+
+    // Verify nesting — dark block must appear *inside* the @media print
+    // block, not as a top-level sibling
+    const printIdx = css.indexOf('@media print {');
+    const darkIdx = css.indexOf('@media (prefers-color-scheme: dark)');
+    expect(printIdx).toBeGreaterThanOrEqual(0);
+    expect(darkIdx).toBeGreaterThan(printIdx);
+  });
+
+  it('light theme: emits no prefers-color-scheme override', () => {
+    manager.init(makeChrome({ classification: 'confidential', theme: 'light' }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).not.toContain('prefers-color-scheme');
+  });
+
+  it('dark theme: bakes dark colors statically, no @media override', () => {
+    manager.init(makeChrome({ classification: 'confidential', theme: 'dark' }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).not.toContain('prefers-color-scheme');
+  });
+
+  // --- F3: auto theme always emits dark override even without explicit dark colors ---
+
+  it('auto theme: emits dark override for custom classification with no colorDark/backgroundDark', () => {
+    const customs: CustomClassification[] = [
+      // No colorDark or backgroundDark — must still get an auto override block
+      { id: 'orange', label: 'ORANGE', color: '#ff8800', background: '#fff0e0' },
+    ];
+    manager.init(makeChrome({
+      classification: 'orange',
+      customClassifications: customs,
+      theme: 'auto',
+    }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+
+    // Auto override must be present even without explicit dark variants
+    expect(css).toContain('@media (prefers-color-scheme: dark)');
+    expect(css).toContain('"ORANGE"');
+
+    // Dark block falls back to the light values (sanitizeColor passes them through)
+    const darkBlockStart = css.indexOf('@media (prefers-color-scheme: dark)');
+    expect(darkBlockStart).toBeGreaterThanOrEqual(0);
+    const darkBlock = css.substring(darkBlockStart);
+    expect(darkBlock).toContain('#ff8800');
+  });
+
+  it('auto theme: built-in classification (no dark variants) still emits dark override', () => {
+    manager.init(makeChrome({ classification: 'public', theme: 'auto' }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    // Built-in 'public' has no colorDark/backgroundDark — the override
+    // block must still be emitted with fallback light values
+    expect(css).toContain('@media (prefers-color-scheme: dark)');
+  });
+
+  // --- F5: Idempotent init (no orphan <style> on double-init) ---
+
+  it('PageChromeManager.init() called twice removes the first <style> before creating the second', () => {
+    manager.init(makeChrome());
+    const first = getLastStyleEl(dom.headAppendChild);
+    const callsBefore = dom.headAppendChild.mock.calls.length;
+
+    manager.init(makeChrome({ classification: 'confidential' }));
+
+    expect(first.remove).toHaveBeenCalled();
+    // One additional appendChild for the new element — and the old one
+    // is gone, so only one <style> with PAGE_CHROME_STYLE_ID is in <head>
+    expect(dom.headAppendChild.mock.calls.length).toBe(callsBefore + 1);
+  });
+
+  // --- Round-2: deeper structural assertions for auto-theme override ---
+
+  it('auto theme with no classification: no override block is emitted', () => {
+    // The override block is gated on `meta` being non-null — a doc with
+    // chrome but no classification (e.g. headers only) must not emit a
+    // dangling @media (prefers-color-scheme) referencing nothing.
+    manager.init(makeChrome({
+      theme: 'auto',
+      headerLeft: 'Acme',
+      pageNumbers: true,
+    }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).toContain('@top-left');
+    expect(css).not.toContain('prefers-color-scheme');
+  });
+
+  it('auto theme override block contains @page with @top-center inside', () => {
+    // Structural sanity — the nested override must wrap a complete
+    // @page { ... } so Chromium accepts it. Asserting the substring
+    // "@page {" appears AFTER "@media (prefers-color-scheme: dark)"
+    // protects against a regression that lifts the override block out
+    // of the @media print scope or drops the @page wrapper.
+    manager.init(makeChrome({ classification: 'confidential', theme: 'auto' }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    const darkIdx = css.indexOf('@media (prefers-color-scheme: dark)');
+    expect(darkIdx).toBeGreaterThan(0);
+    const overrideTail = css.slice(darkIdx);
+    expect(overrideTail).toMatch(/@page\s*\{/);
+    expect(overrideTail).toContain('@top-center');
+  });
+
+  it('auto theme with bannerPosition both: dark override emits both @top-center and @bottom-center', () => {
+    manager.init(makeChrome({
+      classification: 'confidential',
+      theme: 'auto',
+      bannerPosition: 'both',
+    }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    const darkIdx = css.indexOf('@media (prefers-color-scheme: dark)');
+    const overrideTail = css.slice(darkIdx);
+    expect(overrideTail).toContain('@top-center');
+    expect(overrideTail).toContain('@bottom-center');
+  });
+
+  it('dark theme bakes built-in colorDark statically (not the light values)', () => {
+    // Confidential built-in: light=#c41e1e, dark=#ff7777. Theme=dark must
+    // emit #ff7777 in the *base* @page block, not the light value.
+    manager.init(makeChrome({ classification: 'confidential', theme: 'dark' }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).toContain('#ff7777');
+    expect(css).toContain('#3a1818');
+    // Light values must not appear in the dark-theme baked output for the
+    // same banner — would mean we emitted the wrong base.
+    expect(css).not.toContain('#c41e1e');
+    expect(css).not.toContain('#fff5f5');
+  });
+
+  it('dark theme falls back to light color when colorDark is absent', () => {
+    // Custom classification with no dark variants — `theme: dark` should
+    // pass the light values through (sanitized).
+    const customs: CustomClassification[] = [
+      { id: 'orange', label: 'ORANGE', color: '#ff8800', background: '#fff0e0' },
+    ];
+    manager.init(makeChrome({
+      classification: 'orange',
+      customClassifications: customs,
+      theme: 'dark',
+    }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).toContain('#ff8800');
+    expect(css).toContain('#fff0e0');
+    // No prefers-color-scheme block in pure dark theme
+    expect(css).not.toContain('prefers-color-scheme');
   });
 });
 
@@ -453,5 +619,18 @@ describe('DynamicPdfPrintStyleManager', () => {
     expect(css).toContain('font-family:');
     expect(css).toContain('.pdf-watermark-');
     expect(css).toContain('--print-line-height: 1.8');
+  });
+
+  // --- F5: Idempotent init (no orphan <style> on double-init) ---
+
+  it('init() called twice removes the first <style> before creating the second', () => {
+    manager.init(makeSettings());
+    const first = getLastStyleEl(dom.headAppendChild);
+    const callsBefore = dom.headAppendChild.mock.calls.length;
+
+    manager.init(makeSettings({ fontSize: 16 }));
+
+    expect(first.remove).toHaveBeenCalled();
+    expect(dom.headAppendChild.mock.calls.length).toBe(callsBefore + 1);
   });
 });

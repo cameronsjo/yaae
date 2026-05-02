@@ -23,6 +23,46 @@ export function sanitizeListName(name: string): string {
     .replace(/^-+|-+$/g, '');
 }
 
+/**
+ * Build a map from each list's display name to a unique sanitized class
+ * suffix. Two lists whose names sanitize to the same value (e.g. `"My List"`
+ * and `"my-list"`) would otherwise share a class — POSStyleManager would
+ * emit two `color` rules and the second would silently win, leaving one
+ * list visually unstyled. Collisions get a numeric suffix: `my-list`,
+ * `my-list-2`, `my-list-3`, …
+ *
+ * Empty results (whitespace-only names that sanitize to `""`) are returned
+ * as `""` so callers keep their existing skip-on-empty behavior.
+ */
+export function buildUniqueClassSuffixes(
+  names: readonly string[],
+): string[] {
+  const used = new Set<string>();
+  const suffixes: string[] = [];
+
+  for (const name of names) {
+    const base = sanitizeListName(name);
+    if (!base) {
+      suffixes.push('');
+      continue;
+    }
+
+    if (!used.has(base)) {
+      used.add(base);
+      suffixes.push(base);
+      continue;
+    }
+
+    let n = 2;
+    while (used.has(`${base}-${n}`)) n++;
+    const unique = `${base}-${n}`;
+    used.add(unique);
+    suffixes.push(unique);
+  }
+
+  return suffixes;
+}
+
 /** Escape special regex characters in a string */
 function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -36,8 +76,15 @@ export class WordListMatcher {
 
   /** Recompile regexes from the current list definitions */
   compile(lists: CustomWordList[]): void {
+    console.debug(`[yaae] Preparing to compile word lists. Count: ${lists.length}`);
     this.compiled = [];
-    for (const list of lists) {
+
+    // Compute unique class suffixes once so collisions get distinct classes
+    // instead of silently sharing one (and fighting over the color rule).
+    const suffixes = buildUniqueClassSuffixes(lists.map((l) => l.name));
+
+    for (let i = 0; i < lists.length; i++) {
+      const list = lists[i];
       if (!list.enabled || list.words.length === 0) continue;
 
       // Sort by length descending so longer phrases match first
@@ -47,16 +94,23 @@ export class WordListMatcher {
 
       if (sorted.length === 0) continue;
 
+      const suffix = suffixes[i];
+      if (!suffix) continue;
+
       const pattern = sorted.map(escapeRegex).join('|');
       const flags = list.caseSensitive ? 'g' : 'gi';
+      // ReDoS-safe: every entry is escapeRegex'd (literalizes `.*+?^${}()|[]\`),
+      // alternation is a non-capturing group, and `\b` doesn't backtrack.
+      // Adversarial input is moot — words come from this user's own settings.
       const regex = new RegExp(`\\b(?:${pattern})\\b`, flags);
 
       this.compiled.push({
         name: list.name,
-        cssClass: `yaae-list-${sanitizeListName(list.name)}`,
+        cssClass: `yaae-list-${suffix}`,
         regex,
       });
     }
+    console.debug(`[yaae] Word lists compiled. Active: ${this.compiled.length}/${lists.length}`);
   }
 
   /** Match all compiled lists against text, returning non-overlapping matches */

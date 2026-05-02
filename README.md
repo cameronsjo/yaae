@@ -8,8 +8,8 @@ An Obsidian plugin for writers who care about prose. Combines iA Writer-style pr
 
 Color-code your writing by part of speech — adjectives, nouns, adverbs, verbs, and conjunctions — to see the structure of your prose at a glance. Inspired by [iA Writer's syntax highlighting](https://ia.net/writer).
 
-- Per-category color customization
-- Custom word lists
+- Themable per-category colors via CSS variables (`--yaae-pos-*-color-{light,dark}`) — see [docs/theming.md](docs/theming.md)
+- Custom word lists with their own colors
 - Works in both Editor/Live Preview and Reading View
 - Automatically hidden in PDF export
 - Excludes code blocks, frontmatter, and table headers

@@ -3,10 +3,17 @@ import type YaaePlugin from '../../main';
 import {
   getAllClassificationIds,
   getClassificationMeta,
+  type CustomClassification,
   type WatermarkLevel,
 } from '../schemas';
 import type { LinksMode, ThemeMode } from './settings';
 import { createCollapsibleSection } from '../settings/collapsible-section';
+import {
+  FONT_CUSTOM_SENTINEL,
+  isFontPreset,
+  isValidClassificationId,
+  sanitizeClassificationId,
+} from './settings-tab-helpers';
 
 /**
  * Render the Document settings section into the plugin settings tab.
@@ -84,26 +91,80 @@ export function renderDocumentSettings(
     plugin.pageChromeManager.update(plugin.buildPageChromeState());
   }
 
+  // Draft entry for the "Add classification" flow. Held outside
+  // `customClassifications` until it has a valid ID, so partial entries
+  // never get persisted to disk (and an interrupted edit can't load a
+  // half-written `id: ''` row on next reload).
+  let draftEntry: CustomClassification | null = null;
+
   function renderCustomClassifications() {
     customListEl.empty();
     const customs = plugin.settings.document.customClassifications;
 
-    for (let i = 0; i < customs.length; i++) {
-      const entry = customs[i];
+    type RowSource =
+      | { kind: 'persisted'; entry: CustomClassification; index: number }
+      | { kind: 'draft'; entry: CustomClassification };
+
+    const rows: RowSource[] = customs.map((entry, index) => ({
+      kind: 'persisted',
+      entry,
+      index,
+    }));
+    if (draftEntry) rows.push({ kind: 'draft', entry: draftEntry });
+
+    for (const source of rows) {
+      const entry = source.entry;
+      const isDraft = source.kind === 'draft';
 
       const row = new Setting(customListEl)
         .setName(entry.label || entry.id || 'New classification')
-        .setDesc(entry.id ? `Frontmatter value: ${entry.id}` : '');
+        .setDesc(
+          isDraft
+            ? 'ID required — type a slug (e.g., non-sensitive)'
+            : entry.id
+              ? `Frontmatter value: ${entry.id}`
+              : '',
+        );
+      if (isDraft) row.settingEl.toggleClass('is-invalid', true);
 
       row.addText((text) =>
         text
           .setPlaceholder('ID (e.g., non-sensitive)')
           .setValue(entry.id)
           .onChange(async (value) => {
-            entry.id = value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-            row.setDesc(entry.id ? `Frontmatter value: ${entry.id}` : 'ID required');
-            row.settingEl.toggleClass('is-invalid', !entry.id);
-            if (entry.id) await saveAndRefreshPrintStyles();
+            entry.id = sanitizeClassificationId(value);
+            const valid = isValidClassificationId(entry.id);
+            // Frontmatter resolution returns the first matching custom, so a
+            // duplicate ID silently shadows the older entry. Block save on
+            // collision and surface the conflict instead.
+            const duplicate = valid && customs.some(
+              (c, i) =>
+                c.id === entry.id &&
+                !(source.kind === 'persisted' && i === source.index),
+            );
+            row.setDesc(
+              !valid
+                ? 'ID required — at least one letter or digit'
+                : duplicate
+                  ? `ID "${entry.id}" already in use — choose a different ID`
+                  : `Frontmatter value: ${entry.id}`,
+            );
+            row.settingEl.toggleClass('is-invalid', !valid || duplicate);
+
+            if (!valid || duplicate) return;
+
+            if (source.kind === 'draft') {
+              // Commit the draft into the persisted list. Re-render so the
+              // row is now backed by the array (gets a real index, trash
+              // button works, future edits hit the correct slot).
+              customs.push(entry);
+              draftEntry = null;
+              await saveAndRefreshPrintStyles();
+              renderCustomClassifications();
+              return;
+            }
+
+            await saveAndRefreshPrintStyles();
           }),
       );
 
@@ -114,48 +175,97 @@ export function renderDocumentSettings(
           .onChange(async (value) => {
             entry.label = value;
             row.setName(value || entry.id || 'New classification');
-            await saveAndRefreshPrintStyles();
+            // Only persist when the entry has a real, valid ID. Drafts and
+            // entries with placeholder IDs stay in memory until a valid ID
+            // is typed.
+            if (!isDraft && isValidClassificationId(entry.id)) {
+              await saveAndRefreshPrintStyles();
+            }
           }),
       );
 
       const colorPicker = row.addColorPicker((picker) =>
         picker.setValue(entry.color).onChange(async (value) => {
           entry.color = value;
-          await saveAndRefreshPrintStyles();
+          if (!isDraft && isValidClassificationId(entry.id)) {
+            await saveAndRefreshPrintStyles();
+          }
         }),
       );
-      setTooltip(colorPicker.colorPickerEl, 'Text color');
+      setTooltip(colorPicker.colorPickerEl, 'Light theme — text color');
 
       const bgPicker = row.addColorPicker((picker) =>
         picker.setValue(entry.background).onChange(async (value) => {
           entry.background = value;
-          await saveAndRefreshPrintStyles();
+          if (!isDraft && isValidClassificationId(entry.id)) {
+            await saveAndRefreshPrintStyles();
+          }
         }),
       );
-      setTooltip(bgPicker.colorPickerEl, 'Background color');
+      setTooltip(bgPicker.colorPickerEl, 'Light theme — background color');
 
       row.addExtraButton((btn) =>
         btn.setIcon('trash').setTooltip('Remove').onClick(async () => {
-          customs.splice(i, 1);
+          if (source.kind === 'draft') {
+            draftEntry = null;
+            renderCustomClassifications();
+            return;
+          }
+          customs.splice(source.index, 1);
+          await saveAndRefreshPrintStyles();
+          renderCustomClassifications();
+        }),
+      );
+
+      // Dark-theme overrides — second row, optional. Empty = inherit from light.
+      const darkRow = new Setting(customListEl)
+        .setClass('yaae-classification-dark-row')
+        .setName('')
+        .setDesc('Dark theme (leave at defaults to inherit light values)');
+
+      const darkColorPicker = darkRow.addColorPicker((picker) =>
+        picker.setValue(entry.colorDark ?? entry.color).onChange(async (value) => {
+          entry.colorDark = value;
+          await saveAndRefreshPrintStyles();
+        }),
+      );
+      setTooltip(darkColorPicker.colorPickerEl, 'Dark theme — text color');
+
+      const darkBgPicker = darkRow.addColorPicker((picker) =>
+        picker.setValue(entry.backgroundDark ?? entry.background).onChange(async (value) => {
+          entry.backgroundDark = value;
+          await saveAndRefreshPrintStyles();
+        }),
+      );
+      setTooltip(darkBgPicker.colorPickerEl, 'Dark theme — background color');
+
+      // Reset to inherit-from-light
+      darkRow.addExtraButton((btn) =>
+        btn.setIcon('reset').setTooltip('Reset dark colors (inherit from light)').onClick(async () => {
+          entry.colorDark = undefined;
+          entry.backgroundDark = undefined;
           await saveAndRefreshPrintStyles();
           renderCustomClassifications();
         }),
       );
     }
 
-    // Add button
-    new Setting(customListEl).addButton((btn) =>
-      btn.setButtonText('Add classification').onClick(async () => {
-        customs.push({
+    // "Add classification" creates an in-memory draft only — disabled while
+    // a draft is already pending so the UI stays honest about what's
+    // persisted vs. what's still being typed.
+    new Setting(customListEl).addButton((btn) => {
+      btn.setButtonText('Add classification').onClick(() => {
+        if (draftEntry) return;
+        draftEntry = {
           id: '',
           label: '',
           color: '#666666',
           background: '#f5f5f5',
-        });
-        await plugin.saveSettings();
+        };
         renderCustomClassifications();
-      }),
-    );
+      });
+      if (draftEntry) btn.setDisabled(true);
+    });
   }
 
   renderCustomClassifications();
@@ -182,6 +292,36 @@ export function renderDocumentSettings(
         }),
     );
 
+  // Font family: named presets pipe to static CSS classes; arbitrary strings
+  // go through DynamicPdfPrintStyleManager. The dropdown surfaces a
+  // "Custom..." option that reveals the text input row below — this prevents
+  // the prior bug where opening the dropdown to inspect would silently
+  // overwrite an arbitrary `fontFamily` (e.g. "Inter") with "sans" because
+  // the dropdown fell back to "sans" on first render.
+  const currentFont = plugin.settings.document.fontFamily;
+  const fontIsCustom = !isFontPreset(currentFont);
+
+  // Build the custom-font row first so we can reference its element from
+  // the dropdown's onChange handler.
+  let focusCustomFontInput: (() => void) | null = null;
+  const customFontRow = new Setting(appearanceContent)
+    .setName('Custom font')
+    .setDesc('Comma-separated font stack (e.g., "Inter", -apple-system, sans-serif).')
+    .addText((text) => {
+      focusCustomFontInput = () => text.inputEl.focus();
+      text
+        .setPlaceholder('"Inter", -apple-system, sans-serif')
+        .setValue(fontIsCustom ? currentFont : '')
+        .onChange(async (value) => {
+          const trimmed = value.trim();
+          if (!trimmed) return;
+          plugin.settings.document.fontFamily = trimmed;
+          plugin.dynamicPdfPrintStyles.update(plugin.settings.document);
+          await plugin.saveSettings();
+        });
+    });
+  if (!fontIsCustom) customFontRow.settingEl.setAttribute('hidden', '');
+
   new Setting(appearanceContent)
     .setName('Font family')
     .setDesc('Font stack for PDF export. Named presets use safe system fonts.')
@@ -191,15 +331,22 @@ export function renderDocumentSettings(
         .addOption('serif', 'Serif')
         .addOption('mono', 'Monospace')
         .addOption('system', 'System default')
-        .setValue(
-          ['sans', 'serif', 'mono', 'system'].includes(plugin.settings.document.fontFamily)
-            ? plugin.settings.document.fontFamily
-            : 'sans'
-        )
+        .addOption(FONT_CUSTOM_SENTINEL, 'Custom...')
+        .setValue(fontIsCustom ? FONT_CUSTOM_SENTINEL : currentFont)
         .onChange(async (value) => {
+          if (value === FONT_CUSTOM_SENTINEL) {
+            // Reveal the custom input but DO NOT overwrite the stored
+            // fontFamily. If the stored value was already a custom string,
+            // this is a no-op for state; if it was a preset, the user must
+            // type a value before anything is persisted.
+            customFontRow.settingEl.removeAttribute('hidden');
+            focusCustomFontInput?.();
+            return;
+          }
           plugin.settings.document.fontFamily = value;
           plugin.dynamicPdfPrintStyles.update(plugin.settings.document);
           await plugin.saveSettings();
+          customFontRow.settingEl.setAttribute('hidden', '');
         }),
     );
 
