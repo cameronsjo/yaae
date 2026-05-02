@@ -1077,6 +1077,31 @@ describe('getClassificationMeta', () => {
     expect(meta!.label).toBe('UNCLASSIFIED');
     expect(meta!.color).toBe('#333333');
   });
+
+  // F3: whitespace mismatch — raw frontmatter `"  internal  "` resolves
+  // to `internal` in PageChromeManager (Zod-trimmed) but used to fail
+  // strict equality here, leaving the banner blank while the PDF rendered
+  // with classification. Both call sites must converge on the trimmed ID.
+  it('trims whitespace before lookup so "  internal  " resolves to internal meta', () => {
+    const meta = getClassificationMeta('  internal  ', []);
+    expect(meta).not.toBeNull();
+    expect(meta!.label).toBe(CLASSIFICATION_TAXONOMY.internal.label);
+    expect(meta!.color).toBe(CLASSIFICATION_TAXONOMY.internal.color);
+  });
+
+  it('trims whitespace before custom-classification lookup', () => {
+    const customs: CustomClassification[] = [
+      { id: 'sensitive', label: 'SENSITIVE', color: '#b8860b', background: '#fff8e7' },
+    ];
+    const meta = getClassificationMeta('\tsensitive\n', customs);
+    expect(meta).not.toBeNull();
+    expect(meta!.label).toBe('SENSITIVE');
+  });
+
+  it('returns null for whitespace-only level string', () => {
+    expect(getClassificationMeta('   ')).toBeNull();
+    expect(getClassificationMeta('\t\n')).toBeNull();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -1107,5 +1132,30 @@ describe('getAllClassificationIds', () => {
     const ids = getAllClassificationIds(customs);
     const publicCount = ids.filter((id) => id === 'public').length;
     expect(publicCount).toBe(1);
+  });
+
+  // F6: empty/whitespace IDs would surface as a blank option in the
+  // Default Classification dropdown; selecting it sets defaultClassification
+  // to "" and silently disables the banner.
+  it('excludes empty custom IDs', () => {
+    const customs: CustomClassification[] = [
+      { id: '', label: 'BLANK', color: '#333', background: '#eee' },
+      { id: 'foo', label: 'FOO', color: '#333', background: '#eee' },
+    ];
+    const ids = getAllClassificationIds(customs);
+    expect(ids).not.toContain('');
+    expect(ids).toContain('foo');
+  });
+
+  it('excludes whitespace-only custom IDs', () => {
+    const customs: CustomClassification[] = [
+      { id: '   ', label: 'BLANK', color: '#333', background: '#eee' },
+      { id: '\t', label: 'TAB', color: '#333', background: '#eee' },
+      { id: 'foo', label: 'FOO', color: '#333', background: '#eee' },
+    ];
+    const ids = getAllClassificationIds(customs);
+    expect(ids).not.toContain('   ');
+    expect(ids).not.toContain('\t');
+    expect(ids).toContain('foo');
   });
 });
