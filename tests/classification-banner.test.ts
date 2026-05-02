@@ -66,8 +66,16 @@ describe('classificationBannerProcessor', () => {
       const meta = CLASSIFICATION_TAXONOMY[level];
       expect(banner.className).toContain(`yaae-${level}`);
       expect(banner.textContent).toBe(meta.label);
-      expect(banner.style.cssText).toContain(`background: ${meta.background}`);
-      expect(banner.style.cssText).toContain(`color: ${meta.color}`);
+      // Colors flow through CSS custom properties so styles.css can swap on body.theme-dark
+      expect(banner.style.setProperty).toHaveBeenCalledWith('--yaae-banner-color', meta.color);
+      expect(banner.style.setProperty).toHaveBeenCalledWith('--yaae-banner-bg', meta.background);
+      // Built-ins now carry dark variants too
+      if (meta.colorDark) {
+        expect(banner.style.setProperty).toHaveBeenCalledWith('--yaae-banner-color-dark', meta.colorDark);
+      }
+      if (meta.backgroundDark) {
+        expect(banner.style.setProperty).toHaveBeenCalledWith('--yaae-banner-bg-dark', meta.backgroundDark);
+      }
     }
   });
 
@@ -158,8 +166,8 @@ describe('classificationBannerProcessor — custom classifications', () => {
     const banner = (el.insertBefore as any).mock.calls[0][0];
     expect(banner.className).toBe('yaae-classification-banner yaae-non-sensitive');
     expect(banner.textContent).toBe('NON-SENSITIVE');
-    expect(banner.style.cssText).toContain('color: #2d7d2d');
-    expect(banner.style.cssText).toContain('background: #f0faf0');
+    expect(banner.style.setProperty).toHaveBeenCalledWith('--yaae-banner-color', '#2d7d2d');
+    expect(banner.style.setProperty).toHaveBeenCalledWith('--yaae-banner-bg', '#f0faf0');
   });
 
   it('injects banner for all custom levels', () => {
@@ -184,5 +192,42 @@ describe('classificationBannerProcessor — custom classifications', () => {
     expect(el.insertBefore).toHaveBeenCalledOnce();
     const banner = (el.insertBefore as any).mock.calls[0][0];
     expect(banner.textContent).toBe(CLASSIFICATION_TAXONOMY.internal.label);
+  });
+
+  it('propagates dark-theme overrides from custom classification', () => {
+    const customWithDark: CustomClassification = {
+      id: 'tinted',
+      label: 'TINTED',
+      color: '#444444',
+      background: '#eeeeee',
+      colorDark: '#cccccc',
+      backgroundDark: '#222222',
+    };
+    const darkProcessor = createClassificationBannerProcessor(settingsGetter({
+      customClassifications: [customWithDark],
+    }));
+
+    const el = makeEl();
+    const ctx = makeCtx({ lineStart: 0, frontmatter: { classification: 'tinted' } });
+
+    darkProcessor(el, ctx);
+
+    const banner = (el.insertBefore as any).mock.calls[0][0];
+    expect(banner.style.setProperty).toHaveBeenCalledWith('--yaae-banner-color', '#444444');
+    expect(banner.style.setProperty).toHaveBeenCalledWith('--yaae-banner-bg', '#eeeeee');
+    expect(banner.style.setProperty).toHaveBeenCalledWith('--yaae-banner-color-dark', '#cccccc');
+    expect(banner.style.setProperty).toHaveBeenCalledWith('--yaae-banner-bg-dark', '#222222');
+  });
+
+  it('omits dark variant setProperty calls when colorDark/backgroundDark absent', () => {
+    const el = makeEl();
+    const ctx = makeCtx({ lineStart: 0, frontmatter: { classification: 'non-sensitive' } });
+
+    processor(el, ctx);
+
+    const banner = (el.insertBefore as any).mock.calls[0][0];
+    const setPropCalls = (banner.style.setProperty as any).mock.calls.map((c: unknown[]) => c[0]);
+    expect(setPropCalls).not.toContain('--yaae-banner-color-dark');
+    expect(setPropCalls).not.toContain('--yaae-banner-bg-dark');
   });
 });

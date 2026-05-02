@@ -124,7 +124,7 @@ export function renderDocumentSettings(
           await saveAndRefreshPrintStyles();
         }),
       );
-      setTooltip(colorPicker.colorPickerEl, 'Text color');
+      setTooltip(colorPicker.colorPickerEl, 'Light theme — text color');
 
       const bgPicker = row.addColorPicker((picker) =>
         picker.setValue(entry.background).onChange(async (value) => {
@@ -132,11 +132,43 @@ export function renderDocumentSettings(
           await saveAndRefreshPrintStyles();
         }),
       );
-      setTooltip(bgPicker.colorPickerEl, 'Background color');
+      setTooltip(bgPicker.colorPickerEl, 'Light theme — background color');
 
       row.addExtraButton((btn) =>
         btn.setIcon('trash').setTooltip('Remove').onClick(async () => {
           customs.splice(i, 1);
+          await saveAndRefreshPrintStyles();
+          renderCustomClassifications();
+        }),
+      );
+
+      // Dark-theme overrides — second row, optional. Empty = inherit from light.
+      const darkRow = new Setting(customListEl)
+        .setClass('yaae-classification-dark-row')
+        .setName('')
+        .setDesc('Dark theme (leave at defaults to inherit light values)');
+
+      const darkColorPicker = darkRow.addColorPicker((picker) =>
+        picker.setValue(entry.colorDark ?? entry.color).onChange(async (value) => {
+          entry.colorDark = value;
+          await saveAndRefreshPrintStyles();
+        }),
+      );
+      setTooltip(darkColorPicker.colorPickerEl, 'Dark theme — text color');
+
+      const darkBgPicker = darkRow.addColorPicker((picker) =>
+        picker.setValue(entry.backgroundDark ?? entry.background).onChange(async (value) => {
+          entry.backgroundDark = value;
+          await saveAndRefreshPrintStyles();
+        }),
+      );
+      setTooltip(darkBgPicker.colorPickerEl, 'Dark theme — background color');
+
+      // Reset to inherit-from-light
+      darkRow.addExtraButton((btn) =>
+        btn.setIcon('reset').setTooltip('Reset dark colors (inherit from light)').onClick(async () => {
+          entry.colorDark = undefined;
+          entry.backgroundDark = undefined;
           await saveAndRefreshPrintStyles();
           renderCustomClassifications();
         }),

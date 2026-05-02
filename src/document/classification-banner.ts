@@ -35,10 +35,15 @@ export function createClassificationBannerProcessor(
     const banner = document.createElement('div');
     banner.className = `yaae-classification-banner yaae-${classification}`;
     banner.textContent = meta.label;
-    banner.style.cssText = [
-      `background: ${meta.background}`,
-      `color: ${meta.color}`,
-      `border: 1px solid ${meta.color}`,
+
+    // Color/background flow through CSS custom properties so styles.css
+    // can switch light↔dark via `body.theme-dark .yaae-classification-banner`.
+    // Layout is set via inline style for self-containment in reading view.
+    banner.style.setProperty('--yaae-banner-color', meta.color);
+    banner.style.setProperty('--yaae-banner-bg', meta.background);
+    if (meta.colorDark) banner.style.setProperty('--yaae-banner-color-dark', meta.colorDark);
+    if (meta.backgroundDark) banner.style.setProperty('--yaae-banner-bg-dark', meta.backgroundDark);
+    banner.style.cssText += [
       'text-align: center',
       'font-size: 11px',
       'font-weight: 700',

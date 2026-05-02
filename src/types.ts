@@ -13,6 +13,7 @@ export const POS_CATEGORIES: POSCategory[] = [
 /** Per-POS toggle and color settings */
 export interface POSCategorySettings {
   enabled: boolean;
+  /** @deprecated Customize via Style Settings or `--yaae-pos-*-color-{light,dark}` overrides. Read by one-shot migration in POSStyleManager. */
   color: string;
 }
 

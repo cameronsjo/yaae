@@ -464,6 +464,7 @@ export default class YaaePlugin extends Plugin {
       signatureBlock: false,
       bannerPosition: doc.bannerPosition,
       showClassificationBanner: doc.showClassificationBanner,
+      theme: doc.theme,
     };
   }
 
