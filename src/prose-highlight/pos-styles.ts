@@ -1,6 +1,6 @@
 import type { ProseHighlightSettings } from '../types';
 import { POS_CATEGORIES } from '../types';
-import { sanitizeListName } from './word-lists';
+import { buildUniqueClassSuffixes } from './word-lists';
 
 const STYLE_ID = 'yaae-prose-highlight-styles';
 
@@ -35,9 +35,16 @@ export class POSStyleManager {
     }
     rules.push(`body { ${varDecls.join(' ')} }`);
 
-    // Custom word list colors (fully dynamic — no static rules)
-    for (const list of settings.customWordLists) {
-      const cls = sanitizeListName(list.name);
+    // Custom word list colors (fully dynamic — no static rules). Use the
+    // same dedup logic as WordListMatcher so collisions (e.g. "My List" and
+    // "my-list") get distinct classes here AND in the highlighter, instead
+    // of one rule silently overwriting the other.
+    const suffixes = buildUniqueClassSuffixes(
+      settings.customWordLists.map((l) => l.name),
+    );
+    for (let i = 0; i < settings.customWordLists.length; i++) {
+      const list = settings.customWordLists[i];
+      const cls = suffixes[i];
       if (cls) {
         rules.push(`.yaae-list-${cls} { color: ${list.color}; }`);
       }
