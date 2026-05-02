@@ -148,3 +148,46 @@ describe('F7 — vault.read call sites guard with TFile instanceof', () => {
     expect(fn![0]).toMatch(/if\s*\(\s*!\(\s*file\s+instanceof\s+TFile\s*\)\s*\)\s*return/);
   });
 });
+
+// --- F8: customClassifications resilience ---------------------------------
+
+describe('F8 — loadSettings resets non-array customClassifications to []', () => {
+  it('contains an Array.isArray guard for customClassifications', () => {
+    expect(MAIN_TS).toMatch(
+      /Array\.isArray\(\s*this\.settings\.document\.customClassifications\s*\)/,
+    );
+  });
+
+  it('resets to [] when not an array', () => {
+    expect(MAIN_TS).toMatch(
+      /!Array\.isArray\(\s*this\.settings\.document\.customClassifications\s*\)[\s\S]*?this\.settings\.document\.customClassifications\s*=\s*\[\]/,
+    );
+  });
+
+  // Behavioral test of the guard logic, copy-pasted from main.ts to avoid
+  // importing the plugin (which pulls in CM6 / browser-only modules).
+  it('guard logic resets null to []', () => {
+    const document: { customClassifications: unknown } = { customClassifications: null };
+    if (!Array.isArray(document.customClassifications)) {
+      document.customClassifications = [];
+    }
+    expect(document.customClassifications).toEqual([]);
+  });
+
+  it('guard logic resets a string to []', () => {
+    const document: { customClassifications: unknown } = { customClassifications: 'corrupt' };
+    if (!Array.isArray(document.customClassifications)) {
+      document.customClassifications = [];
+    }
+    expect(document.customClassifications).toEqual([]);
+  });
+
+  it('guard logic preserves a valid non-empty array', () => {
+    const value = [{ id: 'tlp-red', label: 'TLP:RED', color: '#f00', background: '#000' }];
+    const document: { customClassifications: unknown } = { customClassifications: value };
+    if (!Array.isArray(document.customClassifications)) {
+      document.customClassifications = [];
+    }
+    expect(document.customClassifications).toBe(value);
+  });
+});

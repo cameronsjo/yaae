@@ -263,6 +263,14 @@ export default class YaaePlugin extends Plugin {
       this.settings.document,
     );
 
+    // Defensive: a corrupt or hand-edited data.json can land here with
+    // arrays set to null, strings, or other non-arrays (Object.assign
+    // shallow-merges and won't restore the default []). Reset critical
+    // arrays so downstream code can safely .map / .filter.
+    if (!Array.isArray(this.settings.document.customClassifications)) {
+      this.settings.document.customClassifications = [];
+    }
+
     // Migrate deprecated expandLinks/plainLinks booleans to links enum
     const doc = this.settings.document;
     if (doc.links === 'expand' && (doc.plainLinks || !doc.expandLinks)) {
