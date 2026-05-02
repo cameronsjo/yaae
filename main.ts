@@ -415,6 +415,14 @@ export default class YaaePlugin extends Plugin {
     if (!file) return;
     const content = await this.app.vault.read(file);
 
+    // Race guard: if the user switched files during the read, do NOT modify
+    // the file we started with — that would write a TOC for the previous
+    // document into the now-active one. Bail with a debug message.
+    if (this.app.workspace.getActiveFile() !== file) {
+      console.debug('[yaae] TOC abort: active file changed mid-read');
+      return;
+    }
+
     // Get TOC depth from frontmatter or settings
     const fmResult = validateMarkdown(content);
     const depth = fmResult.data?.export?.pdf?.tocDepth ?? this.settings.document.tocDepth;
@@ -471,15 +479,27 @@ export default class YaaePlugin extends Plugin {
   /**
    * Read active document's frontmatter and update page chrome with its
    * classification + signature block + per-document theme override.
+   *
+   * Race-aware: if the active file changes during the async vault.read,
+   * we abort the update so the chrome doesn't reflect a stale file.
    */
   async updatePageChromeFromActiveFile(): Promise<void> {
-    const file = this.app.workspace.getActiveFile();
-    if (!file || file.extension !== 'md') {
+    const startFile = this.app.workspace.getActiveFile();
+    if (!startFile || startFile.extension !== 'md') {
       this.pageChromeManager.update(this.buildPageChromeState());
       return;
     }
 
-    const content = await this.app.vault.read(file);
+    const content = await this.app.vault.read(startFile);
+
+    // Race guard: if the user switched files during the read, the page chrome
+    // should reflect the *new* active file (or be left alone), not the file we
+    // started reading. Bail and let the next active-leaf-change re-trigger us.
+    if (this.app.workspace.getActiveFile() !== startFile) {
+      console.debug('[yaae] updatePageChromeFromActiveFile: active file changed mid-read, aborting');
+      return;
+    }
+
     const result = validateMarkdown(content);
 
     const classification = result.data?.classification ?? this.settings.document.defaultClassification;

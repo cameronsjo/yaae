@@ -58,3 +58,37 @@ describe('F2 — validateOnSave toggle takes effect without reload', () => {
     );
   });
 });
+
+// --- F3: race in updatePageChromeFromActiveFile ---------------------------
+
+describe('F3 — updatePageChromeFromActiveFile is race-safe', () => {
+  it('captures startFile before vault.read', () => {
+    expect(MAIN_TS).toMatch(/const\s+startFile\s*=\s*this\.app\.workspace\.getActiveFile\(\)/);
+  });
+
+  it('re-checks getActiveFile() after vault.read and bails if changed', () => {
+    expect(MAIN_TS).toMatch(
+      /await\s+this\.app\.vault\.read\(startFile\)[\s\S]*?if\s*\(\s*this\.app\.workspace\.getActiveFile\(\)\s*!==\s*startFile\s*\)[\s\S]*?return/,
+    );
+  });
+});
+
+// --- F4: race in generateTocForCurrentFile --------------------------------
+
+describe('F4 — generateTocForCurrentFile is race-safe', () => {
+  it('re-checks active file after vault.read and bails before vault.modify', () => {
+    const tocFn = MAIN_TS.match(/async\s+generateTocForCurrentFile\s*\(\s*\)[\s\S]*?\n\s{2}\}/);
+    expect(tocFn).not.toBeNull();
+    const body = tocFn![0];
+    const readIdx = body.indexOf('vault.read(file)');
+    const guardIdx = body.search(/this\.app\.workspace\.getActiveFile\(\)\s*!==\s*file/);
+    const modifyIdx = body.indexOf('vault.modify(file');
+    expect(readIdx).toBeGreaterThan(-1);
+    expect(guardIdx).toBeGreaterThan(readIdx);
+    expect(modifyIdx).toBeGreaterThan(guardIdx);
+  });
+
+  it('emits a debug message when aborting due to race', () => {
+    expect(MAIN_TS).toMatch(/console\.debug\([^)]*TOC abort/);
+  });
+});
