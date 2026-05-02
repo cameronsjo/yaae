@@ -7,6 +7,10 @@ import {
 } from '../schemas';
 import type { LinksMode, ThemeMode } from './settings';
 import { createCollapsibleSection } from '../settings/collapsible-section';
+import {
+  isValidClassificationId,
+  sanitizeClassificationId,
+} from './settings-tab-helpers';
 
 /**
  * Render the Document settings section into the plugin settings tab.
@@ -100,10 +104,15 @@ export function renderDocumentSettings(
           .setPlaceholder('ID (e.g., non-sensitive)')
           .setValue(entry.id)
           .onChange(async (value) => {
-            entry.id = value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-            row.setDesc(entry.id ? `Frontmatter value: ${entry.id}` : 'ID required');
-            row.settingEl.toggleClass('is-invalid', !entry.id);
-            if (entry.id) await saveAndRefreshPrintStyles();
+            entry.id = sanitizeClassificationId(value);
+            const valid = isValidClassificationId(entry.id);
+            row.setDesc(
+              valid
+                ? `Frontmatter value: ${entry.id}`
+                : 'ID required — at least one letter or digit',
+            );
+            row.settingEl.toggleClass('is-invalid', !valid);
+            if (valid) await saveAndRefreshPrintStyles();
           }),
       );
 
