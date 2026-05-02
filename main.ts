@@ -582,7 +582,10 @@ class YaaeSettingTab extends PluginSettingTab {
         text: tab.label,
         cls: `yaae-settings-tab${this.activeTab === tab.id ? ' is-active' : ''}`,
       });
-      btn.addEventListener('click', () => {
+      // Use registerDomEvent (inherited from Component via PluginSettingTab)
+      // so listeners are auto-removed when the tab is unloaded — raw
+      // addEventListener leaks one listener per display() rebuild.
+      this.registerDomEvent(btn, 'click', () => {
         this.activeTab = tab.id;
         this.display();
       });

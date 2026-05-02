@@ -223,3 +223,14 @@ describe('F9 — cssclasses filter rejects non-string entries safely', () => {
     expect(filterUserCssClasses([undefined, true, false, 'keep'])).toEqual(['keep']);
   });
 });
+
+// --- F10: settings tab uses registerDomEvent ------------------------------
+
+describe('F10 — settings tab nav buttons use registerDomEvent', () => {
+  it('does not use raw addEventListener for tab nav buttons', () => {
+    const cls = MAIN_TS.match(/class\s+YaaeSettingTab[\s\S]*$/);
+    expect(cls).not.toBeNull();
+    expect(cls![0]).toMatch(/this\.registerDomEvent\(\s*btn\s*,\s*'click'/);
+    expect(cls![0]).not.toMatch(/btn\.addEventListener\(\s*'click'/);
+  });
+});
