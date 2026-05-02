@@ -47,6 +47,7 @@ const DEFAULT_CHROME: PageChromeState = {
   signatureBlock: false,
   bannerPosition: 'both',
   showClassificationBanner: true,
+  theme: 'light',
 };
 
 function makeChrome(overrides: Partial<PageChromeState> = {}): PageChromeState {
@@ -211,6 +212,48 @@ describe('PageChromeManager', () => {
     manager.init(makeChrome({ classification: 'nonexistent-level' }));
     const css = getLastStyleEl(dom.headAppendChild).textContent!;
     expect(css).toBe('');
+  });
+
+  // --- F2: nested @media (prefers-color-scheme: dark), not the combined form ---
+
+  it('auto theme: nests @media (prefers-color-scheme: dark) inside @media print', () => {
+    const customs: CustomClassification[] = [
+      // Trigger the dark override path with explicit dark colors so the
+      // current `colorDark || backgroundDark` guard emits the block
+      { id: 'topsec', label: 'TOP SECRET', color: '#660000', background: '#fff0f0', colorDark: '#ff8888', backgroundDark: '#330000' },
+    ];
+    manager.init(makeChrome({
+      classification: 'topsec',
+      customClassifications: customs,
+      theme: 'auto',
+    }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+
+    // The combined form is silently ignored by Chromium's print engine
+    expect(css).not.toContain('@media print and (prefers-color-scheme: dark)');
+
+    // Working form: outer @media print { ... @media (prefers-color-scheme: dark) { ... } }
+    expect(css).toContain('@media print {');
+    expect(css).toContain('@media (prefers-color-scheme: dark)');
+
+    // Verify nesting — dark block must appear *inside* the @media print
+    // block, not as a top-level sibling
+    const printIdx = css.indexOf('@media print {');
+    const darkIdx = css.indexOf('@media (prefers-color-scheme: dark)');
+    expect(printIdx).toBeGreaterThanOrEqual(0);
+    expect(darkIdx).toBeGreaterThan(printIdx);
+  });
+
+  it('light theme: emits no prefers-color-scheme override', () => {
+    manager.init(makeChrome({ classification: 'confidential', theme: 'light' }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).not.toContain('prefers-color-scheme');
+  });
+
+  it('dark theme: bakes dark colors statically, no @media override', () => {
+    manager.init(makeChrome({ classification: 'confidential', theme: 'dark' }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    expect(css).not.toContain('prefers-color-scheme');
   });
 });
 

@@ -172,45 +172,50 @@ export class PageChromeManager {
     }`);
     }
 
-    let css = `@media print {
-  @page {
-    margin: 1in !important;
-${marginBoxes.join('\n')}
-  }
-}`;
-
-    // 'auto' theme — append an @media override that swaps banner colors to
-    // their dark variants when the print engine resolves prefers-color-scheme.
-    // Only banner colors swap; headers/footers/page numbers stay neutral.
+    // 'auto' theme — emit a *nested* `@media (prefers-color-scheme: dark)`
+    // inside the outer `@media print` block. The combined form
+    // `@media print and (prefers-color-scheme: dark)` is silently ignored
+    // by Chromium's print engine, so nesting is required for the dark
+    // override to take effect during PDF export. Only banner colors swap;
+    // headers/footers/page numbers stay neutral.
+    let autoOverride = '';
     if (state.theme === 'auto' && meta && (meta.colorDark || meta.backgroundDark)) {
       const altColor = sanitizeColor(meta.colorDark ?? meta.color, '#000');
       const altBg = sanitizeColor(meta.backgroundDark ?? meta.background, '#fff');
       const altBoxes: string[] = [];
       const altLabel = escapeCssString(meta.label);
       if (hasTopBanner) {
-        altBoxes.push(`    @top-center {
-      content: "${altLabel}";
-      color: ${altColor};
-      background: ${altBg};
-      border-bottom: 2px solid ${altColor};${BANNER_BASE}
-    }`);
+        altBoxes.push(`      @top-center {
+        content: "${altLabel}";
+        color: ${altColor};
+        background: ${altBg};
+        border-bottom: 2px solid ${altColor};${BANNER_BASE}
+      }`);
       }
       if (hasBottomBanner) {
-        altBoxes.push(`    @bottom-center {
-      content: "${altLabel}";
-      color: ${altColor};
-      background: ${altBg};
-      border-top: 2px solid ${altColor};${BANNER_BASE}
-    }`);
+        altBoxes.push(`      @bottom-center {
+        content: "${altLabel}";
+        color: ${altColor};
+        background: ${altBg};
+        border-top: 2px solid ${altColor};${BANNER_BASE}
+      }`);
       }
       if (altBoxes.length > 0) {
-        css += `\n@media print and (prefers-color-scheme: dark) {
-  @page {
+        autoOverride = `
+  @media (prefers-color-scheme: dark) {
+    @page {
 ${altBoxes.join('\n')}
-  }
-}`;
+    }
+  }`;
       }
     }
+
+    const css = `@media print {
+  @page {
+    margin: 1in !important;
+${marginBoxes.join('\n')}
+  }${autoOverride}
+}`;
 
     this.styleEl.textContent = css;
     console.debug('[yaae] PageChromeManager updated. CSS:', css);
