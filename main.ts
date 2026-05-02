@@ -56,8 +56,14 @@ export default class YaaePlugin extends Plugin {
 
     // --- Prose Highlight ---
 
-    // Dynamic CSS for POS and custom list colors
+    // Dynamic CSS for POS and custom list colors. init() may flip the
+    // posColorsMigrated latch on first run after upgrading from a pre-
+    // light/dark schema; persist that so subsequent reloads skip migration.
+    const wasMigrated = this.settings.proseHighlight.posColorsMigrated === true;
     this.styleManager.init(this.settings.proseHighlight);
+    if (!wasMigrated && this.settings.proseHighlight.posColorsMigrated) {
+      await this.saveSettings();
+    }
 
     // Compile word lists from saved settings
     this.wordListMatcher.compile(

@@ -36,6 +36,12 @@ export interface ProseHighlightSettings {
   readingViewEnabled: boolean;
   /** Custom word lists */
   customWordLists: CustomWordList[];
+  /**
+   * One-shot migration latch for legacy POS color customizations. Once set
+   * to true, the migration in POSStyleManager.init no longer fires, leaving
+   * Style Settings as the sole writer of `--yaae-pos-*-color-{light,dark}`.
+   */
+  posColorsMigrated?: boolean;
 }
 
 /** Default colors matching iA Writer's palette */
