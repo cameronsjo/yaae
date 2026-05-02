@@ -255,6 +255,39 @@ describe('PageChromeManager', () => {
     const css = getLastStyleEl(dom.headAppendChild).textContent!;
     expect(css).not.toContain('prefers-color-scheme');
   });
+
+  // --- F3: auto theme always emits dark override even without explicit dark colors ---
+
+  it('auto theme: emits dark override for custom classification with no colorDark/backgroundDark', () => {
+    const customs: CustomClassification[] = [
+      // No colorDark or backgroundDark — must still get an auto override block
+      { id: 'orange', label: 'ORANGE', color: '#ff8800', background: '#fff0e0' },
+    ];
+    manager.init(makeChrome({
+      classification: 'orange',
+      customClassifications: customs,
+      theme: 'auto',
+    }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+
+    // Auto override must be present even without explicit dark variants
+    expect(css).toContain('@media (prefers-color-scheme: dark)');
+    expect(css).toContain('"ORANGE"');
+
+    // Dark block falls back to the light values (sanitizeColor passes them through)
+    const darkBlockStart = css.indexOf('@media (prefers-color-scheme: dark)');
+    expect(darkBlockStart).toBeGreaterThanOrEqual(0);
+    const darkBlock = css.substring(darkBlockStart);
+    expect(darkBlock).toContain('#ff8800');
+  });
+
+  it('auto theme: built-in classification (no dark variants) still emits dark override', () => {
+    manager.init(makeChrome({ classification: 'public', theme: 'auto' }));
+    const css = getLastStyleEl(dom.headAppendChild).textContent!;
+    // Built-in 'public' has no colorDark/backgroundDark — the override
+    // block must still be emitted with fallback light values
+    expect(css).toContain('@media (prefers-color-scheme: dark)');
+  });
 });
 
 // ---------------------------------------------------------------------------

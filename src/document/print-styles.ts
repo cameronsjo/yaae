@@ -178,8 +178,13 @@ export class PageChromeManager {
     // by Chromium's print engine, so nesting is required for the dark
     // override to take effect during PDF export. Only banner colors swap;
     // headers/footers/page numbers stay neutral.
+    //
+    // Always emit the override block when theme is 'auto', even if no
+    // explicit dark colors are defined — fall back to the light values.
+    // This way 'auto' never silently degrades to 'light' for custom
+    // classifications that haven't filled in their dark variants yet.
     let autoOverride = '';
-    if (state.theme === 'auto' && meta && (meta.colorDark || meta.backgroundDark)) {
+    if (state.theme === 'auto' && meta) {
       const altColor = sanitizeColor(meta.colorDark ?? meta.color, '#000');
       const altBg = sanitizeColor(meta.backgroundDark ?? meta.background, '#fff');
       const altBoxes: string[] = [];
