@@ -15,10 +15,17 @@ export function escapeCssString(value: string): string {
     .replace(/\r/g, '');
 }
 
-/** Validate a hex color value. Returns fallback if the value isn't a valid hex color. */
+/**
+ * Validate a hex color value. Returns the fallback if the value isn't a
+ * valid hex color, and logs a warning so a corrupt classification color
+ * doesn't silently render as black-on-white (visually indistinguishable
+ * from PUBLIC) and mask the misclassification.
+ */
 const HEX_COLOR = /^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
 export function sanitizeColor(value: string, fallback: string): string {
-  return HEX_COLOR.test(value) ? value : fallback;
+  if (HEX_COLOR.test(value)) return value;
+  console.warn('[yaae] invalid color input rejected:', value);
+  return fallback;
 }
 
 /** Coerce to number and clamp within a range. Returns fallback for non-finite values. */
