@@ -231,3 +231,97 @@ describe('classificationBannerProcessor — custom classifications', () => {
     expect(setPropCalls).not.toContain('--yaae-banner-bg-dark');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Regression coverage: classification-correctness fixes
+// ---------------------------------------------------------------------------
+
+describe('classificationBannerProcessor — F1: custom property survival', () => {
+  // Defends against the `cssText +=` regression: when layout was assigned
+  // via cssText round-trip, Chromium could clobber the four
+  // --yaae-banner-* declarations set immediately before. Verify all four
+  // setProperty calls remain on the banner element after layout is applied.
+  const customWithDark: CustomClassification = {
+    id: 'tinted',
+    label: 'TINTED',
+    color: '#444444',
+    background: '#eeeeee',
+    colorDark: '#cccccc',
+    backgroundDark: '#222222',
+  };
+  const processor = createClassificationBannerProcessor(settingsGetter({
+    customClassifications: [customWithDark],
+  }));
+
+  it('preserves all four --yaae-banner-* custom properties through layout assignment', () => {
+    const el = makeEl();
+    const ctx = makeCtx({ lineStart: 0, frontmatter: { classification: 'tinted' } });
+
+    processor(el, ctx);
+
+    const banner = (el.insertBefore as any).mock.calls[0][0];
+    const setPropCalls = (banner.style.setProperty as any).mock.calls;
+    const setPropMap = new Map<string, string>();
+    for (const [prop, value] of setPropCalls) {
+      setPropMap.set(prop, value);
+    }
+
+    // All four custom properties must still be declared on the element
+    // after the layout block runs.
+    expect(setPropMap.get('--yaae-banner-color')).toBe('#444444');
+    expect(setPropMap.get('--yaae-banner-bg')).toBe('#eeeeee');
+    expect(setPropMap.get('--yaae-banner-color-dark')).toBe('#cccccc');
+    expect(setPropMap.get('--yaae-banner-bg-dark')).toBe('#222222');
+
+    // Layout properties also flow through setProperty (no cssText += round-trip)
+    expect(setPropMap.has('text-align')).toBe(true);
+    expect(setPropMap.has('padding')).toBe(true);
+  });
+});
+
+describe('classificationBannerProcessor — F2/F3: class-name and whitespace handling', () => {
+  it('builds usable class string when classification has surrounding whitespace', () => {
+    // F3: whitespace classification mismatch. Banner should resolve and use
+    // the trimmed level, not the raw frontmatter value with spaces.
+    const processor = createClassificationBannerProcessor(settingsGetter());
+    const el = makeEl();
+    const ctx = makeCtx({ lineStart: 0, frontmatter: { classification: '  internal  ' } });
+
+    processor(el, ctx);
+
+    expect(el.insertBefore).toHaveBeenCalledOnce();
+    const banner = (el.insertBefore as any).mock.calls[0][0];
+    // Class fragment is sanitized — no leading/trailing spaces leaked into the className
+    expect(banner.className).toBe('yaae-classification-banner yaae-internal');
+    // setProperty values still match the resolved built-in
+    const setPropCalls = (banner.style.setProperty as any).mock.calls;
+    const setPropMap = new Map<string, string>(setPropCalls.map((c: unknown[]) => [c[0] as string, c[1] as string]));
+    expect(setPropMap.get('--yaae-banner-color')).toBe(CLASSIFICATION_TAXONOMY.internal.color);
+  });
+
+  it('sanitizes custom classification IDs that contain spaces', () => {
+    // F2: ensure stray spaces in a custom classification ID don't split into
+    // multiple class tokens or cause a selector-injection style breakout.
+    // The custom classification "internal extra" is invalid by sanitizeCssId
+    // rules — the banner should still render but skip the classFragment.
+    const malformed: CustomClassification = {
+      id: 'internal extra',
+      label: 'MALFORMED',
+      color: '#444444',
+      background: '#eeeeee',
+    };
+    const processor = createClassificationBannerProcessor(settingsGetter({
+      customClassifications: [malformed],
+    }));
+    const el = makeEl();
+    const ctx = makeCtx({ lineStart: 0, frontmatter: { classification: 'internal extra' } });
+
+    processor(el, ctx);
+
+    expect(el.insertBefore).toHaveBeenCalledOnce();
+    const banner = (el.insertBefore as any).mock.calls[0][0];
+    // No second yaae-* class fragment leaked through
+    expect(banner.className).toBe('yaae-classification-banner');
+    expect(banner.textContent).toBe('MALFORMED');
+  });
+});

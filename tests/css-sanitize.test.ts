@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   escapeCssString,
   sanitizeColor,
@@ -67,6 +67,41 @@ describe('sanitizeColor', () => {
 
   it('rejects empty string', () => {
     expect(sanitizeColor('', '#000')).toBe('#000');
+  });
+
+  // F5: silent fallback used to disguise corrupt classification colors as
+  // black-on-white, visually similar to the PUBLIC banner. Warn on
+  // rejection so misclassification doesn't ship to PDF unnoticed.
+  describe('warns on invalid input (F5)', () => {
+    let warnSpy: ReturnType<typeof vi.spyOn>;
+    beforeEach(() => {
+      warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    });
+    afterEach(() => {
+      warnSpy.mockRestore();
+    });
+
+    it('warns when input is not a hex color', () => {
+      sanitizeColor('rgb(255,0,0)', '#000');
+      expect(warnSpy).toHaveBeenCalledOnce();
+      expect(warnSpy.mock.calls[0][0]).toContain('[yaae]');
+      expect(warnSpy.mock.calls[0][1]).toBe('rgb(255,0,0)');
+    });
+
+    it('warns on injection attempt', () => {
+      sanitizeColor('red; content: "pwned"; color', '#000');
+      expect(warnSpy).toHaveBeenCalledOnce();
+    });
+
+    it('warns on empty string', () => {
+      sanitizeColor('', '#000');
+      expect(warnSpy).toHaveBeenCalledOnce();
+    });
+
+    it('does not warn on valid hex color', () => {
+      sanitizeColor('#c41e1e', '#000');
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
   });
 });
 
