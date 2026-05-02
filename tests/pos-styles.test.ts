@@ -313,4 +313,26 @@ describe('POSStyleManager', () => {
     // setupDOM() reuses the same mock for createElement; called once per init()
     expect(document.createElement).toHaveBeenCalledTimes(2);
   });
+
+  // --- F6: collision-safe class names ---
+
+  it('emits distinct color rules for word lists whose names collide', () => {
+    // "My List" and "my-list" both sanitize to "my-list". Without dedup,
+    // POSStyleManager would emit two rules for the same selector, and the
+    // second list's color would silently overwrite the first's.
+    const settings: ProseHighlightSettings = {
+      ...DEFAULT_PROSE_HIGHLIGHT_SETTINGS,
+      customWordLists: [
+        { name: 'My List', words: ['x'], color: '#aaaaaa', enabled: true, caseSensitive: false },
+        { name: 'my-list', words: ['y'], color: '#bbbbbb', enabled: true, caseSensitive: false },
+      ],
+    };
+
+    manager.init(settings);
+    const css = dom.styleEl.textContent;
+
+    // Both colors must be present, attached to distinct selectors.
+    expect(css).toContain('.yaae-list-my-list { color: #aaaaaa; }');
+    expect(css).toContain('.yaae-list-my-list-2 { color: #bbbbbb; }');
+  });
 });

@@ -1,6 +1,6 @@
 import type { ProseHighlightSettings } from '../types';
 import { POS_CATEGORIES, DEFAULT_POS_COLORS } from '../types';
-import { sanitizeListName } from './word-lists';
+import { buildUniqueClassSuffixes } from './word-lists';
 
 const STYLE_ID = 'yaae-prose-highlight-styles';
 
@@ -34,8 +34,18 @@ export class POSStyleManager {
     if (!this.styleEl) return;
 
     const rules: string[] = [];
-    for (const list of settings.customWordLists) {
-      const cls = sanitizeListName(list.name);
+
+    // Custom word list colors (fully dynamic — no static rules). POS
+    // category default colors live in styles.css now (layered light/dark
+    // variables); only word lists need <style> injection. Dedup colliding
+    // sanitized names so two list names like "My List" and "my-list" each
+    // get a distinct class (matches WordListMatcher's behavior).
+    const suffixes = buildUniqueClassSuffixes(
+      settings.customWordLists.map((l) => l.name),
+    );
+    for (let i = 0; i < settings.customWordLists.length; i++) {
+      const list = settings.customWordLists[i];
+      const cls = suffixes[i];
       if (cls) {
         rules.push(`.yaae-list-${cls} { color: ${list.color}; }`);
       }
