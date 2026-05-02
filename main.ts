@@ -275,7 +275,6 @@ export default class YaaePlugin extends Plugin {
     // Migrate deprecated expandLinks/plainLinks booleans to links enum
     const doc = this.settings.document;
     if (doc.links === 'expand' && (doc.plainLinks || !doc.expandLinks)) {
-      const previousLinks = doc.links;
       if (doc.plainLinks) {
         doc.links = 'plain' as LinksMode;
       } else if (!doc.expandLinks) {
@@ -285,7 +284,16 @@ export default class YaaePlugin extends Plugin {
         `[yaae] Migrated deprecated link booleans to links enum. ` +
         `expandLinks: ${doc.expandLinks}, plainLinks: ${doc.plainLinks} → links: ${doc.links}`,
       );
-      await this.saveSettings();
+      // Defer the persist so loadSettings() resolves cleanly before any
+      // saveSettings() write — calling saveSettings() while loadSettings()
+      // is still on the stack creates a narrow window where a concurrent
+      // load could observe partial state. queueMicrotask runs after
+      // loadSettings returns but before the next paint.
+      queueMicrotask(() => {
+        this.saveSettings().catch((err) => {
+          console.warn('[yaae] Failed to persist link enum migration:', err);
+        });
+      });
     }
   }
 

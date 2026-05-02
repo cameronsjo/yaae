@@ -291,3 +291,17 @@ describe('F11 — yaae-generate-toc respects checking flag', () => {
     expect(workFired).toBe(0);
   });
 });
+
+// --- F12: deferred saveSettings during loadSettings migration -------------
+
+describe('F12 — saveSettings during migration is deferred', () => {
+  it('migration uses queueMicrotask instead of inline await saveSettings', () => {
+    const block = MAIN_TS.match(
+      /Migrate deprecated expandLinks\/plainLinks[\s\S]*?\n\s{2}\}/,
+    );
+    expect(block).not.toBeNull();
+    expect(block![0]).toMatch(/queueMicrotask\(\s*\(\)\s*=>\s*\{/);
+    // The bare `await this.saveSettings();` form should be gone from this block.
+    expect(block![0]).not.toMatch(/^\s*await\s+this\.saveSettings\(\);\s*$/m);
+  });
+});
