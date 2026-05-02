@@ -32,7 +32,12 @@ export interface PageChromeState {
   signatureBlock: boolean;
   bannerPosition: 'top' | 'both';
   showClassificationBanner: boolean;
-  /** Theme mode — picks light/dark colors for classification banners. */
+  /**
+   * Theme mode — picks light/dark colors for classification banners in
+   * @page margin boxes. Per-document `export.pdf.theme` frontmatter
+   * overrides propagate here from `YaaePlugin.updatePageChromeFromActiveFile`;
+   * absent that, the global setting from `buildPageChromeState` is used.
+   */
   theme: 'light' | 'dark' | 'auto';
 }
 

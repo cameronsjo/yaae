@@ -144,9 +144,10 @@ export default class YaaePlugin extends Plugin {
     this.addCommand({
       id: 'yaae-generate-toc',
       name: 'Generate table of contents',
-      editorCheckCallback: (checking, editor) => {
-        if (checking) return true;
-        this.generateTocForCurrentFile();
+      editorCheckCallback: (checking, _editor) => {
+        const file = this.app.workspace.getActiveFile();
+        if (!file || file.extension !== 'md') return false;
+        if (!checking) this.generateTocForCurrentFile();
         return true;
       },
     });
@@ -197,6 +198,16 @@ export default class YaaePlugin extends Plugin {
       }),
     );
 
+    // Bootstrap from the currently-active file. active-leaf-change does not
+    // fire for the leaf already open at startup, so without this the page
+    // chrome would reflect default classification instead of the open
+    // document's frontmatter.
+    this.app.workspace.onLayoutReady(() => {
+      this.updatePageChromeFromActiveFile().catch((err) => {
+        console.warn('[yaae] Failed to bootstrap page chrome from active file:', err);
+      });
+    });
+
     // Classification banner in reading view (always registered; checks setting at runtime)
     this.registerMarkdownPostProcessor(
       createClassificationBannerProcessor(() => this.settings.document),
@@ -212,16 +223,17 @@ export default class YaaePlugin extends Plugin {
       createDefangedLinksProcessor(() => this.settings.document),
     );
 
-    // Validate on save
-    if (this.settings.document.validateOnSave) {
-      this.registerEvent(
-        this.app.vault.on('modify', (file) => {
-          if (file instanceof TFile && file.extension === 'md') {
-            this.validateFileQuietly(file);
-          }
-        }),
-      );
-    }
+    // Validate on save. Listener is always registered; gate the work on the
+    // *current* setting value so toggling validateOnSave in the UI takes
+    // effect without requiring a plugin reload.
+    this.registerEvent(
+      this.app.vault.on('modify', (file) => {
+        if (!this.settings.document.validateOnSave) return;
+        if (file instanceof TFile && file.extension === 'md') {
+          this.validateFileQuietly(file);
+        }
+      }),
+    );
 
     // Settings tab
     this.addSettingTab(new YaaeSettingTab(this.app, this));
@@ -258,10 +270,17 @@ export default class YaaePlugin extends Plugin {
       this.settings.document,
     );
 
+    // Defensive: a corrupt or hand-edited data.json can land here with
+    // arrays set to null, strings, or other non-arrays (Object.assign
+    // shallow-merges and won't restore the default []). Reset critical
+    // arrays so downstream code can safely .map / .filter.
+    if (!Array.isArray(this.settings.document.customClassifications)) {
+      this.settings.document.customClassifications = [];
+    }
+
     // Migrate deprecated expandLinks/plainLinks booleans to links enum
     const doc = this.settings.document;
     if (doc.links === 'expand' && (doc.plainLinks || !doc.expandLinks)) {
-      const previousLinks = doc.links;
       if (doc.plainLinks) {
         doc.links = 'plain' as LinksMode;
       } else if (!doc.expandLinks) {
@@ -271,7 +290,16 @@ export default class YaaePlugin extends Plugin {
         `[yaae] Migrated deprecated link booleans to links enum. ` +
         `expandLinks: ${doc.expandLinks}, plainLinks: ${doc.plainLinks} → links: ${doc.links}`,
       );
-      await this.saveSettings();
+      // Defer the persist so loadSettings() resolves cleanly before any
+      // saveSettings() write — calling saveSettings() while loadSettings()
+      // is still on the stack creates a narrow window where a concurrent
+      // load could observe partial state. queueMicrotask runs after
+      // loadSettings returns but before the next paint.
+      queueMicrotask(() => {
+        this.saveSettings().catch((err) => {
+          console.warn('[yaae] Failed to persist link enum migration:', err);
+        });
+      });
     }
   }
 
@@ -388,6 +416,7 @@ export default class YaaePlugin extends Plugin {
   async validateCurrentFile() {
     const file = this.app.workspace.getActiveFile();
     if (!file) return;
+    if (!(file instanceof TFile)) return;
     const content = await this.app.vault.read(file);
     const result = validateMarkdown(content);
 
@@ -418,7 +447,16 @@ export default class YaaePlugin extends Plugin {
   async generateTocForCurrentFile() {
     const file = this.app.workspace.getActiveFile();
     if (!file) return;
+    if (!(file instanceof TFile)) return;
     const content = await this.app.vault.read(file);
+
+    // Race guard: if the user switched files during the read, do NOT modify
+    // the file we started with — that would write a TOC for the previous
+    // document into the now-active one. Bail with a debug message.
+    if (this.app.workspace.getActiveFile() !== file) {
+      console.debug('[yaae] TOC abort: active file changed mid-read');
+      return;
+    }
 
     // Get TOC depth from frontmatter or settings
     const fmResult = validateMarkdown(content);
@@ -432,6 +470,7 @@ export default class YaaePlugin extends Plugin {
   async applyCssClassesFromFrontmatter() {
     const file = this.app.workspace.getActiveFile();
     if (!file) return;
+    if (!(file instanceof TFile)) return;
     const content = await this.app.vault.read(file);
     const result = validateMarkdown(content);
 
@@ -443,13 +482,19 @@ export default class YaaePlugin extends Plugin {
     const classes = deriveCssClasses(result.data);
 
     await this.app.fileManager.processFrontMatter(file, (fm) => {
-      // Merge: keep user-defined classes, replace only pdf-* classes
-      const existing: string[] = Array.isArray(fm.cssclasses)
+      // Merge: keep user-defined classes, replace only pdf-* classes.
+      // Defensive: cssclasses may be a single string, array, or array with
+      // non-string entries (e.g., numbers from a hand-edited YAML doc) —
+      // filter to strings before calling startsWith() so we don't TypeError
+      // inside processFrontMatter.
+      const existing: unknown[] = Array.isArray(fm.cssclasses)
         ? fm.cssclasses
         : typeof fm.cssclasses === 'string'
           ? [fm.cssclasses]
           : [];
-      const userClasses = existing.filter((c: string) => !c.startsWith('pdf-'));
+      const userClasses = existing.filter(
+        (c): c is string => typeof c === 'string' && !c.startsWith('pdf-'),
+      );
       fm.cssclasses = [...userClasses, ...classes];
     });
 
@@ -474,23 +519,51 @@ export default class YaaePlugin extends Plugin {
     };
   }
 
-  /** Read active document's frontmatter and update page chrome with its classification. */
+  /**
+   * Read active document's frontmatter and update page chrome with its
+   * classification + signature block + per-document theme override.
+   *
+   * Race-aware: if the active file changes during the async vault.read,
+   * we abort the update so the chrome doesn't reflect a stale file.
+   *
+   * Non-markdown active leaves (PDF, canvas, image preview) leave the
+   * chrome untouched so the last markdown classification is preserved
+   * for export.
+   */
   async updatePageChromeFromActiveFile(): Promise<void> {
-    const file = this.app.workspace.getActiveFile();
-    if (!file || file.extension !== 'md') {
+    const startFile = this.app.workspace.getActiveFile();
+    if (!startFile) {
+      // No active file at all — fall back to defaults so chrome reflects settings.
       this.pageChromeManager.update(this.buildPageChromeState());
       return;
     }
+    if (startFile.extension !== 'md') {
+      // Active leaf is non-markdown (e.g., embedded PDF, canvas). Leave the
+      // existing page chrome alone so the last markdown file's classification
+      // is preserved for export.
+      return;
+    }
 
-    const content = await this.app.vault.read(file);
+    const content = await this.app.vault.read(startFile);
+
+    // Race guard: if the user switched files during the read, the page chrome
+    // should reflect the *new* active file (or be left alone), not the file we
+    // started reading. Bail and let the next active-leaf-change re-trigger us.
+    if (this.app.workspace.getActiveFile() !== startFile) {
+      console.debug('[yaae] updatePageChromeFromActiveFile: active file changed mid-read, aborting');
+      return;
+    }
+
     const result = validateMarkdown(content);
 
     const classification = result.data?.classification ?? this.settings.document.defaultClassification;
     const signatureBlock = result.data?.export?.pdf?.signatureBlock ?? false;
+    const theme = result.data?.export?.pdf?.theme;
 
     this.pageChromeManager.update({
       ...this.buildPageChromeState(classification),
       signatureBlock,
+      ...(theme ? { theme } : {}),
     });
   }
 }
@@ -525,7 +598,10 @@ class YaaeSettingTab extends PluginSettingTab {
         text: tab.label,
         cls: `yaae-settings-tab${this.activeTab === tab.id ? ' is-active' : ''}`,
       });
-      btn.addEventListener('click', () => {
+      // Use registerDomEvent (inherited from Component via PluginSettingTab)
+      // so listeners are auto-removed when the tab is unloaded — raw
+      // addEventListener leaks one listener per display() rebuild.
+      this.registerDomEvent(btn, 'click', () => {
         this.activeTab = tab.id;
         this.display();
       });
