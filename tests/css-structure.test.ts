@@ -54,6 +54,20 @@ describe('styles.css — focus mode', () => {
     expect(STYLES_CSS).toMatch(/\.yaae-dimmed\s*\{[^}]*color/s);
     expect(STYLES_CSS).toMatch(/\.yaae-dimmed\s*\{[^}]*transition/s);
   });
+
+  // F4: `default: '#'` is an invalid hex color. If Style Settings persists
+  // it as the variable's value, the var() fallback to --text-faint is
+  // suppressed (the variable has a non-empty value), so the dimmed text
+  // resolves to an invalid color and disappears. The @settings YAML must
+  // omit the default key so Style Settings leaves the variable unset.
+  it("@settings YAML has no `default: '#'` entries (would inject invalid hex)", () => {
+    expect(STYLES_CSS).not.toMatch(/default:\s*['"]#['"]/);
+  });
+
+  it('dimmed-color variables fall back to --text-faint when unset', () => {
+    expect(STYLES_CSS).toContain('var(--yaae-dimmed-color-light, var(--text-faint))');
+    expect(STYLES_CSS).toContain('var(--yaae-dimmed-color-dark, var(--text-faint))');
+  });
 });
 
 describe('styles.css — print media', () => {
