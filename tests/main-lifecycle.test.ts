@@ -191,3 +191,35 @@ describe('F8 — loadSettings resets non-array customClassifications to []', () 
     expect(document.customClassifications).toBe(value);
   });
 });
+
+// --- F9: cssclasses filter is type-safe -----------------------------------
+
+describe('F9 — cssclasses filter rejects non-string entries safely', () => {
+  it('filter callback uses a typeof string guard', () => {
+    expect(MAIN_TS).toMatch(/typeof\s+c\s*===\s*'string'\s*&&\s*!c\.startsWith\(\s*'pdf-'\s*\)/);
+  });
+
+  // Behavioral reproduction of the filter logic.
+  function filterUserCssClasses(input: unknown[]): string[] {
+    return input.filter(
+      (c): c is string => typeof c === 'string' && !c.startsWith('pdf-'),
+    );
+  }
+
+  it('does not throw on numeric entries', () => {
+    expect(() => filterUserCssClasses([1, 'pdf-foo', 'user-class'])).not.toThrow();
+  });
+
+  it('drops non-strings and pdf-* entries, keeps user classes', () => {
+    expect(filterUserCssClasses([1, null, 'pdf-internal', 'theme-dark', 'pdf-foo']))
+      .toEqual(['theme-dark']);
+  });
+
+  it('handles empty input', () => {
+    expect(filterUserCssClasses([])).toEqual([]);
+  });
+
+  it('handles mixed undefined / boolean entries', () => {
+    expect(filterUserCssClasses([undefined, true, false, 'keep'])).toEqual(['keep']);
+  });
+});

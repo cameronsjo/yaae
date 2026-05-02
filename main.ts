@@ -467,13 +467,19 @@ export default class YaaePlugin extends Plugin {
     const classes = deriveCssClasses(result.data);
 
     await this.app.fileManager.processFrontMatter(file, (fm) => {
-      // Merge: keep user-defined classes, replace only pdf-* classes
-      const existing: string[] = Array.isArray(fm.cssclasses)
+      // Merge: keep user-defined classes, replace only pdf-* classes.
+      // Defensive: cssclasses may be a single string, array, or array with
+      // non-string entries (e.g., numbers from a hand-edited YAML doc) —
+      // filter to strings before calling startsWith() so we don't TypeError
+      // inside processFrontMatter.
+      const existing: unknown[] = Array.isArray(fm.cssclasses)
         ? fm.cssclasses
         : typeof fm.cssclasses === 'string'
           ? [fm.cssclasses]
           : [];
-      const userClasses = existing.filter((c: string) => !c.startsWith('pdf-'));
+      const userClasses = existing.filter(
+        (c): c is string => typeof c === 'string' && !c.startsWith('pdf-'),
+      );
       fm.cssclasses = [...userClasses, ...classes];
     });
 
