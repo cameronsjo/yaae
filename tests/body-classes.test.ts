@@ -12,7 +12,6 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 // The body class logic is simple enough to test via the toggle constants + classList.
 
 const BODY_CLASS_SYNTAX_DIMMING = 'yaae-syntax-dimming';
-const BODY_CLASS_GUTTERED_HEADINGS = 'yaae-guttered-headings';
 
 describe('body class application', () => {
   let classList: Set<string>;
@@ -30,62 +29,38 @@ describe('body class application', () => {
   });
 
   /**
-   * Mirrors the logic in YaaePlugin.applyBodyClasses()
+   * Mirrors the logic in YaaePlugin.applyBodyClasses().
+   * Guttered headings is no longer body-class-driven — it's a CM6 gutter
+   * extension reconfigured via Compartment, so it isn't covered here.
    */
-  function applyBodyClasses(settings: { syntaxDimming: boolean; gutteredHeadings: boolean }) {
+  function applyBodyClasses(settings: { syntaxDimming: boolean }) {
     toggle(BODY_CLASS_SYNTAX_DIMMING, settings.syntaxDimming);
-    toggle(BODY_CLASS_GUTTERED_HEADINGS, settings.gutteredHeadings);
   }
 
-  it('adds both classes when both features are enabled', () => {
-    applyBodyClasses({ syntaxDimming: true, gutteredHeadings: true });
+  it('adds the syntax-dimming class when the feature is enabled', () => {
+    applyBodyClasses({ syntaxDimming: true });
     expect(classList.has(BODY_CLASS_SYNTAX_DIMMING)).toBe(true);
-    expect(classList.has(BODY_CLASS_GUTTERED_HEADINGS)).toBe(true);
   });
 
-  it('removes both classes when both features are disabled', () => {
+  it('removes the syntax-dimming class when the feature is disabled', () => {
     classList.add(BODY_CLASS_SYNTAX_DIMMING);
-    classList.add(BODY_CLASS_GUTTERED_HEADINGS);
-
-    applyBodyClasses({ syntaxDimming: false, gutteredHeadings: false });
+    applyBodyClasses({ syntaxDimming: false });
     expect(classList.has(BODY_CLASS_SYNTAX_DIMMING)).toBe(false);
-    expect(classList.has(BODY_CLASS_GUTTERED_HEADINGS)).toBe(false);
-  });
-
-  it('adds only syntax dimming when guttered headings is off', () => {
-    applyBodyClasses({ syntaxDimming: true, gutteredHeadings: false });
-    expect(classList.has(BODY_CLASS_SYNTAX_DIMMING)).toBe(true);
-    expect(classList.has(BODY_CLASS_GUTTERED_HEADINGS)).toBe(false);
-  });
-
-  it('adds only guttered headings when syntax dimming is off', () => {
-    applyBodyClasses({ syntaxDimming: false, gutteredHeadings: true });
-    expect(classList.has(BODY_CLASS_SYNTAX_DIMMING)).toBe(false);
-    expect(classList.has(BODY_CLASS_GUTTERED_HEADINGS)).toBe(true);
   });
 
   it('toggles syntax dimming on then off', () => {
-    applyBodyClasses({ syntaxDimming: true, gutteredHeadings: false });
+    applyBodyClasses({ syntaxDimming: true });
     expect(classList.has(BODY_CLASS_SYNTAX_DIMMING)).toBe(true);
 
-    applyBodyClasses({ syntaxDimming: false, gutteredHeadings: false });
+    applyBodyClasses({ syntaxDimming: false });
     expect(classList.has(BODY_CLASS_SYNTAX_DIMMING)).toBe(false);
   });
 
-  it('toggles guttered headings on then off', () => {
-    applyBodyClasses({ syntaxDimming: false, gutteredHeadings: true });
-    expect(classList.has(BODY_CLASS_GUTTERED_HEADINGS)).toBe(true);
-
-    applyBodyClasses({ syntaxDimming: false, gutteredHeadings: false });
-    expect(classList.has(BODY_CLASS_GUTTERED_HEADINGS)).toBe(false);
-  });
-
   it('is idempotent — calling twice with same settings produces same result', () => {
-    applyBodyClasses({ syntaxDimming: true, gutteredHeadings: true });
-    applyBodyClasses({ syntaxDimming: true, gutteredHeadings: true });
-    expect(classList.size).toBe(2);
+    applyBodyClasses({ syntaxDimming: true });
+    applyBodyClasses({ syntaxDimming: true });
+    expect(classList.size).toBe(1);
     expect(classList.has(BODY_CLASS_SYNTAX_DIMMING)).toBe(true);
-    expect(classList.has(BODY_CLASS_GUTTERED_HEADINGS)).toBe(true);
   });
 });
 

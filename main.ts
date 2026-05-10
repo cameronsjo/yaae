@@ -8,6 +8,7 @@ import { createHighlighterExtension } from './src/prose-highlight/highlighter-pl
 import { createReadingViewPostProcessor } from './src/prose-highlight/reading-view';
 import { renderProseHighlightSettings } from './src/prose-highlight/settings-tab';
 import { focusExtension } from './src/cm6/focus-mode';
+import { gutteredHeadingsExtension } from './src/cm6/guttered-headings';
 // TODO(#24): typewriter scroll disabled pending fix
 // import { typewriterExtension } from './src/cm6/typewriter-scroll';
 import { validateMarkdown, deriveCssClasses } from './src/schemas';
@@ -23,9 +24,9 @@ import type { PageChromeState } from './src/document/print-styles';
 import type { LinksMode } from './src/document/settings';
 
 const BODY_CLASS_SYNTAX_DIMMING = 'yaae-syntax-dimming';
-const BODY_CLASS_GUTTERED_HEADINGS = 'yaae-guttered-headings';
 
 const focusCompartment = new Compartment();
+const gutteredHeadingsCompartment = new Compartment();
 // TODO(#24): typewriter scroll disabled pending fix
 // const typewriterCompartment = new Compartment();
 
@@ -94,6 +95,9 @@ export default class YaaePlugin extends Plugin {
         this.settings.focusMode !== 'off'
           ? focusExtension(this.settings.focusMode)
           : []
+      ),
+      gutteredHeadingsCompartment.of(
+        this.settings.gutteredHeadings ? gutteredHeadingsExtension() : []
       ),
     ]);
 
@@ -344,10 +348,6 @@ export default class YaaePlugin extends Plugin {
       BODY_CLASS_SYNTAX_DIMMING,
       this.settings.syntaxDimming
     );
-    document.body.classList.toggle(
-      BODY_CLASS_GUTTERED_HEADINGS,
-      this.settings.gutteredHeadings
-    );
   }
 
   reconfigureFocus() {
@@ -367,6 +367,21 @@ export default class YaaePlugin extends Plugin {
     });
   }
 
+  reconfigureGutteredHeadings() {
+    this.app.workspace.iterateAllLeaves((leaf) => {
+      if (leaf.view instanceof MarkdownView) {
+        const cm = (leaf.view.editor as any).cm;
+        if (cm) {
+          cm.dispatch({
+            effects: gutteredHeadingsCompartment.reconfigure(
+              this.settings.gutteredHeadings ? gutteredHeadingsExtension() : []
+            ),
+          });
+        }
+      }
+    });
+  }
+
   async toggleSyntaxDimming() {
     this.settings.syntaxDimming = !this.settings.syntaxDimming;
     this.applyBodyClasses();
@@ -376,7 +391,7 @@ export default class YaaePlugin extends Plugin {
 
   async toggleGutteredHeadings() {
     this.settings.gutteredHeadings = !this.settings.gutteredHeadings;
-    this.applyBodyClasses();
+    this.reconfigureGutteredHeadings();
     await this.saveSettings();
   }
 
@@ -657,7 +672,7 @@ class YaaeSettingTab extends PluginSettingTab {
       .addToggle((toggle) =>
         toggle.setValue(this.plugin.settings.gutteredHeadings).onChange(async (value) => {
           this.plugin.settings.gutteredHeadings = value;
-          this.plugin.applyBodyClasses();
+          this.plugin.reconfigureGutteredHeadings();
           await this.plugin.saveSettings();
         })
       );

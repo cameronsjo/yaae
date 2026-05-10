@@ -14,19 +14,17 @@ const ROOT = join(__dirname, '..');
 const STYLES_CSS = readFileSync(join(ROOT, 'styles.css'), 'utf-8');
 
 describe('styles.css — guttered headings', () => {
-  it('has padding rule scoped to Source Mode', () => {
-    expect(STYLES_CSS).toContain('body.yaae-guttered-headings .markdown-source-view:not(.is-live-preview) .cm-content');
-    expect(STYLES_CSS).toMatch(/padding-left:\s*var\(--yaae-gutter-width\)/);
-  });
-
-  it('has negative margin rule for heading formatting spans', () => {
-    expect(STYLES_CSS).toContain('.cm-formatting-header');
-    expect(STYLES_CSS).toMatch(/margin-left:\s*calc\(-1\s*\*\s*var\(--yaae-gutter-width\)\)/);
-  });
-
-  it('sets formatting-header to inline-block for layout', () => {
+  it('sizes the CM6 gutter container to the gutter width variable', () => {
+    expect(STYLES_CSS).toContain('.cm-gutter.yaae-heading-gutter');
     expect(STYLES_CSS).toMatch(
-      /\.cm-formatting-header\s*\{[^}]*display:\s*inline-block/s
+      /\.cm-gutter\.yaae-heading-gutter\s*\{[^}]*width:\s*var\(--yaae-gutter-width\)/s
+    );
+  });
+
+  it('right-aligns the heading marker inside the gutter', () => {
+    expect(STYLES_CSS).toContain('.yaae-heading-gutter-marker');
+    expect(STYLES_CSS).toMatch(
+      /\.yaae-heading-gutter-marker\s*\{[^}]*text-align:\s*right/s
     );
   });
 

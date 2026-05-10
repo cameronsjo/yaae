@@ -73,7 +73,7 @@ describe('YAAE plugin smoke tests', () => {
     });
   });
 
-  describe('body classes — guttered headings', () => {
+  describe('CM6 gutter — guttered headings', () => {
     before(async () => {
       await createAndOpenNote(
         'heading-test.md',
@@ -81,30 +81,47 @@ describe('YAAE plugin smoke tests', () => {
       );
     });
 
-    it('toggle flips the guttered headings body class on and off', async () => {
-      const before = await hasBodyClass('yaae-guttered-headings');
+    async function gutterCount(): Promise<number> {
+      return browser.execute(() => {
+        return document.querySelectorAll('.cm-gutter.yaae-heading-gutter').length;
+      });
+    }
+
+    async function markerCount(): Promise<number> {
+      return browser.execute(() => {
+        return document.querySelectorAll('.yaae-heading-gutter-marker').length;
+      });
+    }
+
+    it('toggle adds and removes the heading gutter element', async () => {
+      const before = await gutterCount();
 
       await executeCommand('toggle-guttered-headings');
-      expect(await hasBodyClass('yaae-guttered-headings')).toBe(!before);
+      await browser.pause(200);
+      const afterFirst = await gutterCount();
+      expect(afterFirst).not.toBe(before);
 
       await executeCommand('toggle-guttered-headings');
-      expect(await hasBodyClass('yaae-guttered-headings')).toBe(before);
+      await browser.pause(200);
+      expect(await gutterCount()).toBe(before);
     });
 
-    it('heading formatting spans exist in Source Mode', async () => {
-      // Toggle Source Mode via Obsidian's built-in command
-      await browser.executeObsidianCommand('editor:toggle-source');
-      await browser.pause(1000);
+    it('renders heading markers in the gutter for #, ##, ### lines', async () => {
+      // Ensure the gutter is on
+      const enabled = (await gutterCount()) > 0;
+      if (!enabled) {
+        await executeCommand('toggle-guttered-headings');
+        await browser.pause(200);
+      }
 
-      const formattingHeaders = await browser.execute(() => {
-        return document.querySelectorAll('.cm-formatting-header').length;
-      });
-      // Source Mode should show # markers as .cm-formatting-header spans
-      expect(formattingHeaders).toBeGreaterThan(0);
+      // Three headings in the test note → three markers
+      expect(await markerCount()).toBeGreaterThanOrEqual(3);
 
-      // Toggle back to Live Preview
-      await browser.executeObsidianCommand('editor:toggle-source');
-      await browser.pause(300);
+      // Restore initial state if we toggled
+      if (!enabled) {
+        await executeCommand('toggle-guttered-headings');
+        await browser.pause(200);
+      }
     });
   });
 
