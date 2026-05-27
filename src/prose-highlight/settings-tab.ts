@@ -147,10 +147,6 @@ function renderWordListEntry(
 ): void {
   const settings = plugin.settings.proseHighlight;
   const wrapper = containerEl.createDiv('yaae-word-list-entry');
-  wrapper.style.border = '1px solid var(--background-modifier-border)';
-  wrapper.style.borderRadius = '8px';
-  wrapper.style.padding = '12px';
-  wrapper.style.marginBottom = '12px';
 
   // Header row: name + toggle + color + delete
   const header = new Setting(wrapper)
@@ -167,10 +163,9 @@ function renderWordListEntry(
   // Color picker
   const colorInput = header.controlEl.createEl('input', {
     type: 'color',
+    cls: 'yaae-list-color',
     value: list.color,
   });
-  colorInput.style.marginLeft = '8px';
-  colorInput.style.cursor = 'pointer';
   colorInput.addEventListener('input', async () => {
     list.color = colorInput.value;
     await plugin.saveSettings();
@@ -207,8 +202,7 @@ function renderWordListEntry(
     .setName('Words')
     .setDesc('One word or phrase per line, or comma-separated.')
     .addTextArea((area) => {
-      area.inputEl.style.width = '100%';
-      area.inputEl.style.minHeight = '80px';
+      area.inputEl.addClass('yaae-words-textarea');
       area.inputEl.rows = 4;
       area
         .setValue(list.words.join('\n'))

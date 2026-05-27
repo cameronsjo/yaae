@@ -76,13 +76,13 @@ export function renderDocumentSettings(
 
   // --- Custom Classifications ---
 
-  const customHeading = new Setting(classContent)
+  new Setting(classContent)
     .setName('Custom classifications')
     .setDesc(
       'Define custom classification levels. These override built-in levels with the same ID. ' +
       'Use the ID in frontmatter (e.g., classification: non-sensitive).',
-    );
-  customHeading.settingEl.style.marginTop = '12px';
+    )
+    .setHeading();
 
   const customListEl = classContent.createDiv('yaae-custom-classifications');
 

@@ -660,3 +660,24 @@ body.yaae-syntax-dimming .cm-active .cm-formatting {
 .yaae-section-content.is-expanded {
   display: block;
 }
+
+/* ==========================================================================
+   Settings Panel — Custom Word Lists
+   ========================================================================== */
+
+.yaae-word-list-entry {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.yaae-list-color {
+  margin-left: 8px;
+  cursor: pointer;
+}
+
+.yaae-words-textarea {
+  width: 100%;
+  min-height: 80px;
+}

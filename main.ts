@@ -699,11 +699,7 @@ class YaaeSettingTab extends PluginSettingTab {
   }
 
   private renderAboutTab(containerEl: HTMLElement): void {
-    containerEl.createEl('h2', { text: 'YAAE' });
-    containerEl.createEl('p', {
-      text: 'Why Author Anywhere Else',
-      cls: 'setting-item-description',
-    });
+    new Setting(containerEl).setName('YAAE').setDesc('Why Author Anywhere Else').setHeading();
 
     new Setting(containerEl)
       .setName('Version')
