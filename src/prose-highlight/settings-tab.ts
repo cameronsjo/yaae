@@ -26,7 +26,7 @@ export function renderProseHighlightSettings(
 
   // --- Prose Highlighting section ---
   const proseContent = createCollapsibleSection(
-    containerEl, expandedSections, 'writing-prose', 'Prose Highlighting', true,
+    containerEl, expandedSections, 'writing-prose', 'Prose highlighting', true,
   );
 
   proseContent.createEl('p', {
@@ -48,7 +48,7 @@ export function renderProseHighlightSettings(
 
   // Reading View toggle
   new Setting(proseContent)
-    .setName('Highlight in Reading View')
+    .setName('Highlight in reading view')
     .setDesc('Also apply prose highlighting when viewing notes in Reading View.')
     .addToggle((toggle) =>
       toggle
@@ -61,7 +61,7 @@ export function renderProseHighlightSettings(
 
   // --- Parts of Speech section ---
   const posContent = createCollapsibleSection(
-    containerEl, expandedSections, 'writing-pos', 'Parts of Speech',
+    containerEl, expandedSections, 'writing-pos', 'Parts of speech',
   );
 
   const hint = posContent.createEl('p', { cls: 'setting-item-description' });
@@ -89,7 +89,7 @@ export function renderProseHighlightSettings(
 
   // --- Custom Word Lists section ---
   const wordListContent = createCollapsibleSection(
-    containerEl, expandedSections, 'writing-wordlists', 'Custom Word Lists',
+    containerEl, expandedSections, 'writing-wordlists', 'Custom word lists',
   );
 
   wordListContent.createEl('p', {

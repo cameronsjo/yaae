@@ -274,7 +274,7 @@ export function renderDocumentSettings(
   // PDF Appearance
   // =================================================================
   const appearanceContent = createCollapsibleSection(
-    containerEl, expandedSections, 'doc-appearance', 'PDF Appearance',
+    containerEl, expandedSections, 'doc-appearance', 'PDF appearance',
   );
 
   new Setting(appearanceContent)
@@ -384,7 +384,7 @@ export function renderDocumentSettings(
   // PDF Text
   // =================================================================
   const textContent = createCollapsibleSection(
-    containerEl, expandedSections, 'doc-text', 'PDF Text',
+    containerEl, expandedSections, 'doc-text', 'PDF text',
   );
 
   new Setting(textContent)
@@ -437,7 +437,7 @@ export function renderDocumentSettings(
   // PDF Layout
   // =================================================================
   const layoutContent = createCollapsibleSection(
-    containerEl, expandedSections, 'doc-layout', 'PDF Layout',
+    containerEl, expandedSections, 'doc-layout', 'PDF layout',
   );
 
   new Setting(layoutContent)
@@ -470,7 +470,7 @@ export function renderDocumentSettings(
   // PDF Branding
   // =================================================================
   const brandingContent = createCollapsibleSection(
-    containerEl, expandedSections, 'doc-branding', 'PDF Branding',
+    containerEl, expandedSections, 'doc-branding', 'PDF branding',
   );
 
   new Setting(brandingContent)
