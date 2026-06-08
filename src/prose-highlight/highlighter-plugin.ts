@@ -53,6 +53,26 @@ const EXCLUDED_PARENT_TYPES = new Set([
   'CommentBlock',
 ]);
 
+/**
+ * Case-insensitive substrings that mark a node family as non-prose. Catches
+ * HyperMD/Lezer naming variants (casing, `hmd-*` forms) that the exact-match
+ * Set above does not enumerate — e.g. `formatting-code`, `hmd-codeblock`,
+ * `CodeText` all contain `code`. Kept to code/frontmatter/comment families so
+ * structural nodes (`Document`, `Paragraph`, …) are never swept in.
+ */
+const EXCLUDED_NAME_SUBSTRINGS = ['code', 'frontmatter', 'comment'];
+
+/**
+ * Whether a syntax-tree node name marks content that must not be tagged.
+ * Exact-match against the enumerated set, then a substring allowlist so
+ * unenumerated code/frontmatter/comment variants are still excluded.
+ */
+export function isExcludedNodeType(name: string): boolean {
+  if (EXCLUDED_NODE_TYPES.has(name)) return true;
+  const lower = name.toLowerCase();
+  return EXCLUDED_NAME_SUBSTRINGS.some((s) => lower.includes(s));
+}
+
 interface LineTags {
   posTags: POSTag[];
   listMatches: WordListMatch[];
@@ -62,7 +82,7 @@ interface LineTags {
  * Collect ranges within the visible viewport that should be excluded
  * from NLP processing (code blocks, frontmatter, inline code, etc.)
  */
-function getExcludedRanges(
+export function getExcludedRanges(
   view: EditorView,
   from: number,
   to: number,
@@ -78,7 +98,7 @@ function getExcludedRanges(
         excluded.push({ from: node.from, to: node.to });
         return false; // don't descend
       }
-      if (EXCLUDED_NODE_TYPES.has(node.type.name)) {
+      if (isExcludedNodeType(node.type.name)) {
         excluded.push({ from: node.from, to: node.to });
       }
     },
@@ -88,7 +108,7 @@ function getExcludedRanges(
 }
 
 /** Merge overlapping/adjacent ranges */
-function mergeRanges(
+export function mergeRanges(
   ranges: Array<{ from: number; to: number }>,
 ): Array<{ from: number; to: number }> {
   if (ranges.length === 0) return [];
@@ -106,7 +126,7 @@ function mergeRanges(
 }
 
 /** Check if a position falls within any excluded range */
-function isExcluded(
+export function isExcluded(
   pos: number,
   excluded: Array<{ from: number; to: number }>,
 ): boolean {
@@ -192,6 +212,16 @@ export function createHighlighterExtension(plugin: YaaePlugin) {
           }
         }
         // Bulk change or line count changed — full rebuild
+        this.cache.clear();
+        this.decorations = this.buildDecorations(update.view);
+      } else if (syntaxTree(update.startState) !== syntaxTree(update.state)) {
+        // Markdown parses asynchronously: on first paint the code-block region
+        // is often unparsed, so getExcludedRanges() returned nothing and code
+        // words were tagged and cached. The cache holds tags computed before
+        // exclusion was known — invalidate it and rebuild on parse progress.
+        // Checked BEFORE viewportChanged: a scroll that coincides with the
+        // final parse step (both true in one update) must still clear the
+        // cache, and a full rebuild handles the new viewport implicitly.
         this.cache.clear();
         this.decorations = this.buildDecorations(update.view);
       } else if (update.viewportChanged) {
