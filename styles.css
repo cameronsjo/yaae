@@ -288,6 +288,25 @@ settings:
     format: hex
     default: '#888888'
   -
+    id: yaae-print-light-heading
+    title: Light Theme
+    type: heading
+    level: 2
+    collapsed: true
+  -
+    id: yaae-print-light-bg
+    title: Background color
+    description: Page background for the default (light) export — keep white for a plain B&W distribution PDF
+    type: variable-color
+    format: hex
+    default: '#ffffff'
+  -
+    id: yaae-print-light-text
+    title: Text color
+    type: variable-color
+    format: hex
+    default: '#000000'
+  -
     id: yaae-print-dark-heading
     title: Dark Theme
     type: heading
@@ -427,6 +446,10 @@ body {
   --yaae-print-header-footer-font-size: 9px;
   --yaae-print-header-footer-color: #888;
 
+  /* PDF Print — Light / Default Theme (plain B&W distribution) */
+  --yaae-print-light-bg: #fff;
+  --yaae-print-light-text: #000;
+
   /* PDF Print — Dark Theme */
   --yaae-print-dark-bg: #1e1e1e;
   --yaae-print-dark-text: #d4d4d4;
@@ -523,6 +546,56 @@ body.theme-dark .yaae-classification-banner {
 .print [class*="yaae-pos-"],
 .print [class*="yaae-list-"] {
   color: inherit !important;
+}
+
+/* ===== PDF / Print Body Theming =====
+ * Default export is a plain B&W distribution PDF. The active Obsidian theme's
+ * (often dark) surfaces otherwise leak into export: themes ship no @media print
+ * reset and Obsidian forces print-color-adjust: exact, so the dark page prints.
+ * We own the body surface here, keyed to `export.pdf.theme` via the cssclass
+ * bridge (deriveCssClasses):
+ *     (no class)      → light / B&W   (the default)
+ *     .pdf-theme-dark → dark surface  (deliberate dark export)
+ *     .pdf-theme-auto → follows the OS scheme
+ * `background-color` (not the `background` shorthand) is used so the watermark
+ * `background-image` survives. Text is forced on descendants too, so a dark
+ * theme's light/italic text (e.g. a white --italic-color) can't vanish on a
+ * white page. The @page classification banners (PageChromeManager) are margin
+ * boxes and keep their own colors.
+ */
+@media print {
+  .print,
+  .print .markdown-preview-view {
+    background-color: var(--yaae-print-light-bg, #fff) !important;
+    color: var(--yaae-print-light-text, #000) !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .print .markdown-preview-view * {
+    color: var(--yaae-print-light-text, #000) !important;
+  }
+
+  /* Dark export — restore a dark surface (reuses the Dark Theme tunables). */
+  .print .markdown-preview-view.pdf-theme-dark {
+    background-color: var(--yaae-print-dark-bg, #1e1e1e) !important;
+  }
+  .print .markdown-preview-view.pdf-theme-dark,
+  .print .markdown-preview-view.pdf-theme-dark * {
+    color: var(--yaae-print-dark-text, #d4d4d4) !important;
+  }
+
+  /* Auto export — follow the OS scheme. NESTED (not `and`-combined) media:
+   * `@media print and (prefers-color-scheme: dark)` is silently dropped by
+   * Chromium's print engine, so the dark override must be nested to apply. */
+  @media (prefers-color-scheme: dark) {
+    .print .markdown-preview-view.pdf-theme-auto {
+      background-color: var(--yaae-print-dark-bg, #1e1e1e) !important;
+    }
+    .print .markdown-preview-view.pdf-theme-auto,
+    .print .markdown-preview-view.pdf-theme-auto * {
+      color: var(--yaae-print-dark-text, #d4d4d4) !important;
+    }
+  }
 }
 
 /* ==========================================================================
