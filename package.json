@@ -21,6 +21,9 @@
   "license": "MIT",
   "packageManager": "pnpm@10.29.3",
   "devDependencies": {
+    "@codemirror/lang-markdown": "^6.0.0",
+    "@codemirror/language": "^6.0.0",
+    "@codemirror/state": "^6.0.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "^22.19.7",
     "@vitest/coverage-v8": "^4.0.16",

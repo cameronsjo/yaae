@@ -5,6 +5,9 @@ import { vi } from 'vitest';
 
 // Mock document for DOM operations
 const mockDocument = {
+  // @codemirror/view reads `document.documentElement.style` at module load for
+  // browser feature detection; an incomplete mock throws before any test runs.
+  documentElement: { style: {} },
   createElement: vi.fn((tag: string) => ({
     style: {
       cssText: '',
