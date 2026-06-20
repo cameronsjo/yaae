@@ -1,4 +1,4 @@
-import { Plugin, PluginSettingTab, App, Setting, MarkdownView, Notice, TFile } from 'obsidian';
+import { Plugin, PluginSettingTab, App, Setting, MarkdownView, Notice, TFile, Platform } from 'obsidian';
 import { Compartment } from '@codemirror/state';
 import type { Extension } from '@codemirror/state';
 import { YaaeSettings, DEFAULT_SETTINGS, FocusMode } from './src/types';
@@ -72,17 +72,24 @@ export default class YaaePlugin extends Plugin {
       this.settings.proseHighlight.customWordLists,
     );
 
-    // CM6 ViewPlugin for editor / Live Preview highlighting
+    // CM6 ViewPlugin for editor / Live Preview highlighting.
+    // Prose highlighting is disabled on mobile pending #32 — it errors / fails
+    // to render there. Gate both the editor extension and the Reading View
+    // post-processor so the feature is fully off on mobile; desktop is
+    // unaffected. registerEditorExtension still runs so the mutable extensions
+    // array stays wired for desktop toggling.
     const highlighterExt = createHighlighterExtension(this);
-    if (this.settings.proseHighlight.enabled) {
+    if (this.settings.proseHighlight.enabled && !Platform.isMobile) {
       this.editorExtensions.push(highlighterExt);
     }
     this.registerEditorExtension(this.editorExtensions);
 
     // Reading View post-processor
-    this.registerMarkdownPostProcessor(
-      createReadingViewPostProcessor(this),
-    );
+    if (!Platform.isMobile) {
+      this.registerMarkdownPostProcessor(
+        createReadingViewPostProcessor(this),
+      );
+    }
 
     // --- Readability Features ---
 
@@ -107,6 +114,10 @@ export default class YaaePlugin extends Plugin {
       id: 'toggle-prose-highlighting',
       name: 'Toggle prose highlighting',
       callback: () => {
+        if (Platform.isMobile) {
+          new Notice("Prose highlighting isn't available on mobile yet.");
+          return;
+        }
         this.settings.proseHighlight.enabled =
           !this.settings.proseHighlight.enabled;
         this.saveSettings();
@@ -312,11 +323,11 @@ export default class YaaePlugin extends Plugin {
 
   // --- Prose Highlight Methods ---
 
-  /** Enable or disable the CM6 editor extension */
+  /** Enable or disable the CM6 editor extension. No-op on mobile (#32). */
   toggleHighlighting(enabled: boolean): void {
     const highlighterExt = createHighlighterExtension(this);
     this.editorExtensions.length = 0;
-    if (enabled) {
+    if (enabled && !Platform.isMobile) {
       this.editorExtensions.push(highlighterExt);
     }
     this.app.workspace.updateOptions();
