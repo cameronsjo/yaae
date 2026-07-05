@@ -54,6 +54,28 @@ const EXCLUDED_PARENT_TYPES = new Set([
 ]);
 
 /**
+ * A markdown ATX heading line (`#`..`######` then a space), tolerating up to
+ * three leading spaces (CommonMark; four+ is a code indent) and any depth of
+ * blockquote markers (`> # H`, `>> ## H`). By default POS highlighting skips
+ * these — heading text is chrome, not prose, and a tinted word inside an h2
+ * reads as a glitch (Artificer #40). The trailing `\s` is required: a bare
+ * `#foo` with no space is not a heading.
+ *
+ * Setext headings (a title line underlined by `===`/`---`) are NOT detected
+ * here: the title's heading-ness depends on the *next* line, but the editor
+ * retags one line at a time (the single-char-insert fast path), so a
+ * neighbor-dependent check can't stay correct incrementally. Reading View
+ * renders setext as real <h1>/<h2> and skips it via buildSkipSelectors, so
+ * the gap is editor-only and accepted.
+ */
+const HEADING_LINE = /^ {0,3}(?:> ?)*#{1,6}\s/;
+
+/** True when a source line is an ATX heading (skipped by default, #40). */
+export function isHeadingLine(lineText: string): boolean {
+  return HEADING_LINE.test(lineText);
+}
+
+/**
  * Case-insensitive substrings that mark a node family as non-prose. Catches
  * HyperMD/Lezer naming variants (casing, `hmd-*` forms) that the exact-match
  * Set above does not enumerate — e.g. `formatting-code`, `hmd-codeblock`,
@@ -239,8 +261,20 @@ export function createHighlighterExtension(plugin: YaaePlugin) {
     /** Tag a single line and update its cache entry */
     private retagLine(view: EditorView, lineNum: number): void {
       const line = view.state.doc.line(lineNum);
-      const excluded = getExcludedRanges(view, line.from, line.to);
       const lineText = view.state.sliceDoc(line.from, line.to);
+
+      // Skip heading lines unless the user opted in — decided from the line
+      // text alone, so it runs before the getExcludedRanges tree traversal.
+      // Keeps heading words out of POS processing entirely.
+      if (
+        !plugin.settings.proseHighlight.highlightInsideHeadings &&
+        isHeadingLine(lineText)
+      ) {
+        this.cache.set(lineNum, { posTags: [], listMatches: [] });
+        return;
+      }
+
+      const excluded = getExcludedRanges(view, line.from, line.to);
 
       // Check if entire line is excluded
       if (

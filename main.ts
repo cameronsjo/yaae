@@ -58,14 +58,10 @@ export default class YaaePlugin extends Plugin {
 
     // --- Prose Highlight ---
 
-    // Dynamic CSS for POS and custom list colors. init() may flip the
-    // posColorsMigrated latch on first run after upgrading from a pre-
-    // light/dark schema; persist that so subsequent reloads skip migration.
-    const wasMigrated = this.settings.proseHighlight.posColorsMigrated === true;
+    // Dynamic CSS for custom word-list colors. POS category colors live in
+    // styles.css as layered light/dark CSS variables — Style Settings and
+    // theme CSS are the only writers.
     this.styleManager.init(this.settings.proseHighlight);
-    if (!wasMigrated && this.settings.proseHighlight.posColorsMigrated) {
-      await this.saveSettings();
-    }
 
     // Compile word lists from saved settings
     this.wordListMatcher.compile(
@@ -262,7 +258,6 @@ export default class YaaePlugin extends Plugin {
     this.dynamicPdfPrintStyles.destroy();
     this.pageChromeManager.destroy();
     document.body.classList.remove(BODY_CLASS_SYNTAX_DIMMING);
-    document.body.classList.remove(BODY_CLASS_GUTTERED_HEADINGS);
   }
 
   async loadSettings() {

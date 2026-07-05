@@ -59,6 +59,23 @@ export function renderProseHighlightSettings(
         }),
     );
 
+  // Headings toggle (default off — heading text is chrome, not prose)
+  new Setting(proseContent)
+    .setName('Highlight inside headings')
+    .setDesc(
+      'Tag parts of speech in heading text too. Off by default — a colored ' +
+      'word inside a heading tends to fight the heading’s own styling.',
+    )
+    .addToggle((toggle) =>
+      toggle
+        .setValue(settings.highlightInsideHeadings ?? false)
+        .onChange(async (value) => {
+          settings.highlightInsideHeadings = value;
+          await plugin.saveSettings();
+          plugin.refreshHighlighting();
+        }),
+    );
+
   // --- Parts of Speech section ---
   const posContent = createCollapsibleSection(
     containerEl, expandedSections, 'writing-pos', 'Parts of speech',
