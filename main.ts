@@ -12,7 +12,8 @@ import { gutteredHeadingsExtension } from './src/cm6/guttered-headings';
 // TODO(#24): typewriter scroll disabled pending fix
 // import { typewriterExtension } from './src/cm6/typewriter-scroll';
 import { validateMarkdown, deriveCssClasses } from './src/schemas';
-import { generateToc } from './src/document/toc-generator';
+import { generateToc, resolveTocDepth } from './src/document/toc-generator';
+import { AutoTocManager } from './src/document/auto-toc';
 import { createClassificationBannerProcessor } from './src/document/classification-banner';
 import { createStrippedLinksProcessor } from './src/document/stripped-links';
 import { createDefangedLinksProcessor } from './src/document/defanged-links';
@@ -51,6 +52,31 @@ export default class YaaePlugin extends Plugin {
   /** Status bar elements for quick toggles */
   private focusModeStatusEl: HTMLElement | null = null;
   private syntaxDimmingStatusEl: HTMLElement | null = null;
+
+  /**
+   * Debounced automatic TOC regeneration. Regenerate-only: touches only
+   * notes that already contain a generated TOC block. The host closures
+   * capture `this` lazily, so they read live settings at fire time.
+   */
+  autoTocManager = new AutoTocManager({
+    isEnabled: () => this.settings.document.autoToc,
+    read: async (path) => {
+      const file = this.fileByPath(path);
+      return file ? this.app.vault.read(file) : null;
+    },
+    write: async (path, content) => {
+      const file = this.fileByPath(path);
+      if (file) await this.app.vault.modify(file, content);
+    },
+    resolveDepth: (content) =>
+      resolveTocDepth(content, this.settings.document.tocDepth),
+  });
+
+  /** Resolve a vault path to a TFile, or null when missing / not a file. */
+  private fileByPath(path: string): TFile | null {
+    const file = this.app.vault.getAbstractFileByPath(path);
+    return file instanceof TFile ? file : null;
+  }
 
   async onload() {
     console.debug('[yaae] onload: starting plugin initialization');
@@ -198,6 +224,7 @@ export default class YaaePlugin extends Plugin {
 
     // --- Document Auto-Behaviors ---
 
+
     // Dynamic print CSS for fontSize, custom fonts, watermarks, and line-height
     this.dynamicPdfPrintStyles.init(this.settings.document);
 
@@ -239,15 +266,16 @@ export default class YaaePlugin extends Plugin {
       createDefangedLinksProcessor(() => this.settings.document),
     );
 
-    // Validate on save. Listener is always registered; gate the work on the
-    // *current* setting value so toggling validateOnSave in the UI takes
-    // effect without requiring a plugin reload.
+    // Validate on save + auto TOC. One listener for both jobs; each gates on
+    // the *current* setting value so toggling in the UI takes effect without
+    // requiring a plugin reload. Auto TOC debounces per file and only touches
+    // notes that already contain a generated TOC block (regenerate-only).
     this.registerEvent(
       this.app.vault.on('modify', (file) => {
+        if (!(file instanceof TFile) || file.extension !== 'md') return;
+        this.autoTocManager.notifyModified(file.path);
         if (!this.settings.document.validateOnSave) return;
-        if (file instanceof TFile && file.extension === 'md') {
-          this.validateFileQuietly(file);
-        }
+        this.validateFileQuietly(file);
       }),
     );
 
@@ -261,8 +289,9 @@ export default class YaaePlugin extends Plugin {
     this.styleManager.destroy();
     this.dynamicPdfPrintStyles.destroy();
     this.pageChromeManager.destroy();
+    this.autoTocManager.destroy();
+    console.debug('[yaae] onunload: auto TOC manager destroyed, pending regenerations canceled');
     document.body.classList.remove(BODY_CLASS_SYNTAX_DIMMING);
-    document.body.classList.remove(BODY_CLASS_GUTTERED_HEADINGS);
   }
 
   async loadSettings() {
@@ -485,9 +514,8 @@ export default class YaaePlugin extends Plugin {
       return;
     }
 
-    // Get TOC depth from frontmatter or settings
-    const fmResult = validateMarkdown(content);
-    const depth = fmResult.data?.export?.pdf?.tocDepth ?? this.settings.document.tocDepth;
+    // Per-file frontmatter override wins over the settings default
+    const depth = resolveTocDepth(content, this.settings.document.tocDepth);
 
     const { content: updated, entryCount } = generateToc(content, depth);
     await this.app.vault.modify(file, updated);

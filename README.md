@@ -28,7 +28,7 @@ Frontmatter-driven document management with Zod-validated schemas:
 - **Watermark levels** — Four presets (whisper, heads-up, loud, screaming) with opacity-based intensity
 - **Schema validation** — Auto-validate frontmatter on save with smart warnings (e.g., "draft without watermark", "confidential without reviewers")
 - **Specialized schemas** — ADR, threat model, runbook, and slides with required field validation
-- **Table of contents** — Generate GitHub-compatible TOC from headings, inserted after frontmatter
+- **Table of contents** — Generate GitHub-compatible TOC from headings, inserted after frontmatter; optional automatic updates keep an inserted TOC fresh as the note changes
 - **CSS class derivation** — Apply `cssclasses` values from frontmatter for PDF export styling (merges with existing user classes)
 
 ### Print Styles
