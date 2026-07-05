@@ -34,6 +34,9 @@ const context = await esbuild.context({
   ],
   format: "cjs",
   target: "ES2022",
+  // Print CSS ships as raw strings injected via <style> at runtime — CSS
+  // snippets never reach Obsidian's printToPDF() pipeline (#28).
+  loader: { ".css": "text" },
   logLevel: "info",
   sourcemap: prod ? false : "inline",
   treeShaking: true,

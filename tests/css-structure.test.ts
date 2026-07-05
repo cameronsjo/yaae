@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { readdirSync } from 'node:fs';
 
 /**
  * CSS structure tests — verify that expected selectors and properties
@@ -77,54 +76,39 @@ describe('styles.css — print media', () => {
   });
 });
 
-describe('print-styles components', () => {
-  const COMPONENTS_DIR = join(ROOT, 'packages/print-styles/src/components');
-  const PRESETS_DIR = join(ROOT, 'packages/print-styles/src/presets');
+describe('bundled print CSS (src/document/print-css)', () => {
+  const PRINT_CSS_DIR = join(ROOT, 'src/document/print-css');
 
-  // page-numbers and classification moved to PageChromeManager (@page margin boxes)
-  const EXPECTED_COMPONENTS = [
+  // watermark.css (dead .print > div DOM; runtime generates watermarks) and
+  // landscape.css (documented no-op) were dropped in the #28 bundling move.
+  // page-numbers and classification live in the chrome manager.
+  const EXPECTED_FILES = [
     'appearance.css',
     'code.css',
     'copy-safe.css',
     'images.css',
-    'landscape.css',
     'links.css',
     'page-break.css',
     'signature-block.css',
     'tables.css',
     'toc.css',
-  ];
-
-  const EXPECTED_PRESETS = [
     'typography.css',
-    'watermark.css',
   ];
 
-  it('all expected component files exist', () => {
-    const actual = readdirSync(COMPONENTS_DIR).sort();
-    for (const file of EXPECTED_COMPONENTS) {
-      expect(actual, `missing component: ${file}`).toContain(file);
-    }
+  it('all expected print CSS files exist — and nothing else', () => {
+    const actual = readdirSync(PRINT_CSS_DIR).sort();
+    expect(actual).toEqual([...EXPECTED_FILES].sort());
   });
 
-  it('all expected preset files exist', () => {
-    const actual = readdirSync(PRESETS_DIR).sort();
-    for (const file of EXPECTED_PRESETS) {
-      expect(actual, `missing preset: ${file}`).toContain(file);
-    }
-  });
-
-  it('every component file contains @media print', () => {
-    for (const file of EXPECTED_COMPONENTS) {
-      const css = readFileSync(join(COMPONENTS_DIR, file), 'utf-8');
+  it('every print CSS file contains @media print', () => {
+    for (const file of EXPECTED_FILES) {
+      const css = readFileSync(join(PRINT_CSS_DIR, file), 'utf-8');
       expect(css, `${file} missing @media print`).toMatch(/@media\s+print/);
     }
   });
 
-  it('every preset file contains @media print', () => {
-    for (const file of EXPECTED_PRESETS) {
-      const css = readFileSync(join(PRESETS_DIR, file), 'utf-8');
-      expect(css, `${file} missing @media print`).toMatch(/@media\s+print/);
-    }
+  it('the snippet package is gone', () => {
+    expect(existsSync(join(ROOT, 'packages'))).toBe(false);
+    expect(existsSync(join(ROOT, 'pnpm-workspace.yaml'))).toBe(false);
   });
 });
