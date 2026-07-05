@@ -205,24 +205,6 @@ settings:
     level: 2
     collapsed: true
   -
-    id: yaae-print-page-number-bottom
-    title: Bottom offset
-    type: variable-number-slider
-    default: 12
-    min: 0
-    max: 40
-    step: 2
-    format: px
-  -
-    id: yaae-print-page-number-right
-    title: Right offset
-    type: variable-number-slider
-    default: 16
-    min: 0
-    max: 40
-    step: 2
-    format: px
-  -
     id: yaae-print-page-number-font-size
     title: Font size
     type: variable-text
@@ -233,6 +215,23 @@ settings:
     type: variable-color
     format: hex
     default: '#888888'
+  -
+    id: yaae-print-signature-heading
+    title: Signature Block
+    type: heading
+    level: 2
+    collapsed: true
+  -
+    id: yaae-print-sig-margin-top
+    title: Top margin
+    description: Space above the signature block
+    type: variable-text
+    default: 3em
+  -
+    id: yaae-print-sig-font-size
+    title: Font size
+    type: variable-text
+    default: 10pt
   -
     id: yaae-print-tables-heading
     title: Tables
@@ -428,10 +427,12 @@ body {
   --yaae-print-link-url-color: #666;
 
   /* PDF Print — Page Numbers */
-  --yaae-print-page-number-bottom: 12px;
-  --yaae-print-page-number-right: 16px;
   --yaae-print-page-number-font-size: 9px;
   --yaae-print-page-number-color: #888;
+
+  /* PDF Print — Signature Block */
+  --yaae-print-sig-margin-top: 3em;
+  --yaae-print-sig-font-size: 10pt;
 
   /* PDF Print — Tables */
   --yaae-print-table-font-size: 0.85em;
