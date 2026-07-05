@@ -3,24 +3,32 @@ import { readFile } from 'node:fs/promises';
 import path from 'path';
 
 /**
- * Mirror esbuild's `loader: { '.css': 'text' }`: .css imports resolve to the
- * raw file content as a string, so tests exercise the same bundled CSS the
- * plugin injects at runtime.
+ * Serve `*.css?raw` imports as raw text, mirroring the esbuild rawImports
+ * plugin. Vitest's CSS handling matches any id whose extension is .css
+ * (query-stripped) and reduces it to an empty module — so the virtual id
+ * mangles the extension (.css → .rawcss) to stay out of that pipeline.
  */
-function cssAsText() {
+function rawCssForTests() {
+  const PREFIX = '\0raw-css:';
   return {
-    name: 'yaae-css-as-text',
+    name: 'yaae-raw-css',
     enforce: 'pre' as const,
+    resolveId(source: string, importer: string | undefined) {
+      if (!source.endsWith('.css?raw') || !importer) return null;
+      const file = path.resolve(path.dirname(importer), source.slice(0, -'?raw'.length));
+      return PREFIX + file.replace(/\.css$/, '.rawcss');
+    },
     async load(id: string) {
-      if (!id.endsWith('.css')) return null;
-      const css = await readFile(id, 'utf-8');
+      if (!id.startsWith(PREFIX)) return null;
+      const file = id.slice(PREFIX.length).replace(/\.rawcss$/, '.css');
+      const css = await readFile(file, 'utf-8');
       return `export default ${JSON.stringify(css)};`;
     },
   };
 }
 
 export default defineConfig({
-  plugins: [cssAsText()],
+  plugins: [rawCssForTests()],
   test: {
     globals: true,
     environment: 'node',

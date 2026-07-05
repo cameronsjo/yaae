@@ -1,0 +1,137 @@
+/**
+ * PrintStyleManager — the one owner of YAAE's print pipeline (#28/#29).
+ *
+ * Replaces DynamicPdfPrintStyleManager + PageChromeManager with a facade
+ * over three <style> elements:
+ *
+ *   | id                    | content                              | regenerated on            |
+ *   |-----------------------|--------------------------------------|---------------------------|
+ *   | yaae-print-base       | bundled static CSS, knobs baked      | init, css-change          |
+ *   | yaae-print-document   | per-doc state-baked rules            | leaf/frontmatter/settings |
+ *   | yaae-print-chrome     | banners/headers/footers/page numbers | same                      |
+ *
+ * There is no before-print hook in Obsidian's API, so the elements stay
+ * continuously correct instead: the host (main.ts) calls refresh() on
+ * css-change, active-leaf-change, metadata changes to the active file, and
+ * settings edits. Generation is pure functions of PrintDocumentState +
+ * resolved PrintVars; this class only owns DOM lifecycle.
+ *
+ * Body-class sync: the state's pdf-* classes are mirrored onto <body> as an
+ * extensibility courtesy (tracked set — user classes are never touched).
+ * Correctness never depends on them; document-styles bakes the same rules.
+ */
+
+import type { PrintDocumentState } from './state';
+import { buildBaseCss } from './base-styles';
+import { buildDocumentCss, deriveStateClasses } from './document-styles';
+import { buildMarginBoxCss } from './chrome-margin-boxes';
+import { buildFixedChromeCss } from './chrome-fixed';
+import { resolvePrintVars, type PrintVars } from './vars';
+import { detectChromeMajor, supportsMarginBoxes } from './chrome-version';
+
+const BASE_STYLE_ID = 'yaae-print-base';
+const DOCUMENT_STYLE_ID = 'yaae-print-document';
+const CHROME_STYLE_ID = 'yaae-print-chrome';
+
+export interface PrintStyleHost {
+  /** Current render state (settings merged with active-doc overrides). */
+  getState(): PrintDocumentState;
+  /** Live cascade reader; overridable for tests. */
+  readCssVar?(name: string): string;
+  /** UA override for tests. */
+  userAgent?: string;
+}
+
+export class PrintStyleManager {
+  private baseEl: HTMLStyleElement | null = null;
+  private documentEl: HTMLStyleElement | null = null;
+  private chromeEl: HTMLStyleElement | null = null;
+  private vars: PrintVars | null = null;
+  private trackedBodyClasses: string[] = [];
+  readonly chromeMajor: number;
+
+  constructor(private host: PrintStyleHost) {
+    this.chromeMajor = detectChromeMajor(
+      host.userAgent ?? (typeof navigator !== 'undefined' ? navigator.userAgent : ''),
+    );
+  }
+
+  get usesMarginBoxes(): boolean {
+    return supportsMarginBoxes(this.chromeMajor);
+  }
+
+  init(): void {
+    // Idempotent re-init: destroy any prior elements first so a partial
+    // init failure or hot reload cannot leave orphans in <head>.
+    if (this.baseEl || this.documentEl || this.chromeEl) this.destroy();
+    this.baseEl = this.createStyleEl(BASE_STYLE_ID);
+    this.documentEl = this.createStyleEl(DOCUMENT_STYLE_ID);
+    this.chromeEl = this.createStyleEl(CHROME_STYLE_ID);
+    this.refresh();
+    console.info(
+      `[yaae] PrintStyleManager initialized. Chrome: ${this.chromeMajor}, ` +
+        `chrome strategy: ${this.usesMarginBoxes ? '@page margin boxes' : 'position:fixed fallback'}` +
+        (this.usesMarginBoxes
+          ? ''
+          : ' — page numbers are unavailable below Chrome 131'),
+    );
+  }
+
+  /**
+   * One entry point for every trigger: re-resolves knob values through the
+   * live cascade, rebuilds all three elements from current state, and
+   * re-syncs body classes.
+   */
+  refresh(): void {
+    if (!this.baseEl) return;
+    this.vars = resolvePrintVars(
+      this.host.readCssVar ??
+        ((name) => getComputedStyle(document.body).getPropertyValue(name)),
+    );
+    const state = this.host.getState();
+
+    this.baseEl.textContent = buildBaseCss(this.vars);
+    if (this.documentEl) {
+      this.documentEl.textContent = buildDocumentCss(state, this.vars);
+    }
+    if (this.chromeEl) {
+      this.chromeEl.textContent = this.usesMarginBoxes
+        ? buildMarginBoxCss(state, this.vars)
+        : buildFixedChromeCss(state, this.vars);
+    }
+    this.syncBodyClasses(deriveStateClasses(state));
+    console.debug(
+      `[yaae] Print styles refreshed. Classification: ${state.classification}, theme: ${state.theme}`,
+    );
+  }
+
+  /** Replace OUR tracked pdf-* classes on <body>; user classes untouched. */
+  private syncBodyClasses(classes: string[]): void {
+    for (const cls of this.trackedBodyClasses) document.body.classList.remove(cls);
+    for (const cls of classes) document.body.classList.add(cls);
+    this.trackedBodyClasses = classes;
+  }
+
+  private createStyleEl(id: string): HTMLStyleElement {
+    const el = document.createElement('style');
+    el.id = id;
+    document.head.appendChild(el);
+    return el;
+  }
+
+  destroy(): void {
+    this.syncBodyClasses([]);
+    for (const el of [this.baseEl, this.documentEl, this.chromeEl]) el?.remove();
+    this.baseEl = this.documentEl = this.chromeEl = null;
+    console.debug('[yaae] PrintStyleManager destroyed.');
+  }
+}
+
+export type { PrintDocumentState } from './state';
+export { detectChromeMajor, supportsMarginBoxes, MARGIN_BOX_MIN_CHROME } from './chrome-version';
+export { PRINT_VAR_DEFAULTS, resolvePrintVars, bakePrintVars, defaultPrintVars } from './vars';
+export { buildBaseCss } from './base-styles';
+export { buildDocumentCss, deriveStateClasses } from './document-styles';
+export { buildMarginBoxCss } from './chrome-margin-boxes';
+export { buildFixedChromeCss } from './chrome-fixed';
+export { WATERMARK_PRESETS, buildWatermarkDataUri } from './watermark';
