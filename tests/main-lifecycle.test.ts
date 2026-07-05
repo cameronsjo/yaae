@@ -67,8 +67,15 @@ describe('F3 — updatePrintStateFromActiveFile is race-safe', () => {
 
   it('re-checks getActiveFile() after vault.read and bails if changed', () => {
     expect(MAIN_TS).toMatch(
-      /await\s+this\.app\.vault\.read\(startFile\)[\s\S]*?if\s*\(\s*this\.app\.workspace\.getActiveFile\(\)\s*!==\s*startFile\s*\)[\s\S]*?return/,
+      /await\s+this\.app\.vault\.read\(startFile\)[\s\S]*?this\.app\.workspace\.getActiveFile\(\)\s*!==\s*startFile[\s\S]*?return/,
     );
+  });
+
+  it('guards against a superseding invocation with a sequence token', () => {
+    // active-leaf-change and metadataCache 'changed' can both drive the
+    // update for the same file; a stale read must not clobber a newer one.
+    expect(MAIN_TS).toMatch(/const\s+seq\s*=\s*\+\+this\.printStateSeq/);
+    expect(MAIN_TS).toMatch(/seq\s*!==\s*this\.printStateSeq/);
   });
 });
 

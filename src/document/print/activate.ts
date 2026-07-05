@@ -79,6 +79,12 @@ export function activateStateCss(css: string, activeClasses: Set<string>): strin
   const activated: string[] = [];
 
   for (const rule of parseRules(css)) {
+    // Only activate print-scoped rules. Bundled CSS also carries an
+    // `@media screen` antidote (signature-block.css hides its print
+    // pseudo-element in the live view); re-emitting that into the
+    // permanently-mounted print-document element would leak a screen rule.
+    if (!rule.wrappers.some((w) => /@media\b[^{]*\bprint\b/.test(w))) continue;
+
     const selectors = rule.selector.split(',').map((s) => s.trim());
     const rewritten: string[] = [];
 

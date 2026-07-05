@@ -67,7 +67,8 @@ export class PrintStyleManager {
     this.baseEl = this.createStyleEl(BASE_STYLE_ID);
     this.documentEl = this.createStyleEl(DOCUMENT_STYLE_ID);
     this.chromeEl = this.createStyleEl(CHROME_STYLE_ID);
-    this.refresh();
+    this.refreshVars();
+    this.refreshDocument();
     console.info(
       `[yaae] PrintStyleManager initialized. Chrome: ${this.chromeMajor}, ` +
         `chrome strategy: ${this.usesMarginBoxes ? '@page margin boxes' : 'position:fixed fallback'}` +
@@ -78,30 +79,55 @@ export class PrintStyleManager {
   }
 
   /**
-   * One entry point for every trigger: re-resolves knob values through the
-   * live cascade, rebuilds all three elements from current state, and
-   * re-syncs body classes.
+   * Full refresh — re-resolve knobs AND rebuild every element. Kept for
+   * callers that don't know which axis changed; init() and css-change go
+   * through refreshVars()+refreshDocument() directly.
    */
   refresh(): void {
+    this.refreshVars();
+    this.refreshDocument();
+  }
+
+  /**
+   * Re-resolve knob values from the live cascade and rebuild the base
+   * element. Base CSS depends ONLY on the knobs, so this runs just on init
+   * and css-change — NOT on the per-keystroke settings path, where a
+   * ~30-property getComputedStyle scan + re-bake of the whole bundle would
+   * be pure waste (the values haven't moved).
+   */
+  refreshVars(): void {
     if (!this.baseEl) return;
     this.vars = resolvePrintVars(
       this.host.readCssVar ??
         ((name) => getComputedStyle(document.body).getPropertyValue(name)),
     );
-    const state = this.host.getState();
-
     this.baseEl.textContent = buildBaseCss(this.vars);
+  }
+
+  /**
+   * Rebuild the per-document + chrome elements from current state, reusing
+   * the last-resolved knob values. This is the settings/leaf/metadata path —
+   * font-size/line-height sliders fire it continuously while dragging, so it
+   * stays off the getComputedStyle + base-rebuild cost.
+   */
+  refreshDocument(): void {
+    if (!this.documentEl && !this.chromeEl) return;
+    const vars = this.vars ?? resolvePrintVars(
+      this.host.readCssVar ??
+        ((name) => getComputedStyle(document.body).getPropertyValue(name)),
+    );
+    const state = this.host.getState();
     if (this.documentEl) {
-      this.documentEl.textContent = buildDocumentCss(state, this.vars);
+      this.documentEl.textContent = buildDocumentCss(state, vars);
     }
     if (this.chromeEl) {
       this.chromeEl.textContent = this.usesMarginBoxes
-        ? buildMarginBoxCss(state, this.vars)
-        : buildFixedChromeCss(state, this.vars);
+        ? buildMarginBoxCss(state, vars)
+        : buildFixedChromeCss(state, vars);
     }
     this.syncBodyClasses(deriveStateClasses(state));
     console.debug(
-      `[yaae] Print styles refreshed. Classification: ${state.classification}, theme: ${state.theme}`,
+      `[yaae] Print document refreshed. Classification: ${state.classification}, theme: ${state.theme}`,
     );
   }
 

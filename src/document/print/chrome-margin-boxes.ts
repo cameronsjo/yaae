@@ -14,28 +14,10 @@
  * Style Settings can now retint the chrome).
  */
 
-import { getClassificationMeta } from '../../schemas/classification';
 import { escapeCssString, sanitizeColor } from '../css-sanitize';
 import type { PrintDocumentState } from './state';
 import type { PrintVars } from './vars';
-
-function bannerBase(vars: PrintVars): string {
-  return `
-    font-size: ${vars['--yaae-print-banner-font-size']};
-    font-weight: 700;
-    letter-spacing: ${vars['--yaae-print-banner-letter-spacing']};
-    text-transform: uppercase;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;`;
-}
-
-function chromeTextBase(vars: PrintVars): string {
-  return `
-    font-size: ${vars['--yaae-print-header-footer-font-size']};
-    color: ${vars['--yaae-print-header-footer-color']};
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;`;
-}
+import { resolveBanner, chromeTextBase, bannerTextBase } from './chrome-shared';
 
 /** Build the yaae-print-chrome CSS for the margin-box strategy. */
 export function buildMarginBoxCss(state: PrintDocumentState, vars: PrintVars): string {
@@ -46,13 +28,7 @@ export function buildMarginBoxCss(state: PrintDocumentState, vars: PrintVars): s
 
   // Always resolve classification for PDF @page margin boxes.
   // showClassificationBanner only controls the reading view banner.
-  const meta = state.classification
-    ? getClassificationMeta(state.classification, state.customClassifications)
-    : null;
-
-  const hasTopBanner = meta !== null;
-  const hasBottomBanner =
-    meta !== null && state.bannerPosition === 'both' && !state.signatureBlock;
+  const { meta, hasTopBanner, hasBottomBanner } = resolveBanner(state);
   const hasAny =
     hasTopBanner || hasBottomBanner ||
     headerLeft || headerRight || footerLeft || footerRight ||
@@ -60,7 +36,7 @@ export function buildMarginBoxCss(state: PrintDocumentState, vars: PrintVars): s
 
   if (!hasAny) return '';
 
-  const BANNER_BASE = bannerBase(vars);
+  const BANNER_BASE = bannerTextBase(vars);
   const CHROME_TEXT_BASE = chromeTextBase(vars);
   const marginBoxes: string[] = [];
 

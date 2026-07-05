@@ -45,7 +45,7 @@ export function renderDocumentSettings(
         .onChange(async (value) => {
           plugin.settings.document.defaultClassification = value;
           await plugin.saveSettings();
-          plugin.printStyles.refresh();
+          plugin.printStyles.refreshDocument();
         });
     });
 
@@ -58,7 +58,7 @@ export function renderDocumentSettings(
         .onChange(async (value) => {
           plugin.settings.document.showClassificationBanner = value;
           await plugin.saveSettings();
-          plugin.printStyles.refresh();
+          plugin.printStyles.refreshDocument();
         }),
     );
 
@@ -73,7 +73,7 @@ export function renderDocumentSettings(
         .onChange(async (value) => {
           plugin.settings.document.bannerPosition = value as 'top' | 'both';
           await plugin.saveSettings();
-          plugin.printStyles.refresh();
+          plugin.printStyles.refreshDocument();
         }),
     );
 
@@ -91,7 +91,7 @@ export function renderDocumentSettings(
 
   async function saveAndRefreshPrintStyles() {
     await plugin.saveSettings();
-    plugin.printStyles.refresh();
+    plugin.printStyles.refreshDocument();
   }
 
   // Draft entry for the "Add classification" flow. Held outside
@@ -292,7 +292,7 @@ export function renderDocumentSettings(
         .onChange(async (value) => {
           plugin.settings.document.theme = value as ThemeMode;
           await plugin.saveSettings();
-          plugin.printStyles.refresh();
+          plugin.printStyles.refreshDocument();
         }),
     );
 
@@ -321,7 +321,7 @@ export function renderDocumentSettings(
           if (!trimmed) return;
           plugin.settings.document.fontFamily = trimmed;
                     await plugin.saveSettings();
-                    plugin.printStyles.refresh();
+                    plugin.printStyles.refreshDocument();
         });
     });
   if (!fontIsCustom) customFontRow.settingEl.setAttribute('hidden', '');
@@ -349,7 +349,7 @@ export function renderDocumentSettings(
           }
           plugin.settings.document.fontFamily = value;
                     await plugin.saveSettings();
-                    plugin.printStyles.refresh();
+                    plugin.printStyles.refreshDocument();
           customFontRow.settingEl.setAttribute('hidden', '');
         }),
     );
@@ -365,7 +365,7 @@ export function renderDocumentSettings(
         .onChange(async (value) => {
           plugin.settings.document.fontSize = value;
                     await plugin.saveSettings();
-                    plugin.printStyles.refresh();
+                    plugin.printStyles.refreshDocument();
         }),
     );
 
@@ -380,7 +380,7 @@ export function renderDocumentSettings(
         .onChange(async (value) => {
           plugin.settings.document.lineHeight = value / 10;
                     await plugin.saveSettings();
-                    plugin.printStyles.refresh();
+                    plugin.printStyles.refreshDocument();
         }),
     );
 
@@ -408,7 +408,7 @@ export function renderDocumentSettings(
         .onChange(async (value) => {
           plugin.settings.document.links = value as LinksMode;
           await plugin.saveSettings();
-          plugin.printStyles.refresh();
+          plugin.printStyles.refreshDocument();
         }),
     );
 
@@ -423,7 +423,7 @@ export function renderDocumentSettings(
         .onChange(async (value) => {
           plugin.settings.document.copyPasteSafe = value;
           await plugin.saveSettings();
-          plugin.printStyles.refresh();
+          plugin.printStyles.refreshDocument();
         }),
     );
 
@@ -436,7 +436,7 @@ export function renderDocumentSettings(
         .onChange(async (value) => {
           plugin.settings.document.compactTables = value;
           await plugin.saveSettings();
-          plugin.printStyles.refresh();
+          plugin.printStyles.refreshDocument();
         }),
     );
 
@@ -465,7 +465,7 @@ export function renderDocumentSettings(
         .onChange(async (value) => {
           plugin.settings.document.pageNumbers = value;
           await plugin.saveSettings();
-          plugin.printStyles.refresh();
+          plugin.printStyles.refreshDocument();
         }),
     );
 
@@ -480,7 +480,7 @@ export function renderDocumentSettings(
         .onChange(async (value) => {
           plugin.settings.document.tocDepth = value;
           await plugin.saveSettings();
-          plugin.printStyles.refresh();
+          plugin.printStyles.refreshDocument();
         }),
     );
 
@@ -505,7 +505,7 @@ export function renderDocumentSettings(
         .onChange(async (value) => {
           plugin.settings.document.defaultWatermarkForDrafts = value as WatermarkLevel;
           await plugin.saveSettings();
-          plugin.printStyles.refresh();
+          plugin.printStyles.refreshDocument();
         }),
     );
 
@@ -519,13 +519,13 @@ export function renderDocumentSettings(
         .onChange(async (value) => {
           plugin.settings.document.watermarkText = value || 'DRAFT';
                     await plugin.saveSettings();
-                    plugin.printStyles.refresh();
+                    plugin.printStyles.refreshDocument();
         }),
     );
 
   async function saveAndRefreshHeaderFooter() {
     await plugin.saveSettings();
-    plugin.printStyles.refresh();
+    plugin.printStyles.refreshDocument();
   }
 
   new Setting(brandingContent)
@@ -595,7 +595,7 @@ export function renderDocumentSettings(
         .onChange(async (value) => {
           plugin.settings.document.validateOnSave = value;
           await plugin.saveSettings();
-          plugin.printStyles.refresh();
+          plugin.printStyles.refreshDocument();
         }),
     );
 }

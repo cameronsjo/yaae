@@ -86,7 +86,14 @@ export function buildPrintDocumentState(
   const rawPdf = isRecord(raw.export) && isRecord(raw.export.pdf) ? raw.export.pdf : {};
   const vPdf = v.export?.pdf;
 
-  if (v.classification) state.classification = v.classification;
+  // Presence-gated like every pdf field: the schema defaults classification
+  // to 'internal', so reading the validated value unconditionally would let
+  // that default shadow the user's defaultClassification setting on any note
+  // without an explicit classification key — silently wrong banners on the
+  // security-classification feature itself.
+  if ('classification' in raw && v.classification) {
+    state.classification = v.classification;
+  }
   if (vPdf) {
     if ('theme' in rawPdf && vPdf.theme) state.theme = vPdf.theme as ThemeMode;
     if ('signatureBlock' in rawPdf) state.signatureBlock = vPdf.signatureBlock === true;

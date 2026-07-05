@@ -427,6 +427,25 @@ describe('buildDocumentCss', () => {
     );
     expect(css).not.toContain('var(--yaae-print-');
   });
+
+  it('never leaks the @media screen signature antidote into the print element', () => {
+    // signature-block.css ships an @media screen rule that hides the print
+    // pseudo-element in the live view; activation must not sweep it into the
+    // permanently-mounted print-document element.
+    const css = buildDocumentCss(makeState({ signatureBlock: true }), VARS);
+    expect(css).not.toContain('@media screen');
+  });
+
+  it('a newline in a custom fontFamily cannot break out of its rule', () => {
+    const css = buildDocumentCss(
+      makeState({ fontFamily: 'Arial\n} body::before { display: none' }),
+      VARS,
+    );
+    // The newline is escaped to \a and the payload stays inside the quoted
+    // font-family value — it never becomes a real `} body::before {` rule.
+    expect(css).not.toContain('\n} body::before');
+    expect(css).toMatch(/font-family: "Arial\\a } body::before/);
+  });
 });
 
 describe('deriveStateClasses', () => {
@@ -568,6 +587,21 @@ describe('buildPrintDocumentState', () => {
     const state = buildPrintDocumentState(DEFAULT_DOCUMENT_SETTINGS, doc);
     expect(state.theme).toBe(DEFAULT_DOCUMENT_SETTINGS.theme);
   });
+
+  it('schema-defaulted classification does NOT shadow the settings default', () => {
+    // The schema defaults classification to 'internal'. A note without an
+    // explicit classification key must keep the settings default.
+    const settings = { ...DEFAULT_DOCUMENT_SETTINGS, defaultClassification: 'public' };
+    const state = buildPrintDocumentState(settings, fm('title: T\ncreated: 2024-01-01'));
+    expect(state.classification).toBe('public');
+  });
+
+  it('explicit classification frontmatter still overrides', () => {
+    const settings = { ...DEFAULT_DOCUMENT_SETTINGS, defaultClassification: 'public' };
+    const state = buildPrintDocumentState(
+      settings, fm('title: T\ncreated: 2024-01-01\nclassification: confidential'));
+    expect(state.classification).toBe('confidential');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -685,6 +719,31 @@ describe('PrintStyleManager', () => {
     mgr.refresh();
     expect(bodyClasses.contains('pdf-links-plain')).toBe(false);
     expect(bodyClasses.contains('pdf-links-stripped')).toBe(true);
+  });
+
+  it('refreshDocument rebuilds document + chrome but not base', () => {
+    let theme: PrintDocumentState['theme'] = 'light';
+    let knob = '';
+    const mgr = new PrintStyleManager({
+      getState: () => makeState({ theme }),
+      readCssVar: (name) => (name === '--yaae-print-code-bg' ? knob : ''),
+      userAgent: 'Chrome/132.0',
+    });
+    mgr.init();
+    const baseAfterInit = styleEls[0].textContent;
+
+    // Change a knob AND a document setting, then refresh only the document:
+    // base must stay frozen (knob not re-read), document must update.
+    knob = '#abcdef';
+    theme = 'dark';
+    mgr.refreshDocument();
+    expect(styleEls[0].textContent).toBe(baseAfterInit); // base untouched
+    expect(styleEls[0].textContent).not.toContain('#abcdef');
+    expect(styleEls[1].textContent).toContain('#1e1e1e'); // document updated
+
+    // refreshVars picks the knob up.
+    mgr.refreshVars();
+    expect(styleEls[0].textContent).toContain('#abcdef');
   });
 
   it('re-init removes prior elements first (idempotent)', () => {

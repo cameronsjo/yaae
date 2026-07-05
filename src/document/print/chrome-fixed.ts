@@ -24,10 +24,10 @@
  * elements render into.
  */
 
-import { getClassificationMeta } from '../../schemas/classification';
 import { escapeCssString, sanitizeColor } from '../css-sanitize';
 import type { PrintDocumentState } from './state';
 import type { PrintVars } from './vars';
+import { resolveBanner, chromeTextBase, bannerTextBase } from './chrome-shared';
 
 /** Build the yaae-print-chrome CSS for the fixed-position fallback strategy. */
 export function buildFixedChromeCss(state: PrintDocumentState, vars: PrintVars): string {
@@ -36,23 +36,12 @@ export function buildFixedChromeCss(state: PrintDocumentState, vars: PrintVars):
   const footerLeft = state.footerLeft.trim();
   const footerRight = state.footerRight.trim();
 
-  const meta = state.classification
-    ? getClassificationMeta(state.classification, state.customClassifications)
-    : null;
-
-  const hasTopBanner = meta !== null;
-  const hasBottomBanner =
-    meta !== null && state.bannerPosition === 'both' && !state.signatureBlock;
+  const { meta, hasTopBanner, hasBottomBanner } = resolveBanner(state);
   // Signature block owns .markdown-preview-sizer::after in the base CSS.
   const footerRightSlotFree = !state.signatureBlock;
 
   const rules: string[] = [];
-  const chromeText = `
-    position: fixed;
-    font-size: ${vars['--yaae-print-header-footer-font-size']};
-    color: ${vars['--yaae-print-header-footer-color']};
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;`;
+  const chromeText = `\n    position: fixed;${chromeTextBase(vars)}`;
 
   if (meta) {
     const useDark = state.theme === 'dark';
@@ -66,13 +55,7 @@ export function buildFixedChromeCss(state: PrintDocumentState, vars: PrintVars):
     left: 0;
     right: 0;
     text-align: center;
-    font-size: ${vars['--yaae-print-banner-font-size']};
-    font-weight: 700;
-    letter-spacing: ${vars['--yaae-print-banner-letter-spacing']};
-    text-transform: uppercase;
-    padding: ${vars['--yaae-print-banner-padding']};
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;`;
+    padding: ${vars['--yaae-print-banner-padding']};${bannerTextBase(vars)}`;
 
     if (hasTopBanner) {
       rules.push(`  body::before {

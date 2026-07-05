@@ -58,6 +58,14 @@ export default class YaaePlugin extends Plugin {
   /** Active document frontmatter (raw + validated) for print-state overrides. */
   private activeDoc: ActiveDocFrontmatter | null = null;
 
+  /**
+   * Monotonic token for updatePrintStateFromActiveFile. Two triggers
+   * (active-leaf-change and metadataCache 'changed') can race on the same
+   * file; a stale read must not overwrite a newer one. Each call captures
+   * the token before its await and bails if a newer call has started.
+   */
+  private printStateSeq = 0;
+
   /** Temporary 3a probe: does class scoping reach the print DOM? (#28/#29) */
   printProbe = new PrintProbe();
 
@@ -286,10 +294,12 @@ export default class YaaePlugin extends Plugin {
     this.printStyles.init();
 
     // Style Settings (and theme) edits move the --yaae-print-* knobs;
-    // re-resolve and re-bake on every css-change.
+    // re-resolve and re-bake the base element on every css-change. The
+    // document/chrome elements read the same knobs, so refresh them too.
     this.registerEvent(
       this.app.workspace.on('css-change', () => {
-        this.printStyles.refresh();
+        this.printStyles.refreshVars();
+        this.printStyles.refreshDocument();
       }),
     );
 
@@ -636,12 +646,13 @@ export default class YaaePlugin extends Plugin {
    * for export.
    */
   async updatePrintStateFromActiveFile(): Promise<void> {
+    const seq = ++this.printStateSeq;
     const startFile = this.app.workspace.getActiveFile();
     if (!startFile) {
       // No active file at all — fall back to defaults so the pipeline
       // reflects settings.
       this.activeDoc = null;
-      this.printStyles.refresh();
+      this.printStyles.refreshDocument();
       return;
     }
     if (startFile.extension !== 'md') {
@@ -653,11 +664,15 @@ export default class YaaePlugin extends Plugin {
 
     const content = await this.app.vault.read(startFile);
 
-    // Race guard: if the user switched files during the read, the print state
-    // should reflect the *new* active file (or be left alone), not the file we
-    // started reading. Bail and let the next active-leaf-change re-trigger us.
-    if (this.app.workspace.getActiveFile() !== startFile) {
-      console.debug('[yaae] updatePrintStateFromActiveFile: active file changed mid-read, aborting');
+    // Race guard: bail if the active file changed during the read, OR if a
+    // newer invocation started while we were reading (active-leaf-change and
+    // metadataCache 'changed' can both fire for the same file — a stale read
+    // must not clobber the newer one).
+    if (
+      seq !== this.printStateSeq ||
+      this.app.workspace.getActiveFile() !== startFile
+    ) {
+      console.debug('[yaae] updatePrintStateFromActiveFile: superseded mid-read, aborting');
       return;
     }
 
@@ -665,7 +680,7 @@ export default class YaaePlugin extends Plugin {
       raw: extractFrontmatter(content),
       validated: validateMarkdown(content).data,
     };
-    this.printStyles.refresh();
+    this.printStyles.refreshDocument();
   }
 }
 
