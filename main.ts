@@ -21,6 +21,7 @@ import { DEFAULT_DOCUMENT_SETTINGS } from './src/document/settings';
 import { createCollapsibleSection } from './src/settings/collapsible-section';
 import { DynamicPdfPrintStyleManager, PageChromeManager } from './src/document/print-styles';
 import type { PageChromeState } from './src/document/print-styles';
+import { PrintProbe } from './src/document/print-probe';
 import type { LinksMode } from './src/document/settings';
 
 const BODY_CLASS_SYNTAX_DIMMING = 'yaae-syntax-dimming';
@@ -47,6 +48,9 @@ export default class YaaePlugin extends Plugin {
 
   /** @page margin box manager for classification banners, headers, footers, and page numbers */
   pageChromeManager = new PageChromeManager();
+
+  /** Temporary 3a probe: does class scoping reach the print DOM? (#28/#29) */
+  printProbe = new PrintProbe();
 
   /** Status bar elements for quick toggles */
   private focusModeStatusEl: HTMLElement | null = null;
@@ -180,6 +184,47 @@ export default class YaaePlugin extends Plugin {
       },
     });
 
+    // Temporary #28/#29 empirical gate (3a): decides whether class-scoped
+    // print selectors survive into the export DOM. Arm, export a PDF, read
+    // the H1 colors, copy the report. Remove once the gate is decided.
+    this.addCommand({
+      id: 'yaae-debug-print-probe',
+      name: 'Toggle print probe (debug)',
+      callback: () => {
+        if (this.printProbe.active) {
+          this.printProbe.disable();
+          new Notice('Print probe disarmed.');
+          return;
+        }
+        const viewEl =
+          this.app.workspace.getActiveViewOfType(MarkdownView)?.containerEl ??
+          null;
+        this.printProbe.enable(viewEl);
+        new Notice(
+          'Print probe ARMED. Export this note to PDF, check the H1: ' +
+            'underline only = class scoping dead, red = body-class works, ' +
+            'blue = view-class works. Then run "Copy print probe report".',
+          10000,
+        );
+      },
+    });
+
+    this.addCommand({
+      id: 'yaae-debug-print-probe-report',
+      name: 'Copy print probe report (debug)',
+      callback: async () => {
+        const report = this.printProbe.buildReport();
+        try {
+          await navigator.clipboard.writeText(report);
+          new Notice('Print probe report copied to clipboard.');
+        } catch (err) {
+          console.error('[yaae] Failed to copy probe report. Dumping to console:', err);
+          console.info(report);
+          new Notice('Clipboard unavailable — probe report dumped to the developer console.');
+        }
+      },
+    });
+
     // --- Status Bar Toggles ---
 
     this.focusModeStatusEl = this.addStatusBarItem();
@@ -261,8 +306,8 @@ export default class YaaePlugin extends Plugin {
     this.styleManager.destroy();
     this.dynamicPdfPrintStyles.destroy();
     this.pageChromeManager.destroy();
+    this.printProbe.disable();
     document.body.classList.remove(BODY_CLASS_SYNTAX_DIMMING);
-    document.body.classList.remove(BODY_CLASS_GUTTERED_HEADINGS);
   }
 
   async loadSettings() {

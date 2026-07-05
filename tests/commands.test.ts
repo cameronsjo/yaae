@@ -21,6 +21,9 @@ const EXPECTED_COMMANDS = [
   { id: 'yaae-validate', name: 'Validate frontmatter' },
   { id: 'yaae-generate-toc', name: 'Generate table of contents' },
   { id: 'yaae-apply-css-classes', name: 'Apply CSS classes from frontmatter' },
+  // Temporary 3a probe commands (#28/#29) — removed with the probe.
+  { id: 'yaae-debug-print-probe', name: 'Toggle print probe (debug)' },
+  { id: 'yaae-debug-print-probe-report', name: 'Copy print probe report (debug)' },
 ];
 
 // Extract all addCommand({ id: '...' }) calls from main.ts
@@ -32,13 +35,13 @@ while ((m = COMMAND_ID_PATTERN.exec(MAIN_TS)) !== null) {
 }
 
 describe('command registration (structural)', () => {
-  it('main.ts contains addCommand calls for all 7 documented commands', () => {
+  it('main.ts contains addCommand calls for all documented commands', () => {
     for (const cmd of EXPECTED_COMMANDS) {
       expect(registeredIds, `missing command: ${cmd.id}`).toContain(cmd.id);
     }
   });
 
-  it('registers exactly 7 commands', () => {
+  it('registers exactly the documented commands', () => {
     expect(registeredIds).toHaveLength(EXPECTED_COMMANDS.length);
   });
 
