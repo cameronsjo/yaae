@@ -13,6 +13,7 @@ import { CompromiseTagger } from './tagger';
 import { WordListMatcher } from './word-lists';
 import type { WordListMatch } from './word-lists';
 import type { POSCategory } from '../types';
+import { recordProseHighlightError } from './debug';
 
 /** Markdown node types to exclude from NLP processing */
 const EXCLUDED_NODE_TYPES = new Set([
@@ -167,19 +168,48 @@ export function createHighlighterExtension(plugin: YaaePlugin) {
   listMatcher.compile(plugin.settings.proseHighlight.customWordLists);
 
   class ProseHighlighter {
-    decorations: DecorationSet;
+    // Initialized at declaration: the constructor assigns inside try/catch,
+    // which TS's definite-assignment analysis treats as maybe-skipped.
+    decorations: DecorationSet = Decoration.none;
     private cache = new Map<number, LineTags>();
 
     constructor(view: EditorView) {
-      this.decorations = this.buildDecorations(view);
+      // A throw here would keep the ViewPlugin from ever installing (#32).
+      // Degrade to unhighlighted and record the error for the debug command.
+      // buildDecorations populates the cache via retagLine before throwing,
+      // so the reset's cache.clear() is load-bearing even at construction.
+      try {
+        this.decorations = this.buildDecorations(view);
+      } catch (err) {
+        recordProseHighlightError(err, 'decoration-build');
+        this.resetHighlighting();
+      }
     }
 
     update(update: ViewUpdate) {
+      // CM6 ejects a ViewPlugin whose update() throws — the whole feature
+      // then silently dies, which is the reported mobile symptom (#32).
+      // Catch, record for the debug command, and degrade to unhighlighted;
+      // the next update gets a fresh try against a cleared cache.
+      try {
+        this.applyUpdate(update);
+      } catch (err) {
+        recordProseHighlightError(err, 'update');
+        this.resetHighlighting();
+      }
+    }
+
+    /** Degrade to unhighlighted: no decorations, empty tag cache. */
+    private resetHighlighting(): void {
+      this.decorations = Decoration.none;
+      this.cache.clear();
+    }
+
+    private applyUpdate(update: ViewUpdate) {
       const settings = plugin.settings.proseHighlight;
       if (!settings.enabled) {
         if (this.decorations !== Decoration.none) {
-          this.decorations = Decoration.none;
-          this.cache.clear();
+          this.resetHighlighting();
         }
         return;
       }

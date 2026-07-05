@@ -42,6 +42,14 @@ export interface ProseHighlightSettings {
    * Style Settings as the sole writer of `--yaae-pos-*-color-{light,dark}`.
    */
   posColorsMigrated?: boolean;
+  /**
+   * Debug-only (#32): lifts the Platform.isMobile block so prose
+   * highlighting can be re-tested on a phone. Toggled by the hidden
+   * "Toggle prose highlighting mobile override (debug)" command — no
+   * settings UI on purpose. With the highlighter's error capture in place,
+   * the worst case is unhighlighted text plus a recorded error.
+   */
+  mobileDebugOverride?: boolean;
 }
 
 /** Default colors matching iA Writer's palette */

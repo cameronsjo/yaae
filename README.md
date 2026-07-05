@@ -59,6 +59,8 @@ Plugin-injected styles for Obsidian's PDF export:
 | Command | Description |
 |---------|-------------|
 | Toggle prose highlighting | Enable/disable part-of-speech coloring |
+| Copy prose highlighting debug info | Copy platform + last highlighter error to the clipboard (#32 diagnosis) |
+| Toggle prose highlighting mobile override (debug) | Lift the mobile block to re-test highlighting on a phone |
 | Toggle syntax dimming | Dim markdown formatting characters |
 | Toggle guttered headings | Outdent heading markers to gutter (Source Mode) |
 | Cycle focus mode | Off → Sentence → Paragraph |

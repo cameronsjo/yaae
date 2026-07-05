@@ -6,6 +6,11 @@ import { POSStyleManager } from './src/prose-highlight/pos-styles';
 import { WordListMatcher } from './src/prose-highlight/word-lists';
 import { createHighlighterExtension } from './src/prose-highlight/highlighter-plugin';
 import { createReadingViewPostProcessor } from './src/prose-highlight/reading-view';
+import {
+  buildProseHighlightDebugInfo,
+  getProseHighlightLastError,
+  recordProseHighlightError,
+} from './src/prose-highlight/debug';
 import { renderProseHighlightSettings } from './src/prose-highlight/settings-tab';
 import { focusExtension } from './src/cm6/focus-mode';
 import { gutteredHeadingsExtension } from './src/cm6/guttered-headings';
@@ -76,20 +81,30 @@ export default class YaaePlugin extends Plugin {
     // Prose highlighting is disabled on mobile pending #32 — it errors / fails
     // to render there. Gate both the editor extension and the Reading View
     // post-processor so the feature is fully off on mobile; desktop is
-    // unaffected. registerEditorExtension still runs so the mutable extensions
-    // array stays wired for desktop toggling.
+    // unaffected. The hidden mobileDebugOverride flag lifts the block for
+    // on-phone diagnosis: the highlighter now records its errors and degrades
+    // instead of dying, so the debug command can capture the root cause.
+    // registerEditorExtension still runs so the mutable extensions array
+    // stays wired for desktop toggling.
     const highlighterExt = createHighlighterExtension(this);
-    if (this.settings.proseHighlight.enabled && !Platform.isMobile) {
+    if (this.settings.proseHighlight.enabled && !this.proseHighlightBlockedOnMobile()) {
       this.editorExtensions.push(highlighterExt);
     }
     this.registerEditorExtension(this.editorExtensions);
 
-    // Reading View post-processor
-    if (!Platform.isMobile) {
-      this.registerMarkdownPostProcessor(
-        createReadingViewPostProcessor(this),
-      );
-    }
+    // Reading View post-processor. Always registered (post-processors can't
+    // be added after onload); the mobile gate is checked per-render so the
+    // debug override takes effect without a plugin reload.
+    const readingViewProcessor = createReadingViewPostProcessor(this);
+    this.registerMarkdownPostProcessor((el, ctx) => {
+      if (this.proseHighlightBlockedOnMobile()) return;
+      try {
+        readingViewProcessor(el, ctx);
+      } catch (err) {
+        // Record for the debug command; the block renders unhighlighted.
+        recordProseHighlightError(err, 'reading-view');
+      }
+    });
 
     // --- Readability Features ---
 
@@ -114,7 +129,7 @@ export default class YaaePlugin extends Plugin {
       id: 'toggle-prose-highlighting',
       name: 'Toggle prose highlighting',
       callback: () => {
-        if (Platform.isMobile) {
+        if (this.proseHighlightBlockedOnMobile()) {
           new Notice("Prose highlighting isn't available on mobile yet.");
           return;
         }
@@ -122,6 +137,35 @@ export default class YaaePlugin extends Plugin {
           !this.settings.proseHighlight.enabled;
         this.saveSettings();
         this.toggleHighlighting(this.settings.proseHighlight.enabled);
+      },
+    });
+
+    this.addCommand({
+      id: 'copy-prose-highlight-debug',
+      name: 'Copy prose highlighting debug info',
+      callback: () => {
+        this.copyProseHighlightDebugInfo();
+      },
+    });
+
+    // Hidden diagnostic switch for #32: lifts the mobile block so the
+    // highlighter can be re-tested on a phone. Deliberately command-only —
+    // no settings UI — and safe: errors are recorded and degrade to
+    // unhighlighted rather than killing the plugin.
+    this.addCommand({
+      id: 'toggle-prose-highlight-mobile-override',
+      name: 'Toggle prose highlighting mobile override (debug)',
+      callback: async () => {
+        const next = !this.settings.proseHighlight.mobileDebugOverride;
+        this.settings.proseHighlight.mobileDebugOverride = next;
+        await this.saveSettings();
+        console.info('[yaae] Toggled prose highlighting mobile override', { enabled: next });
+        this.toggleHighlighting(this.settings.proseHighlight.enabled);
+        new Notice(
+          next
+            ? 'Prose highlighting mobile override ON — highlighting will run on this device.'
+            : 'Prose highlighting mobile override OFF — mobile block restored.',
+        );
       },
     });
 
@@ -323,14 +367,60 @@ export default class YaaePlugin extends Plugin {
 
   // --- Prose Highlight Methods ---
 
+  /**
+   * True when prose highlighting must stay off on this device: mobile,
+   * pending the #32 root-cause fix, unless the hidden debug override lifts
+   * the block for on-phone diagnosis.
+   */
+  proseHighlightBlockedOnMobile(): boolean {
+    return (
+      Platform.isMobile &&
+      this.settings.proseHighlight.mobileDebugOverride !== true
+    );
+  }
+
   /** Enable or disable the CM6 editor extension. No-op on mobile (#32). */
   toggleHighlighting(enabled: boolean): void {
     const highlighterExt = createHighlighterExtension(this);
     this.editorExtensions.length = 0;
-    if (enabled && !Platform.isMobile) {
+    if (enabled && !this.proseHighlightBlockedOnMobile()) {
       this.editorExtensions.push(highlighterExt);
     }
     this.app.workspace.updateOptions();
+  }
+
+  /**
+   * One-tap #32 diagnostics: assemble platform + settings + the last
+   * recorded highlighter error and put it on the clipboard, so the mobile
+   * failure is capturable without remote debugging.
+   */
+  async copyProseHighlightDebugInfo(): Promise<void> {
+    const info = buildProseHighlightDebugInfo({
+      pluginVersion: this.manifest.version,
+      isMobile: Platform.isMobile,
+      mobileDebugOverride: this.settings.proseHighlight.mobileDebugOverride === true,
+      highlightingEnabled: this.settings.proseHighlight.enabled,
+      readingViewEnabled: this.settings.proseHighlight.readingViewEnabled,
+      userAgent: navigator.userAgent,
+    });
+    try {
+      await navigator.clipboard.writeText(info);
+      const error = getProseHighlightLastError();
+      console.info('[yaae] Successfully copied prose highlighting debug info to clipboard', {
+        hasError: error !== null,
+        errorPhase: error?.phase,
+      });
+      new Notice(
+        error
+          ? `Debug info copied — last error: ${error.message}`
+          : 'Debug info copied — no highlighter error recorded this session.',
+        8000,
+      );
+    } catch (err) {
+      console.error('[yaae] Failed to copy debug info to clipboard. Dumping to console instead:', err);
+      console.info(info);
+      new Notice('Clipboard unavailable — debug info dumped to the developer console.', 8000);
+    }
   }
 
   /** Trigger decoration rebuild (e.g., after toggling a POS category) */
