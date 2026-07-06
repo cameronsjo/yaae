@@ -25,7 +25,11 @@ const EXPECTED_COMMANDS = [
   { id: 'cycle-focus-mode', name: 'Cycle focus mode' },
   { id: 'yaae-validate', name: 'Validate frontmatter' },
   { id: 'yaae-generate-toc', name: 'Generate table of contents' },
-  { id: 'yaae-apply-css-classes', name: 'Apply CSS classes from frontmatter' },
+  { id: 'yaae-clean-css-classes', name: 'Clean PDF CSS classes from frontmatter' },
+  { id: 'yaae-clean-css-classes-vault', name: 'Clean PDF CSS classes from frontmatter (entire vault)' },
+  // Temporary 3a probe commands (#28/#29) — removed with the probe.
+  { id: 'yaae-debug-print-probe', name: 'Toggle print probe (debug)' },
+  { id: 'yaae-debug-print-probe-report', name: 'Copy print probe report (debug)' },
 ];
 
 // Extract all addCommand({ id: '...' }) calls from main.ts

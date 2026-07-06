@@ -88,10 +88,9 @@ pnpm run test:e2e        # E2E tests (launches Obsidian via WebdriverIO)
 │   ├── types.ts              # Shared types and defaults
 │   ├── schemas/              # Zod frontmatter schemas
 │   ├── document/             # Document management (settings, TOC, banner)
+│   │   └── print-css/        # PDF export CSS, bundled + runtime-injected
 │   ├── prose-highlight/      # POS highlighting engine
 │   └── cm6/                  # CodeMirror 6 extensions
-├── packages/
-│   └── print-styles/         # @yaae/print-styles — PDF export CSS
 ├── templates/                # Document templates (ADR, threat model, etc.)
 ├── tests/                    # Vitest unit tests
 ├── e2e/                      # WebdriverIO E2E tests

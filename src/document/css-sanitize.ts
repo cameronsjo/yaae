@@ -35,9 +35,23 @@ export function clampNumber(value: unknown, min: number, max: number, fallback: 
   return Math.min(Math.max(n, min), max);
 }
 
-/** Quote and escape a font-family string for safe unquoted CSS interpolation. */
+/**
+ * Quote and escape a font-family string for safe CSS interpolation.
+ *
+ * `export.pdf.fontFamily` accepts arbitrary strings (Zod union with a bare
+ * string), and vaults are shared, so this value is untrusted. A raw newline
+ * (or CR/FF) ends the CSS string token, letting the rest of the value break
+ * out of the declaration block and inject sibling rules — enough to strip a
+ * classification banner from a victim's export. Newlines are escaped to the
+ * CSS `\a ` form (as escapeCssString does), and FF/CR dropped, so the value
+ * can never terminate the string early.
+ */
 export function sanitizeFontFamily(value: string): string {
-  const escaped = value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  const escaped = value
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, '\\a ')
+    .replace(/[\r\f]/g, '');
   return `"${escaped}"`;
 }
 

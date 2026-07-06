@@ -16,27 +16,21 @@ const MAIN_TS = readFileSync(join(__dirname, '..', 'main.ts'), 'utf-8');
 
 // --- F1: theme propagation ------------------------------------------------
 
-describe('F1 — export.pdf.theme propagates to PageChromeManager', () => {
-  it('updatePageChromeFromActiveFile reads theme from frontmatter', () => {
-    expect(MAIN_TS).toMatch(/result\.data\?\.export\?\.pdf\?\.theme/);
+describe('F1 — export.pdf.theme propagates to the print pipeline', () => {
+  it('updatePrintStateFromActiveFile captures raw + validated frontmatter', () => {
+    expect(MAIN_TS).toMatch(/raw:\s*extractFrontmatter\(content\)/);
+    expect(MAIN_TS).toMatch(/validated:\s*validateMarkdown\(content\)\.data/);
   });
 
-  it('passes theme through to pageChromeManager.update when present', () => {
-    // Spread pattern: ...(theme ? { theme } : {})
-    expect(MAIN_TS).toMatch(/\.\.\.\(theme\s*\?\s*\{\s*theme\s*\}\s*:\s*\{\}\)/);
-  });
-
-  it('PageChromeState interface includes a theme field', () => {
-    const printStyles = readFileSync(
-      join(__dirname, '..', 'src', 'document', 'print-styles.ts'),
+  it('PrintDocumentState carries a ThemeMode theme field, presence-gated', () => {
+    const stateTs = readFileSync(
+      join(__dirname, '..', 'src', 'document', 'print', 'state.ts'),
       'utf-8',
     );
-    // Field is required — consumed by PageChromeManager.update for the
-    // auto-theme branch. Per-document `export.pdf.theme` frontmatter
-    // overrides still propagate; main.ts spreads the override on top of
-    // the global default from buildPageChromeState. Type aliased to
-    // ThemeMode (imported from ./settings) so the union lives in one place.
-    expect(printStyles).toMatch(/theme:\s*ThemeMode/);
+    expect(stateTs).toMatch(/theme:\s*ThemeMode/);
+    // Presence-gated on raw frontmatter: the schema's theme default must
+    // not shadow the settings value (the placebo-slider bug class).
+    expect(stateTs).toMatch(/'theme' in rawPdf/);
   });
 });
 
@@ -64,17 +58,24 @@ describe('F2 — validateOnSave toggle takes effect without reload', () => {
   });
 });
 
-// --- F3: race in updatePageChromeFromActiveFile ---------------------------
+// --- F3: race in updatePrintStateFromActiveFile ---------------------------
 
-describe('F3 — updatePageChromeFromActiveFile is race-safe', () => {
+describe('F3 — updatePrintStateFromActiveFile is race-safe', () => {
   it('captures startFile before vault.read', () => {
     expect(MAIN_TS).toMatch(/const\s+startFile\s*=\s*this\.app\.workspace\.getActiveFile\(\)/);
   });
 
   it('re-checks getActiveFile() after vault.read and bails if changed', () => {
     expect(MAIN_TS).toMatch(
-      /await\s+this\.app\.vault\.read\(startFile\)[\s\S]*?if\s*\(\s*this\.app\.workspace\.getActiveFile\(\)\s*!==\s*startFile\s*\)[\s\S]*?return/,
+      /await\s+this\.app\.vault\.read\(startFile\)[\s\S]*?this\.app\.workspace\.getActiveFile\(\)\s*!==\s*startFile[\s\S]*?return/,
     );
+  });
+
+  it('guards against a superseding invocation with a sequence token', () => {
+    // active-leaf-change and metadataCache 'changed' can both drive the
+    // update for the same file; a stale read must not clobber a newer one.
+    expect(MAIN_TS).toMatch(/const\s+seq\s*=\s*\+\+this\.printStateSeq/);
+    expect(MAIN_TS).toMatch(/seq\s*!==\s*this\.printStateSeq/);
   });
 });
 
@@ -100,22 +101,22 @@ describe('F4 — generateTocForCurrentFile is race-safe', () => {
 
 // --- F5: bootstrap on layout ready ----------------------------------------
 
-describe('F5 — page chrome bootstraps from active file on startup', () => {
-  it('calls updatePageChromeFromActiveFile from onLayoutReady', () => {
+describe('F5 — print state bootstraps from active file on startup', () => {
+  it('calls updatePrintStateFromActiveFile from onLayoutReady', () => {
     expect(MAIN_TS).toMatch(
-      /onLayoutReady\(\s*\(\)\s*=>\s*\{[\s\S]*?this\.updatePageChromeFromActiveFile\(\)/,
+      /onLayoutReady\(\s*\(\)\s*=>\s*\{[\s\S]*?this\.updatePrintStateFromActiveFile\(\)/,
     );
   });
 });
 
 // --- F6: non-markdown active leaf does not clobber chrome ----------------
 
-describe('F6 — non-markdown active leaf preserves last markdown chrome', () => {
-  it('returns early without updating chrome for non-md files', () => {
+describe('F6 — non-markdown active leaf preserves last markdown print state', () => {
+  it('returns early without refreshing print state for non-md files', () => {
     // After the startFile null/extension check, when extension !== 'md',
-    // we must NOT call pageChromeManager.update — we just `return`.
+    // we must NOT touch activeDoc or refresh — we just `return`.
     const fn = MAIN_TS.match(
-      /async\s+updatePageChromeFromActiveFile\s*\(\s*\)\s*:\s*Promise<void>\s*\{[\s\S]*?\n\s{2}\}/,
+      /async\s+updatePrintStateFromActiveFile\s*\(\s*\)\s*:\s*Promise<void>\s*\{[\s\S]*?\n\s{2}\}/,
     );
     expect(fn).not.toBeNull();
     const body = fn![0];
@@ -125,7 +126,8 @@ describe('F6 — non-markdown active leaf preserves last markdown chrome', () =>
     );
     expect(nonMdBranch).not.toBeNull();
     const branchBody = nonMdBranch![0];
-    expect(branchBody).not.toMatch(/pageChromeManager\.update/);
+    expect(branchBody).not.toMatch(/printStyles\.refresh/);
+    expect(branchBody).not.toMatch(/this\.activeDoc\s*=/);
     expect(branchBody).toMatch(/return/);
   });
 });
@@ -145,12 +147,13 @@ describe('F7 — vault.read call sites guard with TFile instanceof', () => {
     expect(fn![0]).toMatch(/if\s*\(\s*!\(\s*file\s+instanceof\s+TFile\s*\)\s*\)\s*return/);
   });
 
-  it('applyCssClassesFromFrontmatter checks instanceof TFile', () => {
-    const fn = MAIN_TS.match(
-      /async\s+applyCssClassesFromFrontmatter\s*\(\s*\)\s*\{[\s\S]*?\n\s{2}\}/,
-    );
-    expect(fn).not.toBeNull();
-    expect(fn![0]).toMatch(/if\s*\(\s*!\(\s*file\s+instanceof\s+TFile\s*\)\s*\)\s*return/);
+  it('clean-css-classes commands gate on markdown files', () => {
+    // cleanCssClassesFromFile takes a TFile parameter (typed at the seam);
+    // both command entry points gate on extension/type before calling it.
+    expect(MAIN_TS).toMatch(/cleanCssClassesFromFile\(file:\s*TFile\)/);
+    const cmd = MAIN_TS.match(/id:\s*'yaae-clean-css-classes'[\s\S]*?\}\)\s*;/);
+    expect(cmd).not.toBeNull();
+    expect(cmd![0]).toMatch(/!file\s*\|\|\s*file\.extension\s*!==\s*'md'/);
   });
 });
 

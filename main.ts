@@ -16,7 +16,7 @@ import { focusExtension } from './src/cm6/focus-mode';
 import { gutteredHeadingsExtension } from './src/cm6/guttered-headings';
 // TODO(#24): typewriter scroll disabled pending fix
 // import { typewriterExtension } from './src/cm6/typewriter-scroll';
-import { validateMarkdown, deriveCssClasses } from './src/schemas';
+import { validateMarkdown, extractFrontmatter } from './src/schemas';
 import { generateToc, resolveTocDepth } from './src/document/toc-generator';
 import { AutoTocManager } from './src/document/auto-toc';
 import { createClassificationBannerProcessor } from './src/document/classification-banner';
@@ -25,8 +25,10 @@ import { createDefangedLinksProcessor } from './src/document/defanged-links';
 import { renderDocumentSettings } from './src/document/settings-tab';
 import { DEFAULT_DOCUMENT_SETTINGS } from './src/document/settings';
 import { createCollapsibleSection } from './src/settings/collapsible-section';
-import { DynamicPdfPrintStyleManager, PageChromeManager } from './src/document/print-styles';
-import type { PageChromeState } from './src/document/print-styles';
+import { PrintStyleManager } from './src/document/print';
+import { buildPrintDocumentState } from './src/document/print/state';
+import type { ActiveDocFrontmatter } from './src/document/print/state';
+import { PrintProbe } from './src/document/print-probe';
 import type { LinksMode } from './src/document/settings';
 
 const BODY_CLASS_SYNTAX_DIMMING = 'yaae-syntax-dimming';
@@ -48,11 +50,30 @@ export default class YaaePlugin extends Plugin {
   /** Mutable array for CM6 editor extension toggle */
   private editorExtensions: Extension[] = [];
 
-  /** Dynamic print style manager for fontSize and custom fonts */
-  dynamicPdfPrintStyles = new DynamicPdfPrintStyleManager();
+  /**
+   * The print pipeline (#28/#29): base + document + chrome style elements,
+   * knob values baked from the live cascade, chrome strategy gated on the
+   * detected Chrome major. getState() merges settings with the active
+   * document's frontmatter overrides (kept fresh by
+   * updatePrintStateFromActiveFile).
+   */
+  printStyles = new PrintStyleManager({
+    getState: () => buildPrintDocumentState(this.settings.document, this.activeDoc ?? undefined),
+  });
 
-  /** @page margin box manager for classification banners, headers, footers, and page numbers */
-  pageChromeManager = new PageChromeManager();
+  /** Active document frontmatter (raw + validated) for print-state overrides. */
+  private activeDoc: ActiveDocFrontmatter | null = null;
+
+  /**
+   * Monotonic token for updatePrintStateFromActiveFile. Two triggers
+   * (active-leaf-change and metadataCache 'changed') can race on the same
+   * file; a stale read must not overwrite a newer one. Each call captures
+   * the token before its await and bails if a newer call has started.
+   */
+  private printStateSeq = 0;
+
+  /** Temporary 3a probe: does class scoping reach the print DOM? (#28/#29) */
+  printProbe = new PrintProbe();
 
   /** Status bar elements for quick toggles */
   private focusModeStatusEl: HTMLElement | null = null;
@@ -234,15 +255,82 @@ export default class YaaePlugin extends Plugin {
       },
     });
 
+    // pdf-* classes are runtime-injected now (#28); these commands clean up
+    // classes an older version persisted into frontmatter. Stale classes are
+    // harmless, so cleanup is offered, not forced.
     this.addCommand({
-      id: 'yaae-apply-css-classes',
-      name: 'Apply CSS classes from frontmatter',
+      id: 'yaae-clean-css-classes',
+      name: 'Clean PDF CSS classes from frontmatter',
       checkCallback: (checking) => {
         const file = this.app.workspace.getActiveFile();
         if (!file || file.extension !== 'md') return false;
         if (checking) return true;
-        this.applyCssClassesFromFrontmatter();
+        this.cleanCssClassesFromFile(file).then((changed) => {
+          new Notice(changed ? 'Removed pdf-* classes from cssclasses.' : 'No pdf-* classes found.');
+        }).catch((err) => {
+          console.warn('[yaae] Failed to clean CSS classes:', err);
+          new Notice('Failed to clean CSS classes — see console.');
+        });
         return true;
+      },
+    });
+
+    this.addCommand({
+      id: 'yaae-clean-css-classes-vault',
+      name: 'Clean PDF CSS classes from frontmatter (entire vault)',
+      callback: async () => {
+        const files = this.app.vault.getMarkdownFiles();
+        let cleaned = 0;
+        for (const file of files) {
+          try {
+            if (await this.cleanCssClassesFromFile(file)) cleaned++;
+          } catch (err) {
+            console.warn(`[yaae] Failed to clean CSS classes. File: ${file.path}`, err);
+          }
+        }
+        console.info(`[yaae] Successfully cleaned pdf-* classes. Files changed: ${cleaned}/${files.length}`);
+        new Notice(`Cleaned pdf-* classes from ${cleaned} of ${files.length} notes.`);
+      },
+    });
+
+    // Temporary #28/#29 empirical gate (3a): decides whether class-scoped
+    // print selectors survive into the export DOM. Arm, export a PDF, read
+    // the H1 colors, copy the report. Remove once the gate is decided.
+    this.addCommand({
+      id: 'yaae-debug-print-probe',
+      name: 'Toggle print probe (debug)',
+      callback: () => {
+        if (this.printProbe.active) {
+          this.printProbe.disable();
+          new Notice('Print probe disarmed.');
+          return;
+        }
+        const viewEl =
+          this.app.workspace.getActiveViewOfType(MarkdownView)?.containerEl ??
+          null;
+        this.printProbe.enable(viewEl);
+        new Notice(
+          'Print probe ARMED. Export this note to PDF, check the H1: ' +
+            'underline only = class scoping dead, red = body-class works, ' +
+            'blue = view-class works. Then run "Copy print probe report".',
+          10000,
+        );
+      },
+    });
+
+    this.addCommand({
+      id: 'yaae-debug-print-probe-report',
+      name: 'Copy print probe report (debug)',
+      callback: async () => {
+        const report = this.printProbe.buildReport();
+        try {
+          await navigator.clipboard.writeText(report);
+          new Notice('Print probe report copied to clipboard.');
+        } catch (err) {
+          console.error('[yaae] Failed to copy probe report. Dumping to console:', err);
+          console.info(report);
+          new Notice('Clipboard unavailable — probe report dumped to the developer console.');
+        }
       },
     });
 
@@ -264,30 +352,51 @@ export default class YaaePlugin extends Plugin {
 
     // --- Document Auto-Behaviors ---
 
+    // Print pipeline: base (bundled CSS, knobs baked) + document (per-doc
+    // state-baked rules) + chrome (banners/headers/footers/page numbers,
+    // strategy gated on Chrome >= 131 — see #29). There is no before-print
+    // hook in Obsidian's API, so the elements stay continuously correct via
+    // the listeners below.
+    this.printStyles.init();
 
-    // Dynamic print CSS for fontSize, custom fonts, watermarks, and line-height
-    this.dynamicPdfPrintStyles.init(this.settings.document);
+    // Style Settings (and theme) edits move the --yaae-print-* knobs;
+    // re-resolve and re-bake the base element on every css-change. The
+    // document/chrome elements read the same knobs, so refresh them too.
+    this.registerEvent(
+      this.app.workspace.on('css-change', () => {
+        this.printStyles.refreshVars();
+        this.printStyles.refreshDocument();
+      }),
+    );
 
-    // @page margin box manager for classification banners, headers, footers, page numbers
-    // NOTE: @page margin boxes require Chrome 131+ (Obsidian ships Chrome 120) — see #29
-    this.pageChromeManager.init(this.buildPageChromeState());
-
-    // Update page chrome when active document changes (classification comes from frontmatter)
+    // Active document changes: classification + per-doc overrides come from
+    // frontmatter.
     this.registerEvent(
       this.app.workspace.on('active-leaf-change', () => {
-        this.updatePageChromeFromActiveFile().catch((err) => {
-          console.warn('[yaae] Failed to update page chrome from active file:', err);
+        this.updatePrintStateFromActiveFile().catch((err) => {
+          console.warn('[yaae] Failed to update print state from active file:', err);
+        });
+      }),
+    );
+
+    // Frontmatter edits WITHOUT a leaf change previously left stale chrome —
+    // refresh when the active file's metadata changes.
+    this.registerEvent(
+      this.app.metadataCache.on('changed', (file) => {
+        if (file !== this.app.workspace.getActiveFile()) return;
+        this.updatePrintStateFromActiveFile().catch((err) => {
+          console.warn('[yaae] Failed to refresh print state after metadata change:', err);
         });
       }),
     );
 
     // Bootstrap from the currently-active file. active-leaf-change does not
-    // fire for the leaf already open at startup, so without this the page
-    // chrome would reflect default classification instead of the open
+    // fire for the leaf already open at startup, so without this the print
+    // state would reflect default classification instead of the open
     // document's frontmatter.
     this.app.workspace.onLayoutReady(() => {
-      this.updatePageChromeFromActiveFile().catch((err) => {
-        console.warn('[yaae] Failed to bootstrap page chrome from active file:', err);
+      this.updatePrintStateFromActiveFile().catch((err) => {
+        console.warn('[yaae] Failed to bootstrap print state from active file:', err);
       });
     });
 
@@ -327,8 +436,8 @@ export default class YaaePlugin extends Plugin {
   onunload() {
     console.debug('[yaae] onunload: tearing down plugin');
     this.styleManager.destroy();
-    this.dynamicPdfPrintStyles.destroy();
-    this.pageChromeManager.destroy();
+    this.printStyles.destroy();
+    this.printProbe.disable();
     this.autoTocManager.destroy();
     console.debug('[yaae] onunload: auto TOC manager destroyed, pending regenerations canceled');
     document.body.classList.remove(BODY_CLASS_SYNTAX_DIMMING);
@@ -609,26 +718,17 @@ export default class YaaePlugin extends Plugin {
     new Notice(`Table of Contents generated with ${entryCount} entries`);
   }
 
-  async applyCssClassesFromFrontmatter() {
-    const file = this.app.workspace.getActiveFile();
-    if (!file) return;
-    if (!(file instanceof TFile)) return;
-    const content = await this.app.vault.read(file);
-    const result = validateMarkdown(content);
-
-    if (!result.valid || !result.data) {
-      new Notice('Cannot derive CSS classes — frontmatter is invalid.');
-      return;
-    }
-
-    const classes = deriveCssClasses(result.data);
-
+  /**
+   * Strip pdf-* entries from a file's cssclasses frontmatter. Migration
+   * cleanup for the retired "Apply CSS classes" flow (#28) — classes are now
+   * injected at runtime, never persisted. Stale classes are harmless, so
+   * this is offered, not forced. Returns true when the file changed.
+   */
+  async cleanCssClassesFromFile(file: TFile): Promise<boolean> {
+    let changed = false;
     await this.app.fileManager.processFrontMatter(file, (fm) => {
-      // Merge: keep user-defined classes, replace only pdf-* classes.
       // Defensive: cssclasses may be a single string, array, or array with
-      // non-string entries (e.g., numbers from a hand-edited YAML doc) —
-      // filter to strings before calling startsWith() so we don't TypeError
-      // inside processFrontMatter.
+      // non-string entries — filter to strings before startsWith().
       const existing: unknown[] = Array.isArray(fm.cssclasses)
         ? fm.cssclasses
         : typeof fm.cssclasses === 'string'
@@ -637,77 +737,64 @@ export default class YaaePlugin extends Plugin {
       const userClasses = existing.filter(
         (c): c is string => typeof c === 'string' && !c.startsWith('pdf-'),
       );
-      fm.cssclasses = [...userClasses, ...classes];
+      if (userClasses.length === existing.length) return;
+      changed = true;
+      if (userClasses.length > 0) {
+        fm.cssclasses = userClasses;
+      } else {
+        delete fm.cssclasses;
+      }
     });
-
-    console.info(`[yaae] Successfully applied CSS classes from frontmatter. File: ${file.path}, Classes: ${classes.join(', ')}`);
-    new Notice(`Applied CSS classes: ${classes.join(', ')}`);
-  }
-
-  /** Build PageChromeState from current settings + optional classification override. */
-  buildPageChromeState(classification?: string): PageChromeState {
-    const doc = this.settings.document;
-    return {
-      classification: classification ?? doc.defaultClassification,
-      customClassifications: doc.customClassifications,
-      headerLeft: doc.defaultHeaderLeft,
-      headerRight: doc.defaultHeaderRight,
-      footerLeft: doc.defaultFooterLeft,
-      footerRight: doc.defaultFooterRight,
-      pageNumbers: doc.pageNumbers,
-      signatureBlock: false,
-      bannerPosition: doc.bannerPosition,
-      showClassificationBanner: doc.showClassificationBanner,
-      theme: doc.theme,
-    };
+    return changed;
   }
 
   /**
-   * Read active document's frontmatter and update page chrome with its
-   * classification + signature block + per-document theme override.
+   * Read the active document's frontmatter (raw + validated) and refresh the
+   * print pipeline with its overrides.
    *
    * Race-aware: if the active file changes during the async vault.read,
-   * we abort the update so the chrome doesn't reflect a stale file.
+   * we abort the update so the state doesn't reflect a stale file.
    *
    * Non-markdown active leaves (PDF, canvas, image preview) leave the
-   * chrome untouched so the last markdown classification is preserved
+   * state untouched so the last markdown classification is preserved
    * for export.
    */
-  async updatePageChromeFromActiveFile(): Promise<void> {
+  async updatePrintStateFromActiveFile(): Promise<void> {
+    const seq = ++this.printStateSeq;
     const startFile = this.app.workspace.getActiveFile();
     if (!startFile) {
-      // No active file at all — fall back to defaults so chrome reflects settings.
-      this.pageChromeManager.update(this.buildPageChromeState());
+      // No active file at all — fall back to defaults so the pipeline
+      // reflects settings.
+      this.activeDoc = null;
+      this.printStyles.refreshDocument();
       return;
     }
     if (startFile.extension !== 'md') {
       // Active leaf is non-markdown (e.g., embedded PDF, canvas). Leave the
-      // existing page chrome alone so the last markdown file's classification
-      // is preserved for export.
+      // existing print state alone so the last markdown file's
+      // classification is preserved for export.
       return;
     }
 
     const content = await this.app.vault.read(startFile);
 
-    // Race guard: if the user switched files during the read, the page chrome
-    // should reflect the *new* active file (or be left alone), not the file we
-    // started reading. Bail and let the next active-leaf-change re-trigger us.
-    if (this.app.workspace.getActiveFile() !== startFile) {
-      console.debug('[yaae] updatePageChromeFromActiveFile: active file changed mid-read, aborting');
+    // Race guard: bail if the active file changed during the read, OR if a
+    // newer invocation started while we were reading (active-leaf-change and
+    // metadataCache 'changed' can both fire for the same file — a stale read
+    // must not clobber the newer one).
+    if (
+      seq !== this.printStateSeq ||
+      this.app.workspace.getActiveFile() !== startFile
+    ) {
+      console.debug('[yaae] updatePrintStateFromActiveFile: superseded mid-read, aborting');
       return;
     }
 
-    const result = validateMarkdown(content);
-
-    const classification = result.data?.classification ?? this.settings.document.defaultClassification;
-    const signatureBlock = result.data?.export?.pdf?.signatureBlock ?? false;
-    const theme = result.data?.export?.pdf?.theme;
-
-    this.pageChromeManager.update({
-      ...this.buildPageChromeState(classification),
-      signatureBlock,
-      ...(theme ? { theme } : {}),
-    });
+    this.activeDoc = {
+      raw: extractFrontmatter(content),
+      validated: validateMarkdown(content).data,
+    };
+    this.printStyles.refreshDocument();
   }
 }
 
