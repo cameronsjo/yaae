@@ -118,7 +118,7 @@ export class PrintStyleManager {
     );
     const state = this.host.getState();
     if (this.documentEl) {
-      this.documentEl.textContent = buildDocumentCss(state, vars);
+      this.documentEl.textContent = buildDocumentCss(state, vars, this.usesMarginBoxes);
     }
     if (this.chromeEl) {
       this.chromeEl.textContent = this.usesMarginBoxes

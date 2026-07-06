@@ -16,7 +16,6 @@ import {
   WATERMARK_PRESETS,
   FONT_PRESET_SVG,
   buildWatermarkDataUri,
-  type WatermarkPresetLevel,
 } from './watermark';
 import type { FontPreset } from '../settings';
 import { DEFAULT_DOCUMENT_SETTINGS } from '../settings';
@@ -43,12 +42,26 @@ export function deriveStateClasses(state: PrintDocumentState): string[] {
   if (state.copyPasteSafe) classes.push('pdf-copy-safe');
   if (state.compactTables) classes.push('pdf-compact-tables');
   if (state.signatureBlock) classes.push('pdf-signature-block');
-  if (state.watermark !== 'off') classes.push(`pdf-watermark-${state.watermark}`);
+  // Watermark is rendered directly by buildDocumentCss (a single
+  // strategy-selected layer), NOT via a body class + courtesy rule — syncing
+  // pdf-watermark-* to body would double-paint with that layer. Deliberately
+  // omitted here.
   return classes;
 }
 
-/** Build the yaae-print-document element's CSS. */
-export function buildDocumentCss(state: PrintDocumentState, vars: PrintVars): string {
+/**
+ * Build the yaae-print-document element's CSS.
+ *
+ * `usesMarginBoxes` selects the watermark strategy: on Chrome >= 131 a
+ * full-page fixed overlay (fixes #25); below that, a content-box background
+ * (status quo — a fixed max-z overlay would paint over the position:fixed
+ * classification banner/headers of the <131 chrome fallback).
+ */
+export function buildDocumentCss(
+  state: PrintDocumentState,
+  vars: PrintVars,
+  usesMarginBoxes = true,
+): string {
   const sections: string[] = [];
 
   // 1. State-baked activation of the class-keyed bundled rules (theme
@@ -116,29 +129,52 @@ ${typographyRules.join('\n')}
 }`);
   }
 
-  // 4. Watermarks. All level classes stay live (extensibility / other
-  //    panes); the ACTIVE level also lands state-baked on the view itself.
-  const svgFont = Object.hasOwn(FONT_PRESET_SVG, state.fontFamily)
-    ? FONT_PRESET_SVG[state.fontFamily as FontPreset]
-    : state.fontFamily;
-  const watermarkRules: string[] = [];
-  for (const level of Object.keys(WATERMARK_PRESETS) as WatermarkPresetLevel[]) {
-    const uri = buildWatermarkDataUri(level, state.watermarkText, svgFont);
-    const size = WATERMARK_PRESETS[level].tileSize;
-    const selectors = [`.pdf-watermark-${level}`];
-    if (state.watermark === level) selectors.push(SURFACE);
-    watermarkRules.push(`  ${selectors.join(',\n  ')} {
-    background-image: ${uri};
+  // 4. Watermark — a single layer for the active level (never two, or the
+  //    opacity ramp doubles). Strategy-gated:
+  //    - Chrome >= 131 (margin boxes): a full-page fixed overlay on
+  //      html::before. background-image on the content box only tiles to
+  //      content height, so a short final page shows a bare bottom (#25);
+  //      a position:fixed layer repeats full-page on every page. It's
+  //      geometrically clear of the @page margin boxes (which live in the
+  //      page *margin*, not the page area).
+  //    - Chrome < 131 (position:fixed chrome fallback): the content-box
+  //      background (status quo). A max-z fixed overlay would paint over the
+  //      fixed banner/header/footer pseudo-elements that strategy uses, so
+  //      the #25 tail gap is accepted on old Chrome (which already loses
+  //      page numbers there).
+  if (state.watermark !== 'off') {
+    const svgFont = Object.hasOwn(FONT_PRESET_SVG, state.fontFamily)
+      ? FONT_PRESET_SVG[state.fontFamily as FontPreset]
+      : state.fontFamily;
+    const uri = buildWatermarkDataUri(state.watermark, state.watermarkText, svgFont);
+    const size = WATERMARK_PRESETS[state.watermark].tileSize;
+    const tile = `background-image: ${uri};
     background-repeat: repeat;
     background-size: ${size}px ${size}px;
     -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }`);
-  }
-  sections.push(`/* --- watermarks --- */
+    print-color-adjust: exact;`;
+
+    if (usesMarginBoxes) {
+      sections.push(`/* --- watermark (full-page overlay, #25) --- */
 @media print {
-${watermarkRules.join('\n')}
+  html::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 2147483000;
+    pointer-events: none;
+    ${tile}
+  }
 }`);
+    } else {
+      sections.push(`/* --- watermark (content-box, Chrome < 131) --- */
+@media print {
+  ${SURFACE} {
+    ${tile}
+  }
+}`);
+    }
+  }
 
   return bakePrintVars(sections.join('\n\n'), vars);
 }

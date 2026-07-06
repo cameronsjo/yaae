@@ -360,27 +360,46 @@ describe('buildFixedChromeCss', () => {
 // ---------------------------------------------------------------------------
 
 describe('buildDocumentCss', () => {
-  it('always emits all watermark level classes', () => {
-    const css = buildDocumentCss(makeState(), VARS);
-    for (const level of Object.keys(WATERMARK_PRESETS)) {
-      expect(css).toContain(`.pdf-watermark-${level}`);
-    }
+  it('renders the active watermark as a full-page overlay on Chrome >= 131 (#25)', () => {
+    const css = buildDocumentCss(makeState({ watermark: 'loud' }), VARS, true);
+    expect(css).toContain('full-page overlay');
+    const overlay = css.slice(css.indexOf('full-page overlay'));
+    expect(overlay).toContain('html::before');
+    expect(overlay).toContain('position: fixed');
+    expect(overlay).toContain('inset: 0');
   });
 
-  it('state-bakes the ACTIVE watermark level onto the view itself', () => {
-    const css = buildDocumentCss(makeState({ watermark: 'loud' }), VARS);
-    const loudRule = css.slice(css.indexOf('.pdf-watermark-loud'));
-    expect(loudRule).toContain('.print .markdown-preview-view.markdown-preview-view');
+  it('renders the active watermark on the content box on Chrome < 131', () => {
+    const css = buildDocumentCss(makeState({ watermark: 'loud' }), VARS, false);
+    expect(css).toContain('content-box, Chrome < 131');
+    expect(css).not.toContain('html::before'); // no fixed overlay to collide with the fixed chrome
+    expect(css).toContain('.print .markdown-preview-view.markdown-preview-view');
   });
 
-  it('does not view-target any watermark when off', () => {
-    const css = buildDocumentCss(makeState(), VARS);
-    const watermarkSection = css.slice(css.indexOf('--- watermarks ---'));
-    expect(watermarkSection).not.toContain('.print .markdown-preview-view.markdown-preview-view');
+  it('emits exactly one watermark layer for the active level (no double-dose)', () => {
+    const overlayCss = buildDocumentCss(makeState({ watermark: 'loud' }), VARS, true);
+    const contentCss = buildDocumentCss(makeState({ watermark: 'loud' }), VARS, false);
+    // Each strategy emits one tiled layer; the courtesy .pdf-watermark-* class
+    // rules are gone, so the synced body class can't add a second layer.
+    expect(overlayCss).not.toContain('.pdf-watermark-');
+    expect(contentCss).not.toContain('.pdf-watermark-');
+    expect(overlayCss.match(/background-image:/g) ?? []).toHaveLength(1);
+    expect(contentCss.match(/background-image:/g) ?? []).toHaveLength(1);
+  });
+
+  it('emits no watermark layer when off', () => {
+    const css = buildDocumentCss(makeState(), VARS, true);
+    expect(css).not.toContain('html::before');
+    expect(css).not.toContain('watermark');
+  });
+
+  it('does not sync a pdf-watermark-* body class (would double the layer)', () => {
+    expect(deriveStateClasses(makeState({ watermark: 'loud' }))).not.toContain('pdf-watermark-loud');
   });
 
   it('embeds the watermark text in the SVG data URI', () => {
-    const css = buildDocumentCss(makeState({ watermarkText: 'SECRET' }), VARS);
+    const css = buildDocumentCss(
+      makeState({ watermark: 'loud', watermarkText: 'SECRET' }), VARS, true);
     expect(css).toContain(encodeURIComponent('SECRET'));
   });
 
@@ -449,14 +468,14 @@ describe('buildDocumentCss', () => {
 });
 
 describe('deriveStateClasses', () => {
-  it('maps state to the pdf-* class set', () => {
+  it('maps state to the pdf-* class set (watermark excluded — rendered directly)', () => {
     expect(
       deriveStateClasses(makeState({
         theme: 'dark', linksMode: 'plain', signatureBlock: true, watermark: 'loud',
       })).sort(),
     ).toEqual([
       'pdf-compact-tables', 'pdf-copy-safe', 'pdf-font-sans', 'pdf-links-plain',
-      'pdf-signature-block', 'pdf-theme-dark', 'pdf-watermark-loud',
+      'pdf-signature-block', 'pdf-theme-dark',
     ]);
   });
 
