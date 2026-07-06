@@ -143,6 +143,18 @@ settings:
     default: 4.5rem
     format: px
   -
+    id: yaae-gutter-width-mobile
+    title: Gutter width (mobile)
+    description: Width reserved for heading markers on phones and tablets
+    type: variable-text
+    default: 1.75rem
+  -
+    id: yaae-gutter-marker-font-size-mobile
+    title: Marker size (mobile)
+    description: Font size of the # markers in the narrow mobile gutter
+    type: variable-text
+    default: 0.7em
+  -
     id: yaae-print-heading
     title: PDF Print Styles
     type: heading
@@ -634,6 +646,20 @@ body.yaae-syntax-dimming .cm-active .cm-formatting {
   color: var(--text-faint);
   font-family: var(--font-monospace);
   white-space: nowrap;
+}
+
+/* Mobile: 4.5rem eats a big slice of a narrow viewport (#33). Layered knob —
+   set --yaae-gutter-width-mobile via Style Settings to resize. Obsidian sets
+   body.is-mobile on phones and tablets. */
+body.is-mobile {
+  --yaae-gutter-width: var(--yaae-gutter-width-mobile, 1.75rem);
+}
+
+body.is-mobile .yaae-heading-gutter-marker {
+  /* H4-H6 markers are 4-6 monospace glyphs; shrink them so deep headings
+     stay legible inside the narrow mobile gutter instead of clipping. */
+  font-size: var(--yaae-gutter-marker-font-size-mobile, 0.7em);
+  padding-right: 0.25rem;
 }
 
 /* ==========================================================================
