@@ -453,6 +453,22 @@ export function renderDocumentSettings(
     );
 
   new Setting(layoutContent)
+    .setName('Automatic TOC updates')
+    .setDesc(
+      'Keep tables of contents fresh as notes change. Only affects notes that ' +
+      'already contain a generated TOC — insert one first with the ' +
+      '"Generate table of contents" command.',
+    )
+    .addToggle((toggle) =>
+      toggle
+        .setValue(plugin.settings.document.autoToc)
+        .onChange(async (value) => {
+          plugin.settings.document.autoToc = value;
+          await plugin.saveSettings();
+        }),
+    );
+
+  new Setting(layoutContent)
     .setName('TOC depth')
     .setDesc('Maximum heading depth for generated tables of contents (1-6).')
     .addSlider((slider) =>

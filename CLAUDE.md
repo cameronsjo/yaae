@@ -65,7 +65,7 @@ Frontmatter-driven document management integrated into the plugin:
 - **Schemas**: Zod-based frontmatter validation with classification taxonomy and smart warnings
 - **Print Styles**: CSS snippets for Obsidian PDF export (classification banners, watermarks, typography)
 - **Plugin Commands**: Validate frontmatter, Generate TOC, Apply CSS classes from frontmatter
-- **Auto-behaviors**: Validate on save (console-only), classification banner in reading view
+- **Auto-behaviors**: Validate on save (console-only), classification banner in reading view, automatic TOC updates (opt-in per note by inserting a TOC once; debounced regeneration on save)
 
 ## Release Flow
 
