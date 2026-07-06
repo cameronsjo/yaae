@@ -9,6 +9,20 @@ import type { CustomWordList, POSCategory } from '../types';
 /** Elements whose text content should not be processed */
 const SKIP_SELECTORS = 'code, pre, .frontmatter, .metadata-container, th, .math, .MathJax';
 
+/** Heading elements — skipped unless "highlight inside headings" is on (#40). */
+const HEADING_SELECTORS = 'h1, h2, h3, h4, h5, h6';
+
+/**
+ * The `closest()` selector for elements whose text is left unhighlighted.
+ * Always excludes code/frontmatter/etc.; adds headings unless the user opted
+ * into highlighting inside them.
+ */
+export function buildSkipSelectors(highlightInsideHeadings: boolean): string {
+  return highlightInsideHeadings
+    ? SKIP_SELECTORS
+    : `${SKIP_SELECTORS}, ${HEADING_SELECTORS}`;
+}
+
 /** POS category → CSS class */
 const POS_CLASS: Record<POSCategory, string> = {
   adjective: 'yaae-pos-adjective',
@@ -48,7 +62,12 @@ export function createReadingViewPostProcessor(plugin: YaaePlugin) {
     // production both rely on Obsidian replacing the array on save.
     ensureCompiled(settings.customWordLists);
 
-    // Collect text nodes, skipping code/pre/frontmatter
+    // Skip headings by default — heading text is chrome, not prose (#40).
+    const skipSelectors = buildSkipSelectors(
+      settings.highlightInsideHeadings ?? false,
+    );
+
+    // Collect text nodes, skipping code/pre/frontmatter (and headings)
     const textNodes: Text[] = [];
     const walker = document.createTreeWalker(
       el,
@@ -56,7 +75,7 @@ export function createReadingViewPostProcessor(plugin: YaaePlugin) {
       {
         acceptNode(node: Text): number {
           // Skip if inside an excluded element
-          if (node.parentElement?.closest(SKIP_SELECTORS)) {
+          if (node.parentElement?.closest(skipSelectors)) {
             return NodeFilter.FILTER_REJECT;
           }
           // Skip whitespace-only nodes

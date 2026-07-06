@@ -15,6 +15,11 @@ const MAIN_TS = readFileSync(join(__dirname, '..', 'main.ts'), 'utf-8');
 // Expected command IDs — must match README Commands table
 const EXPECTED_COMMANDS = [
   { id: 'toggle-prose-highlighting', name: 'Toggle prose highlighting' },
+  { id: 'copy-prose-highlight-debug', name: 'Copy prose highlighting debug info' },
+  {
+    id: 'toggle-prose-highlight-mobile-override',
+    name: 'Toggle prose highlighting mobile override (debug)',
+  },
   { id: 'toggle-syntax-dimming', name: 'Toggle syntax dimming' },
   { id: 'toggle-guttered-headings', name: 'Toggle guttered headings' },
   { id: 'cycle-focus-mode', name: 'Cycle focus mode' },

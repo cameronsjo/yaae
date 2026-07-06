@@ -1,12 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { POSStyleManager } from '../src/prose-highlight/pos-styles';
-import { DEFAULT_PROSE_HIGHLIGHT_SETTINGS, DEFAULT_POS_COLORS } from '../src/types';
+import { DEFAULT_PROSE_HIGHLIGHT_SETTINGS } from '../src/types';
 import type { ProseHighlightSettings } from '../src/types';
 
 /**
- * POSStyleManager owns custom word list <style> injection AND a one-shot
- * migration that writes legacy POS colors to body.style.setProperty().
- * POS color defaults themselves live in styles.css (--yaae-pos-*-color-{light,dark}).
+ * POSStyleManager owns custom word-list <style> injection only. POS color
+ * defaults live in styles.css (--yaae-pos-*-color-{light,dark}); the legacy
+ * inline-style migration was removed (Artificer #39 — it wrote a volatile
+ * body.style that evaporated on restart while latching the flag).
  */
 function setupDOM() {
   const styleEl = {
@@ -32,9 +33,8 @@ function setupDOM() {
   return { styleEl, headAppendChild, bodySetProperty };
 }
 
-/** Deep clone DEFAULT_PROSE_HIGHLIGHT_SETTINGS — the migration mutates the
- * input to set posColorsMigrated, so passing the module-level constant
- * directly poisons subsequent tests via shared state. */
+/** Deep clone DEFAULT_PROSE_HIGHLIGHT_SETTINGS so per-test mutations don't
+ * poison later tests via shared state. */
 function freshDefaults(): ProseHighlightSettings {
   return {
     ...DEFAULT_PROSE_HIGHLIGHT_SETTINGS,
@@ -97,14 +97,9 @@ describe('POSStyleManager', () => {
     expect(dom.styleEl.remove).toHaveBeenCalled();
   });
 
-  // --- Migration (legacy POS color → body.style --yaae-pos-*-color-light) ---
+  // --- Migration removed (#39): init must never write inline body styles ---
 
-  it('should not migrate when POS colors match defaults', () => {
-    manager.init(freshDefaults());
-    expect(dom.bodySetProperty).not.toHaveBeenCalled();
-  });
-
-  it('should migrate non-default POS color to --yaae-pos-*-color-light on body', () => {
+  it('never stamps inline body styles, even for a non-default legacy color', () => {
     const customized: ProseHighlightSettings = {
       ...freshDefaults(),
       categories: {
@@ -112,76 +107,14 @@ describe('POSStyleManager', () => {
         adjective: { enabled: true, color: '#ff0000' },
       },
     };
-    manager.init(customized);
-    expect(dom.bodySetProperty).toHaveBeenCalledWith('--yaae-pos-adjective-color-light', '#ff0000');
-  });
-
-  it('should migrate multiple non-default POS colors', () => {
-    const customized: ProseHighlightSettings = {
-      ...freshDefaults(),
-      categories: {
-        adjective: { enabled: true, color: '#ff0000' },
-        noun: { enabled: true, color: '#00ff00' },
-        adverb: { enabled: true, color: DEFAULT_POS_COLORS.adverb },
-        verb: { enabled: true, color: DEFAULT_POS_COLORS.verb },
-        conjunction: { enabled: true, color: DEFAULT_POS_COLORS.conjunction },
-      },
-    };
-    manager.init(customized);
-    expect(dom.bodySetProperty).toHaveBeenCalledWith('--yaae-pos-adjective-color-light', '#ff0000');
-    expect(dom.bodySetProperty).toHaveBeenCalledWith('--yaae-pos-noun-color-light', '#00ff00');
-    expect(dom.bodySetProperty).toHaveBeenCalledTimes(2);
-  });
-
-  // --- F1: Migration latch (posColorsMigrated flag) ---
-
-  it('migration is one-shot: second init with the flag set does NOT re-stamp inline styles', () => {
-    const customized: ProseHighlightSettings = {
-      ...freshDefaults(),
-      categories: {
-        ...freshDefaults().categories,
-        adjective: { enabled: true, color: '#ff0000' },
-      },
-    };
-
-    // First init runs migration and flips the latch
-    manager.init(customized);
-    expect(dom.bodySetProperty).toHaveBeenCalledTimes(1);
-    expect(customized.posColorsMigrated).toBe(true);
-
-    // Second init must NOT re-stamp — would clobber Style Settings overrides
-    dom.bodySetProperty.mockClear();
-    manager.destroy();
     manager.init(customized);
     expect(dom.bodySetProperty).not.toHaveBeenCalled();
   });
 
-  it('skips migration entirely when posColorsMigrated flag is already set', () => {
-    const previouslyMigrated: ProseHighlightSettings = {
-      ...freshDefaults(),
-      categories: {
-        ...freshDefaults().categories,
-        adjective: { enabled: true, color: '#deadbeef' },
-      },
-      posColorsMigrated: true,
-    };
-
-    manager.init(previouslyMigrated);
-    expect(dom.bodySetProperty).not.toHaveBeenCalled();
-  });
-
-  it('init() returns true when migration ran, false on subsequent runs', () => {
-    const customized: ProseHighlightSettings = {
-      ...freshDefaults(),
-      categories: {
-        ...freshDefaults().categories,
-        adjective: { enabled: true, color: '#ff0000' },
-      },
-    };
-
-    expect(manager.init(customized)).toBe(true);
-    manager.destroy();
-    expect(manager.init(customized)).toBe(false);
+  it('does not persist a migration latch (init returns void)', () => {
+    const settings = freshDefaults();
+    expect(manager.init(settings)).toBeUndefined();
+    expect(settings.posColorsMigrated).toBeUndefined();
   });
 
   // --- Custom word list rules ---

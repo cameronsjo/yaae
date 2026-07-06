@@ -6,13 +6,19 @@ import { POSStyleManager } from './src/prose-highlight/pos-styles';
 import { WordListMatcher } from './src/prose-highlight/word-lists';
 import { createHighlighterExtension } from './src/prose-highlight/highlighter-plugin';
 import { createReadingViewPostProcessor } from './src/prose-highlight/reading-view';
+import {
+  buildProseHighlightDebugInfo,
+  getProseHighlightLastError,
+  recordProseHighlightError,
+} from './src/prose-highlight/debug';
 import { renderProseHighlightSettings } from './src/prose-highlight/settings-tab';
 import { focusExtension } from './src/cm6/focus-mode';
 import { gutteredHeadingsExtension } from './src/cm6/guttered-headings';
 // TODO(#24): typewriter scroll disabled pending fix
 // import { typewriterExtension } from './src/cm6/typewriter-scroll';
 import { validateMarkdown, extractFrontmatter } from './src/schemas';
-import { generateToc } from './src/document/toc-generator';
+import { generateToc, resolveTocDepth } from './src/document/toc-generator';
+import { AutoTocManager } from './src/document/auto-toc';
 import { createClassificationBannerProcessor } from './src/document/classification-banner';
 import { createStrippedLinksProcessor } from './src/document/stripped-links';
 import { createDefangedLinksProcessor } from './src/document/defanged-links';
@@ -73,20 +79,41 @@ export default class YaaePlugin extends Plugin {
   private focusModeStatusEl: HTMLElement | null = null;
   private syntaxDimmingStatusEl: HTMLElement | null = null;
 
+  /**
+   * Debounced automatic TOC regeneration. Regenerate-only: touches only
+   * notes that already contain a generated TOC block. The host closures
+   * capture `this` lazily, so they read live settings at fire time.
+   */
+  autoTocManager = new AutoTocManager({
+    isEnabled: () => this.settings.document.autoToc,
+    read: async (path) => {
+      const file = this.fileByPath(path);
+      return file ? this.app.vault.read(file) : null;
+    },
+    write: async (path, content) => {
+      const file = this.fileByPath(path);
+      if (file) await this.app.vault.modify(file, content);
+    },
+    resolveDepth: (content) =>
+      resolveTocDepth(content, this.settings.document.tocDepth),
+  });
+
+  /** Resolve a vault path to a TFile, or null when missing / not a file. */
+  private fileByPath(path: string): TFile | null {
+    const file = this.app.vault.getAbstractFileByPath(path);
+    return file instanceof TFile ? file : null;
+  }
+
   async onload() {
     console.debug('[yaae] onload: starting plugin initialization');
     await this.loadSettings();
 
     // --- Prose Highlight ---
 
-    // Dynamic CSS for POS and custom list colors. init() may flip the
-    // posColorsMigrated latch on first run after upgrading from a pre-
-    // light/dark schema; persist that so subsequent reloads skip migration.
-    const wasMigrated = this.settings.proseHighlight.posColorsMigrated === true;
+    // Dynamic CSS for custom word-list colors. POS category colors live in
+    // styles.css as layered light/dark CSS variables — Style Settings and
+    // theme CSS are the only writers.
     this.styleManager.init(this.settings.proseHighlight);
-    if (!wasMigrated && this.settings.proseHighlight.posColorsMigrated) {
-      await this.saveSettings();
-    }
 
     // Compile word lists from saved settings
     this.wordListMatcher.compile(
@@ -97,20 +124,30 @@ export default class YaaePlugin extends Plugin {
     // Prose highlighting is disabled on mobile pending #32 — it errors / fails
     // to render there. Gate both the editor extension and the Reading View
     // post-processor so the feature is fully off on mobile; desktop is
-    // unaffected. registerEditorExtension still runs so the mutable extensions
-    // array stays wired for desktop toggling.
+    // unaffected. The hidden mobileDebugOverride flag lifts the block for
+    // on-phone diagnosis: the highlighter now records its errors and degrades
+    // instead of dying, so the debug command can capture the root cause.
+    // registerEditorExtension still runs so the mutable extensions array
+    // stays wired for desktop toggling.
     const highlighterExt = createHighlighterExtension(this);
-    if (this.settings.proseHighlight.enabled && !Platform.isMobile) {
+    if (this.settings.proseHighlight.enabled && !this.proseHighlightBlockedOnMobile()) {
       this.editorExtensions.push(highlighterExt);
     }
     this.registerEditorExtension(this.editorExtensions);
 
-    // Reading View post-processor
-    if (!Platform.isMobile) {
-      this.registerMarkdownPostProcessor(
-        createReadingViewPostProcessor(this),
-      );
-    }
+    // Reading View post-processor. Always registered (post-processors can't
+    // be added after onload); the mobile gate is checked per-render so the
+    // debug override takes effect without a plugin reload.
+    const readingViewProcessor = createReadingViewPostProcessor(this);
+    this.registerMarkdownPostProcessor((el, ctx) => {
+      if (this.proseHighlightBlockedOnMobile()) return;
+      try {
+        readingViewProcessor(el, ctx);
+      } catch (err) {
+        // Record for the debug command; the block renders unhighlighted.
+        recordProseHighlightError(err, 'reading-view');
+      }
+    });
 
     // --- Readability Features ---
 
@@ -135,7 +172,7 @@ export default class YaaePlugin extends Plugin {
       id: 'toggle-prose-highlighting',
       name: 'Toggle prose highlighting',
       callback: () => {
-        if (Platform.isMobile) {
+        if (this.proseHighlightBlockedOnMobile()) {
           new Notice("Prose highlighting isn't available on mobile yet.");
           return;
         }
@@ -143,6 +180,35 @@ export default class YaaePlugin extends Plugin {
           !this.settings.proseHighlight.enabled;
         this.saveSettings();
         this.toggleHighlighting(this.settings.proseHighlight.enabled);
+      },
+    });
+
+    this.addCommand({
+      id: 'copy-prose-highlight-debug',
+      name: 'Copy prose highlighting debug info',
+      callback: () => {
+        this.copyProseHighlightDebugInfo();
+      },
+    });
+
+    // Hidden diagnostic switch for #32: lifts the mobile block so the
+    // highlighter can be re-tested on a phone. Deliberately command-only —
+    // no settings UI — and safe: errors are recorded and degrade to
+    // unhighlighted rather than killing the plugin.
+    this.addCommand({
+      id: 'toggle-prose-highlight-mobile-override',
+      name: 'Toggle prose highlighting mobile override (debug)',
+      callback: async () => {
+        const next = !this.settings.proseHighlight.mobileDebugOverride;
+        this.settings.proseHighlight.mobileDebugOverride = next;
+        await this.saveSettings();
+        console.info('[yaae] Toggled prose highlighting mobile override', { enabled: next });
+        this.toggleHighlighting(this.settings.proseHighlight.enabled);
+        new Notice(
+          next
+            ? 'Prose highlighting mobile override ON — highlighting will run on this device.'
+            : 'Prose highlighting mobile override OFF — mobile block restored.',
+        );
       },
     });
 
@@ -349,15 +415,16 @@ export default class YaaePlugin extends Plugin {
       createDefangedLinksProcessor(() => this.settings.document),
     );
 
-    // Validate on save. Listener is always registered; gate the work on the
-    // *current* setting value so toggling validateOnSave in the UI takes
-    // effect without requiring a plugin reload.
+    // Validate on save + auto TOC. One listener for both jobs; each gates on
+    // the *current* setting value so toggling in the UI takes effect without
+    // requiring a plugin reload. Auto TOC debounces per file and only touches
+    // notes that already contain a generated TOC block (regenerate-only).
     this.registerEvent(
       this.app.vault.on('modify', (file) => {
+        if (!(file instanceof TFile) || file.extension !== 'md') return;
+        this.autoTocManager.notifyModified(file.path);
         if (!this.settings.document.validateOnSave) return;
-        if (file instanceof TFile && file.extension === 'md') {
-          this.validateFileQuietly(file);
-        }
+        this.validateFileQuietly(file);
       }),
     );
 
@@ -371,6 +438,8 @@ export default class YaaePlugin extends Plugin {
     this.styleManager.destroy();
     this.printStyles.destroy();
     this.printProbe.disable();
+    this.autoTocManager.destroy();
+    console.debug('[yaae] onunload: auto TOC manager destroyed, pending regenerations canceled');
     document.body.classList.remove(BODY_CLASS_SYNTAX_DIMMING);
   }
 
@@ -432,14 +501,60 @@ export default class YaaePlugin extends Plugin {
 
   // --- Prose Highlight Methods ---
 
+  /**
+   * True when prose highlighting must stay off on this device: mobile,
+   * pending the #32 root-cause fix, unless the hidden debug override lifts
+   * the block for on-phone diagnosis.
+   */
+  proseHighlightBlockedOnMobile(): boolean {
+    return (
+      Platform.isMobile &&
+      this.settings.proseHighlight.mobileDebugOverride !== true
+    );
+  }
+
   /** Enable or disable the CM6 editor extension. No-op on mobile (#32). */
   toggleHighlighting(enabled: boolean): void {
     const highlighterExt = createHighlighterExtension(this);
     this.editorExtensions.length = 0;
-    if (enabled && !Platform.isMobile) {
+    if (enabled && !this.proseHighlightBlockedOnMobile()) {
       this.editorExtensions.push(highlighterExt);
     }
     this.app.workspace.updateOptions();
+  }
+
+  /**
+   * One-tap #32 diagnostics: assemble platform + settings + the last
+   * recorded highlighter error and put it on the clipboard, so the mobile
+   * failure is capturable without remote debugging.
+   */
+  async copyProseHighlightDebugInfo(): Promise<void> {
+    const info = buildProseHighlightDebugInfo({
+      pluginVersion: this.manifest.version,
+      isMobile: Platform.isMobile,
+      mobileDebugOverride: this.settings.proseHighlight.mobileDebugOverride === true,
+      highlightingEnabled: this.settings.proseHighlight.enabled,
+      readingViewEnabled: this.settings.proseHighlight.readingViewEnabled,
+      userAgent: navigator.userAgent,
+    });
+    try {
+      await navigator.clipboard.writeText(info);
+      const error = getProseHighlightLastError();
+      console.info('[yaae] Successfully copied prose highlighting debug info to clipboard', {
+        hasError: error !== null,
+        errorPhase: error?.phase,
+      });
+      new Notice(
+        error
+          ? `Debug info copied — last error: ${error.message}`
+          : 'Debug info copied — no highlighter error recorded this session.',
+        8000,
+      );
+    } catch (err) {
+      console.error('[yaae] Failed to copy debug info to clipboard. Dumping to console instead:', err);
+      console.info(info);
+      new Notice('Clipboard unavailable — debug info dumped to the developer console.', 8000);
+    }
   }
 
   /** Trigger decoration rebuild (e.g., after toggling a POS category) */
@@ -594,9 +709,8 @@ export default class YaaePlugin extends Plugin {
       return;
     }
 
-    // Get TOC depth from frontmatter or settings
-    const fmResult = validateMarkdown(content);
-    const depth = fmResult.data?.export?.pdf?.tocDepth ?? this.settings.document.tocDepth;
+    // Per-file frontmatter override wins over the settings default
+    const depth = resolveTocDepth(content, this.settings.document.tocDepth);
 
     const { content: updated, entryCount } = generateToc(content, depth);
     await this.app.vault.modify(file, updated);
