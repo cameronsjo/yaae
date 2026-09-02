@@ -29,7 +29,7 @@ Work from integrity outward: first make type checking authoritative, then addres
 
 ## Checklist
 
-- [ ] Establish `tsc --noEmit` as a passing, automated validation check; repair configuration, stale symbols, API typing, and module declarations.
+- [x] Establish `tsc --noEmit` as a passing, automated validation check; repair configuration, stale symbols, API typing, and module declarations.
 - [ ] Fix focus mode’s blank-line dimming (#23) with behavior tests.
 - [ ] Investigate typewriter scroll (#24); repair and test it, or remove its public surface and close the issue with rationale.
 - [ ] Verify responsive mobile gutter behavior (#33) and add coverage; close or implement the remaining gap.

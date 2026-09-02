@@ -192,7 +192,7 @@ export function renderDocumentSettings(
           }
         }),
       );
-      setTooltip(colorPicker.colorPickerEl, 'Light theme — text color');
+      setTooltip(colorPicker.controlEl, 'Light theme — text color');
 
       const bgPicker = row.addColorPicker((picker) =>
         picker.setValue(entry.background).onChange(async (value) => {
@@ -202,7 +202,7 @@ export function renderDocumentSettings(
           }
         }),
       );
-      setTooltip(bgPicker.colorPickerEl, 'Light theme — background color');
+      setTooltip(bgPicker.controlEl, 'Light theme — background color');
 
       row.addExtraButton((btn) =>
         btn.setIcon('trash').setTooltip('Remove').onClick(async () => {
@@ -229,7 +229,7 @@ export function renderDocumentSettings(
           await saveAndRefreshPrintStyles();
         }),
       );
-      setTooltip(darkColorPicker.colorPickerEl, 'Dark theme — text color');
+      setTooltip(darkColorPicker.controlEl, 'Dark theme — text color');
 
       const darkBgPicker = darkRow.addColorPicker((picker) =>
         picker.setValue(entry.backgroundDark ?? entry.background).onChange(async (value) => {
@@ -237,7 +237,7 @@ export function renderDocumentSettings(
           await saveAndRefreshPrintStyles();
         }),
       );
-      setTooltip(darkBgPicker.colorPickerEl, 'Dark theme — background color');
+      setTooltip(darkBgPicker.controlEl, 'Dark theme — background color');
 
       // Reset to inherit-from-light
       darkRow.addExtraButton((btn) =>

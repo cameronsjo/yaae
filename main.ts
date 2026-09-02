@@ -251,7 +251,6 @@ export default class YaaePlugin extends Plugin {
     this.dynamicPdfPrintStyles.destroy();
     this.pageChromeManager.destroy();
     document.body.classList.remove(BODY_CLASS_SYNTAX_DIMMING);
-    document.body.classList.remove(BODY_CLASS_GUTTERED_HEADINGS);
   }
 
   async loadSettings() {
@@ -709,15 +708,14 @@ class YaaeSettingTab extends PluginSettingTab {
       .setName('Author')
       .setDesc(this.plugin.manifest.author);
 
-    if (this.plugin.manifest.authorUrl) {
-      new Setting(containerEl)
-        .setName('GitHub')
-        .addButton((btn) =>
-          btn.setButtonText('Open').onClick(() => {
-            window.open(this.plugin.manifest.authorUrl!, '_blank');
-          }),
-        );
-    }
+    const githubSetting = new Setting(containerEl).setName('GitHub');
+    const githubLink = document.createElement('a');
+    githubLink.textContent = 'Open';
+    githubLink.href = 'https://github.com/cameronsjo/yaae';
+    githubLink.target = '_blank';
+    githubLink.rel = 'noopener noreferrer';
+    githubLink.classList.add('mod-cta');
+    githubSetting.controlEl.append(githubLink);
 
     new Setting(containerEl)
       .setName('Description')
