@@ -1,37 +1,50 @@
-import { Plugin, PluginSettingTab, type App, Setting, MarkdownView, Notice, TFile, Platform } from 'obsidian';
-import { Compartment } from '@codemirror/state';
-import type { Extension } from '@codemirror/state';
-import { type YaaeSettings, DEFAULT_SETTINGS, type FocusMode } from './src/types';
-import { POSStyleManager } from './src/prose-highlight/pos-styles';
-import { WordListMatcher } from './src/prose-highlight/word-lists';
-import { createHighlighterExtension } from './src/prose-highlight/highlighter-plugin';
-import { createReadingViewPostProcessor } from './src/prose-highlight/reading-view';
+import {
+  Plugin,
+  PluginSettingTab,
+  type App,
+  Setting,
+  MarkdownView,
+  Notice,
+  TFile,
+  Platform,
+} from "obsidian";
+import { Compartment } from "@codemirror/state";
+import type { Extension } from "@codemirror/state";
+import {
+  type YaaeSettings,
+  DEFAULT_SETTINGS,
+  type FocusMode,
+} from "./src/types";
+import { POSStyleManager } from "./src/prose-highlight/pos-styles";
+import { WordListMatcher } from "./src/prose-highlight/word-lists";
+import { createHighlighterExtension } from "./src/prose-highlight/highlighter-plugin";
+import { createReadingViewPostProcessor } from "./src/prose-highlight/reading-view";
 import {
   buildProseHighlightDebugInfo,
   getProseHighlightLastError,
   recordProseHighlightError,
-} from './src/prose-highlight/debug';
-import { renderProseHighlightSettings } from './src/prose-highlight/settings-tab';
-import { focusExtension } from './src/cm6/focus-mode';
-import { gutteredHeadingsExtension } from './src/cm6/guttered-headings';
+} from "./src/prose-highlight/debug";
+import { renderProseHighlightSettings } from "./src/prose-highlight/settings-tab";
+import { focusExtension } from "./src/cm6/focus-mode";
+import { gutteredHeadingsExtension } from "./src/cm6/guttered-headings";
 // TODO(#24): typewriter scroll disabled pending fix
 // import { typewriterExtension } from './src/cm6/typewriter-scroll';
-import { validateMarkdown, extractFrontmatter } from './src/schemas';
-import { generateToc, resolveTocDepth } from './src/document/toc-generator';
-import { AutoTocManager } from './src/document/auto-toc';
-import { createClassificationBannerProcessor } from './src/document/classification-banner';
-import { createStrippedLinksProcessor } from './src/document/stripped-links';
-import { createDefangedLinksProcessor } from './src/document/defanged-links';
-import { renderDocumentSettings } from './src/document/settings-tab';
-import { DEFAULT_DOCUMENT_SETTINGS } from './src/document/settings';
-import { createCollapsibleSection } from './src/settings/collapsible-section';
-import { PrintStyleManager } from './src/document/print';
-import { buildPrintDocumentState } from './src/document/print/state';
-import type { ActiveDocFrontmatter } from './src/document/print/state';
-import { PrintProbe } from './src/document/print-probe';
-import type { LinksMode } from './src/document/settings';
+import { validateMarkdown, extractFrontmatter } from "./src/schemas";
+import { generateToc, resolveTocDepth } from "./src/document/toc-generator";
+import { AutoTocManager } from "./src/document/auto-toc";
+import { createClassificationBannerProcessor } from "./src/document/classification-banner";
+import { createStrippedLinksProcessor } from "./src/document/stripped-links";
+import { createDefangedLinksProcessor } from "./src/document/defanged-links";
+import { renderDocumentSettings } from "./src/document/settings-tab";
+import { DEFAULT_DOCUMENT_SETTINGS } from "./src/document/settings";
+import { createCollapsibleSection } from "./src/settings/collapsible-section";
+import { PrintStyleManager } from "./src/document/print";
+import { buildPrintDocumentState } from "./src/document/print/state";
+import type { ActiveDocFrontmatter } from "./src/document/print/state";
+import { PrintProbe } from "./src/document/print-probe";
+import type { LinksMode } from "./src/document/settings";
 
-const BODY_CLASS_SYNTAX_DIMMING = 'yaae-syntax-dimming';
+const BODY_CLASS_SYNTAX_DIMMING = "yaae-syntax-dimming";
 
 const focusCompartment = new Compartment();
 const gutteredHeadingsCompartment = new Compartment();
@@ -58,7 +71,11 @@ export default class YaaePlugin extends Plugin {
    * updatePrintStateFromActiveFile).
    */
   printStyles = new PrintStyleManager({
-    getState: () => buildPrintDocumentState(this.settings.document, this.activeDoc ?? undefined),
+    getState: () =>
+      buildPrintDocumentState(
+        this.settings.document,
+        this.activeDoc ?? undefined,
+      ),
   });
 
   /** Active document frontmatter (raw + validated) for print-state overrides. */
@@ -105,7 +122,7 @@ export default class YaaePlugin extends Plugin {
   }
 
   async onload() {
-    console.debug('[yaae] onload: starting plugin initialization');
+    console.debug("[yaae] onload: starting plugin initialization");
     await this.loadSettings();
 
     // --- Prose Highlight ---
@@ -116,9 +133,7 @@ export default class YaaePlugin extends Plugin {
     this.styleManager.init(this.settings.proseHighlight);
 
     // Compile word lists from saved settings
-    this.wordListMatcher.compile(
-      this.settings.proseHighlight.customWordLists,
-    );
+    this.wordListMatcher.compile(this.settings.proseHighlight.customWordLists);
 
     // CM6 ViewPlugin for editor / Live Preview highlighting.
     // Prose highlighting is disabled on mobile pending #32 — it errors / fails
@@ -130,7 +145,10 @@ export default class YaaePlugin extends Plugin {
     // registerEditorExtension still runs so the mutable extensions array
     // stays wired for desktop toggling.
     const highlighterExt = createHighlighterExtension(this);
-    if (this.settings.proseHighlight.enabled && !this.proseHighlightBlockedOnMobile()) {
+    if (
+      this.settings.proseHighlight.enabled &&
+      !this.proseHighlightBlockedOnMobile()
+    ) {
       this.editorExtensions.push(highlighterExt);
     }
     this.registerEditorExtension(this.editorExtensions);
@@ -145,7 +163,7 @@ export default class YaaePlugin extends Plugin {
         readingViewProcessor(el, ctx);
       } catch (err) {
         // Record for the debug command; the block renders unhighlighted.
-        recordProseHighlightError(err, 'reading-view');
+        recordProseHighlightError(err, "reading-view");
       }
     });
 
@@ -157,20 +175,20 @@ export default class YaaePlugin extends Plugin {
     // CM6 features: register via Compartment
     this.registerEditorExtension([
       focusCompartment.of(
-        this.settings.focusMode === 'off'
+        this.settings.focusMode === "off"
           ? []
-          : focusExtension(this.settings.focusMode)
+          : focusExtension(this.settings.focusMode),
       ),
       gutteredHeadingsCompartment.of(
-        this.settings.gutteredHeadings ? gutteredHeadingsExtension() : []
+        this.settings.gutteredHeadings ? gutteredHeadingsExtension() : [],
       ),
     ]);
 
     // --- Commands ---
 
     this.addCommand({
-      id: 'toggle-prose-highlighting',
-      name: 'Toggle prose highlighting',
+      id: "toggle-prose-highlighting",
+      name: "Toggle prose highlighting",
       callback: () => {
         if (this.proseHighlightBlockedOnMobile()) {
           new Notice("Prose highlighting isn't available on mobile yet.");
@@ -184,8 +202,8 @@ export default class YaaePlugin extends Plugin {
     });
 
     this.addCommand({
-      id: 'copy-prose-highlight-debug',
-      name: 'Copy prose highlighting debug info',
+      id: "copy-prose-highlight-debug",
+      name: "Copy prose highlighting debug info",
       callback: () => {
         this.copyProseHighlightDebugInfo();
       },
@@ -196,48 +214,50 @@ export default class YaaePlugin extends Plugin {
     // no settings UI — and safe: errors are recorded and degrade to
     // unhighlighted rather than killing the plugin.
     this.addCommand({
-      id: 'toggle-prose-highlight-mobile-override',
-      name: 'Toggle prose highlighting mobile override (debug)',
+      id: "toggle-prose-highlight-mobile-override",
+      name: "Toggle prose highlighting mobile override (debug)",
       callback: async () => {
         const next = !this.settings.proseHighlight.mobileDebugOverride;
         this.settings.proseHighlight.mobileDebugOverride = next;
         await this.saveSettings();
-        console.info('[yaae] Toggled prose highlighting mobile override', { enabled: next });
+        console.info("[yaae] Toggled prose highlighting mobile override", {
+          enabled: next,
+        });
         this.toggleHighlighting(this.settings.proseHighlight.enabled);
         new Notice(
           next
-            ? 'Prose highlighting mobile override ON — highlighting will run on this device.'
-            : 'Prose highlighting mobile override OFF — mobile block restored.',
+            ? "Prose highlighting mobile override ON — highlighting will run on this device."
+            : "Prose highlighting mobile override OFF — mobile block restored.",
         );
       },
     });
 
     this.addCommand({
-      id: 'toggle-syntax-dimming',
-      name: 'Toggle syntax dimming',
+      id: "toggle-syntax-dimming",
+      name: "Toggle syntax dimming",
       callback: () => this.toggleSyntaxDimming(),
     });
 
     this.addCommand({
-      id: 'toggle-guttered-headings',
-      name: 'Toggle guttered headings',
+      id: "toggle-guttered-headings",
+      name: "Toggle guttered headings",
       callback: () => this.toggleGutteredHeadings(),
     });
 
     this.addCommand({
-      id: 'cycle-focus-mode',
-      name: 'Cycle focus mode',
+      id: "cycle-focus-mode",
+      name: "Cycle focus mode",
       callback: () => this.cycleFocusMode(),
     });
 
     // --- Document Commands ---
 
     this.addCommand({
-      id: 'yaae-validate',
-      name: 'Validate frontmatter',
+      id: "yaae-validate",
+      name: "Validate frontmatter",
       checkCallback: (checking) => {
         const file = this.app.workspace.getActiveFile();
-        if (!file || file.extension !== 'md') return false;
+        if (!file || file.extension !== "md") return false;
         if (checking) return true;
         this.validateCurrentFile();
         return true;
@@ -245,11 +265,11 @@ export default class YaaePlugin extends Plugin {
     });
 
     this.addCommand({
-      id: 'yaae-generate-toc',
-      name: 'Generate table of contents',
+      id: "yaae-generate-toc",
+      name: "Generate table of contents",
       editorCheckCallback: (checking, _editor) => {
         const file = this.app.workspace.getActiveFile();
-        if (!file || file.extension !== 'md') return false;
+        if (!file || file.extension !== "md") return false;
         if (!checking) this.generateTocForCurrentFile();
         return true;
       },
@@ -259,25 +279,31 @@ export default class YaaePlugin extends Plugin {
     // classes an older version persisted into frontmatter. Stale classes are
     // harmless, so cleanup is offered, not forced.
     this.addCommand({
-      id: 'yaae-clean-css-classes',
-      name: 'Clean PDF CSS classes from frontmatter',
+      id: "yaae-clean-css-classes",
+      name: "Clean PDF CSS classes from frontmatter",
       checkCallback: (checking) => {
         const file = this.app.workspace.getActiveFile();
-        if (!file || file.extension !== 'md') return false;
+        if (!file || file.extension !== "md") return false;
         if (checking) return true;
-        this.cleanCssClassesFromFile(file).then((changed) => {
-          new Notice(changed ? 'Removed pdf-* classes from cssclasses.' : 'No pdf-* classes found.');
-        }).catch((err) => {
-          console.warn('[yaae] Failed to clean CSS classes:', err);
-          new Notice('Failed to clean CSS classes — see console.');
-        });
+        this.cleanCssClassesFromFile(file)
+          .then((changed) => {
+            new Notice(
+              changed
+                ? "Removed pdf-* classes from cssclasses."
+                : "No pdf-* classes found.",
+            );
+          })
+          .catch((err) => {
+            console.warn("[yaae] Failed to clean CSS classes:", err);
+            new Notice("Failed to clean CSS classes — see console.");
+          });
         return true;
       },
     });
 
     this.addCommand({
-      id: 'yaae-clean-css-classes-vault',
-      name: 'Clean PDF CSS classes from frontmatter (entire vault)',
+      id: "yaae-clean-css-classes-vault",
+      name: "Clean PDF CSS classes from frontmatter (entire vault)",
       callback: async () => {
         const files = this.app.vault.getMarkdownFiles();
         let cleaned = 0;
@@ -285,11 +311,18 @@ export default class YaaePlugin extends Plugin {
           try {
             if (await this.cleanCssClassesFromFile(file)) cleaned++;
           } catch (err) {
-            console.warn(`[yaae] Failed to clean CSS classes. File: ${file.path}`, err);
+            console.warn(
+              `[yaae] Failed to clean CSS classes. File: ${file.path}`,
+              err,
+            );
           }
         }
-        console.info(`[yaae] Successfully cleaned pdf-* classes. Files changed: ${cleaned}/${files.length}`);
-        new Notice(`Cleaned pdf-* classes from ${cleaned} of ${files.length} notes.`);
+        console.info(
+          `[yaae] Successfully cleaned pdf-* classes. Files changed: ${cleaned}/${files.length}`,
+        );
+        new Notice(
+          `Cleaned pdf-* classes from ${cleaned} of ${files.length} notes.`,
+        );
       },
     });
 
@@ -297,12 +330,12 @@ export default class YaaePlugin extends Plugin {
     // print selectors survive into the export DOM. Arm, export a PDF, read
     // the H1 colors, copy the report. Remove once the gate is decided.
     this.addCommand({
-      id: 'yaae-debug-print-probe',
-      name: 'Toggle print probe (debug)',
+      id: "yaae-debug-print-probe",
+      name: "Toggle print probe (debug)",
       callback: () => {
         if (this.printProbe.active) {
           this.printProbe.disable();
-          new Notice('Print probe disarmed.');
+          new Notice("Print probe disarmed.");
           return;
         }
         const viewEl =
@@ -310,8 +343,8 @@ export default class YaaePlugin extends Plugin {
           null;
         this.printProbe.enable(viewEl);
         new Notice(
-          'Print probe ARMED. Export this note to PDF, check the H1: ' +
-            'underline only = class scoping dead, red = body-class works, ' +
+          "Print probe ARMED. Export this note to PDF, check the H1: " +
+            "underline only = class scoping dead, red = body-class works, " +
             'blue = view-class works. Then run "Copy print probe report".',
           10000,
         );
@@ -319,17 +352,22 @@ export default class YaaePlugin extends Plugin {
     });
 
     this.addCommand({
-      id: 'yaae-debug-print-probe-report',
-      name: 'Copy print probe report (debug)',
+      id: "yaae-debug-print-probe-report",
+      name: "Copy print probe report (debug)",
       callback: async () => {
         const report = this.printProbe.buildReport();
         try {
           await navigator.clipboard.writeText(report);
-          new Notice('Print probe report copied to clipboard.');
+          new Notice("Print probe report copied to clipboard.");
         } catch (err) {
-          console.error('[yaae] Failed to copy probe report. Dumping to console:', err);
+          console.error(
+            "[yaae] Failed to copy probe report. Dumping to console:",
+            err,
+          );
           console.info(report);
-          new Notice('Clipboard unavailable — probe report dumped to the developer console.');
+          new Notice(
+            "Clipboard unavailable — probe report dumped to the developer console.",
+          );
         }
       },
     });
@@ -337,16 +375,16 @@ export default class YaaePlugin extends Plugin {
     // --- Status Bar Toggles ---
 
     this.focusModeStatusEl = this.addStatusBarItem();
-    this.focusModeStatusEl.addClass('yaae-statusbar-toggle');
+    this.focusModeStatusEl.addClass("yaae-statusbar-toggle");
     this.updateFocusModeStatus();
-    this.registerDomEvent(this.focusModeStatusEl, 'click', () => {
+    this.registerDomEvent(this.focusModeStatusEl, "click", () => {
       this.cycleFocusMode();
     });
 
     this.syntaxDimmingStatusEl = this.addStatusBarItem();
-    this.syntaxDimmingStatusEl.addClass('yaae-statusbar-toggle');
+    this.syntaxDimmingStatusEl.addClass("yaae-statusbar-toggle");
     this.updateSyntaxDimmingStatus();
-    this.registerDomEvent(this.syntaxDimmingStatusEl, 'click', () => {
+    this.registerDomEvent(this.syntaxDimmingStatusEl, "click", () => {
       this.toggleSyntaxDimming();
     });
 
@@ -363,7 +401,7 @@ export default class YaaePlugin extends Plugin {
     // re-resolve and re-bake the base element on every css-change. The
     // document/chrome elements read the same knobs, so refresh them too.
     this.registerEvent(
-      this.app.workspace.on('css-change', () => {
+      this.app.workspace.on("css-change", () => {
         this.printStyles.refreshVars();
         this.printStyles.refreshDocument();
       }),
@@ -372,9 +410,12 @@ export default class YaaePlugin extends Plugin {
     // Active document changes: classification + per-doc overrides come from
     // frontmatter.
     this.registerEvent(
-      this.app.workspace.on('active-leaf-change', () => {
+      this.app.workspace.on("active-leaf-change", () => {
         this.updatePrintStateFromActiveFile().catch((err) => {
-          console.warn('[yaae] Failed to update print state from active file:', err);
+          console.warn(
+            "[yaae] Failed to update print state from active file:",
+            err,
+          );
         });
       }),
     );
@@ -382,10 +423,13 @@ export default class YaaePlugin extends Plugin {
     // Frontmatter edits WITHOUT a leaf change previously left stale chrome —
     // refresh when the active file's metadata changes.
     this.registerEvent(
-      this.app.metadataCache.on('changed', (file) => {
+      this.app.metadataCache.on("changed", (file) => {
         if (file !== this.app.workspace.getActiveFile()) return;
         this.updatePrintStateFromActiveFile().catch((err) => {
-          console.warn('[yaae] Failed to refresh print state after metadata change:', err);
+          console.warn(
+            "[yaae] Failed to refresh print state after metadata change:",
+            err,
+          );
         });
       }),
     );
@@ -396,7 +440,10 @@ export default class YaaePlugin extends Plugin {
     // document's frontmatter.
     this.app.workspace.onLayoutReady(() => {
       this.updatePrintStateFromActiveFile().catch((err) => {
-        console.warn('[yaae] Failed to bootstrap print state from active file:', err);
+        console.warn(
+          "[yaae] Failed to bootstrap print state from active file:",
+          err,
+        );
       });
     });
 
@@ -420,8 +467,8 @@ export default class YaaePlugin extends Plugin {
     // requiring a plugin reload. Auto TOC debounces per file and only touches
     // notes that already contain a generated TOC block (regenerate-only).
     this.registerEvent(
-      this.app.vault.on('modify', (file) => {
-        if (!(file instanceof TFile) || file.extension !== 'md') return;
+      this.app.vault.on("modify", (file) => {
+        if (!(file instanceof TFile) || file.extension !== "md") return;
         this.autoTocManager.notifyModified(file.path);
         if (!this.settings.document.validateOnSave) return;
         this.validateFileQuietly(file);
@@ -430,25 +477,23 @@ export default class YaaePlugin extends Plugin {
 
     // Settings tab
     this.addSettingTab(new YaaeSettingTab(this.app, this));
-    console.debug('[yaae] onload: plugin initialization complete');
+    console.debug("[yaae] onload: plugin initialization complete");
   }
 
   onunload() {
-    console.debug('[yaae] onunload: tearing down plugin');
+    console.debug("[yaae] onunload: tearing down plugin");
     this.styleManager.destroy();
     this.printStyles.destroy();
     this.printProbe.disable();
     this.autoTocManager.destroy();
-    console.debug('[yaae] onunload: auto TOC manager destroyed, pending regenerations canceled');
+    console.debug(
+      "[yaae] onunload: auto TOC manager destroyed, pending regenerations canceled",
+    );
     document.body.classList.remove(BODY_CLASS_SYNTAX_DIMMING);
   }
 
   async loadSettings() {
-    this.settings = Object.assign(
-      {},
-      DEFAULT_SETTINGS,
-      await this.loadData(),
-    );
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
     // Ensure nested defaults exist for upgrades
     this.settings.proseHighlight = Object.assign(
       {},
@@ -476,20 +521,20 @@ export default class YaaePlugin extends Plugin {
 
     // Migrate deprecated expandLinks/plainLinks booleans to links enum
     const doc = this.settings.document;
-    if (doc.links === 'expand' && (doc.plainLinks || !doc.expandLinks)) {
+    if (doc.links === "expand" && (doc.plainLinks || !doc.expandLinks)) {
       if (doc.plainLinks) {
-        doc.links = 'plain' as LinksMode;
+        doc.links = "plain" as LinksMode;
       } else if (!doc.expandLinks) {
-        doc.links = 'styled' as LinksMode;
+        doc.links = "styled" as LinksMode;
       }
       console.info(
         `[yaae] Migrated deprecated link booleans to links enum. ` +
-        `expandLinks: ${doc.expandLinks}, plainLinks: ${doc.plainLinks} → links: ${doc.links}`,
+          `expandLinks: ${doc.expandLinks}, plainLinks: ${doc.plainLinks} → links: ${doc.links}`,
       );
       // Persist after loadSettings resolves — don't await inside the loader.
       queueMicrotask(() => {
         this.saveSettings().catch((err) => {
-          console.warn('[yaae] Failed to persist link enum migration:', err);
+          console.warn("[yaae] Failed to persist link enum migration:", err);
         });
       });
     }
@@ -532,7 +577,8 @@ export default class YaaePlugin extends Plugin {
     const info = buildProseHighlightDebugInfo({
       pluginVersion: this.manifest.version,
       isMobile: Platform.isMobile,
-      mobileDebugOverride: this.settings.proseHighlight.mobileDebugOverride === true,
+      mobileDebugOverride:
+        this.settings.proseHighlight.mobileDebugOverride === true,
       highlightingEnabled: this.settings.proseHighlight.enabled,
       readingViewEnabled: this.settings.proseHighlight.readingViewEnabled,
       userAgent: navigator.userAgent,
@@ -540,20 +586,29 @@ export default class YaaePlugin extends Plugin {
     try {
       await navigator.clipboard.writeText(info);
       const error = getProseHighlightLastError();
-      console.info('[yaae] Successfully copied prose highlighting debug info to clipboard', {
-        hasError: error !== null,
-        errorPhase: error?.phase,
-      });
+      console.info(
+        "[yaae] Successfully copied prose highlighting debug info to clipboard",
+        {
+          hasError: error !== null,
+          errorPhase: error?.phase,
+        },
+      );
       new Notice(
         error
           ? `Debug info copied — last error: ${error.message}`
-          : 'Debug info copied — no highlighter error recorded this session.',
+          : "Debug info copied — no highlighter error recorded this session.",
         8000,
       );
     } catch (err) {
-      console.error('[yaae] Failed to copy debug info to clipboard. Dumping to console instead:', err);
+      console.error(
+        "[yaae] Failed to copy debug info to clipboard. Dumping to console instead:",
+        err,
+      );
       console.info(info);
-      new Notice('Clipboard unavailable — debug info dumped to the developer console.', 8000);
+      new Notice(
+        "Clipboard unavailable — debug info dumped to the developer console.",
+        8000,
+      );
     }
   }
 
@@ -571,9 +626,7 @@ export default class YaaePlugin extends Plugin {
 
   /** Recompile word list regexes after settings change */
   recompileWordLists(): void {
-    this.wordListMatcher.compile(
-      this.settings.proseHighlight.customWordLists,
-    );
+    this.wordListMatcher.compile(this.settings.proseHighlight.customWordLists);
   }
 
   // --- Readability Methods ---
@@ -581,7 +634,7 @@ export default class YaaePlugin extends Plugin {
   applyBodyClasses() {
     document.body.classList.toggle(
       BODY_CLASS_SYNTAX_DIMMING,
-      this.settings.syntaxDimming
+      this.settings.syntaxDimming,
     );
   }
 
@@ -592,9 +645,9 @@ export default class YaaePlugin extends Plugin {
         if (cm) {
           cm.dispatch({
             effects: focusCompartment.reconfigure(
-              this.settings.focusMode === 'off'
+              this.settings.focusMode === "off"
                 ? []
-                : focusExtension(this.settings.focusMode)
+                : focusExtension(this.settings.focusMode),
             ),
           });
         }
@@ -609,7 +662,7 @@ export default class YaaePlugin extends Plugin {
         if (cm) {
           cm.dispatch({
             effects: gutteredHeadingsCompartment.reconfigure(
-              this.settings.gutteredHeadings ? gutteredHeadingsExtension() : []
+              this.settings.gutteredHeadings ? gutteredHeadingsExtension() : [],
             ),
           });
         }
@@ -631,7 +684,7 @@ export default class YaaePlugin extends Plugin {
   }
 
   async cycleFocusMode() {
-    const cycle: FocusMode[] = ['off', 'sentence', 'paragraph'];
+    const cycle: FocusMode[] = ["off", "sentence", "paragraph"];
     const idx = cycle.indexOf(this.settings.focusMode);
     this.settings.focusMode = cycle[(idx + 1) % cycle.length];
     this.reconfigureFocus();
@@ -644,20 +697,20 @@ export default class YaaePlugin extends Plugin {
   updateFocusModeStatus() {
     if (!this.focusModeStatusEl) return;
     const labels: Record<FocusMode, string> = {
-      off: 'Focus: Off',
-      sentence: 'Focus: Sentence',
-      paragraph: 'Focus: Paragraph',
+      off: "Focus: Off",
+      sentence: "Focus: Sentence",
+      paragraph: "Focus: Paragraph",
     };
     this.focusModeStatusEl.setText(labels[this.settings.focusMode]);
-    this.focusModeStatusEl.ariaLabel = 'Click to cycle focus mode';
+    this.focusModeStatusEl.ariaLabel = "Click to cycle focus mode";
   }
 
   updateSyntaxDimmingStatus() {
     if (!this.syntaxDimmingStatusEl) return;
     this.syntaxDimmingStatusEl.setText(
-      this.settings.syntaxDimming ? 'Syntax: Dim' : 'Syntax: Off',
+      this.settings.syntaxDimming ? "Syntax: Dim" : "Syntax: Off",
     );
-    this.syntaxDimmingStatusEl.ariaLabel = 'Click to toggle syntax dimming';
+    this.syntaxDimmingStatusEl.ariaLabel = "Click to toggle syntax dimming";
   }
 
   // --- Document Methods ---
@@ -672,14 +725,22 @@ export default class YaaePlugin extends Plugin {
     if (result.valid) {
       const parts = [`Frontmatter valid (${result.schema} schema)`];
       if (result.warnings.length > 0) {
-        parts.push(`\nWarnings:\n${result.warnings.map((w) => `  - ${w}`).join('\n')}`);
-        new Notice(parts.join(''), 8000);
+        parts.push(
+          `\nWarnings:\n${result.warnings.map((w) => `  - ${w}`).join("\n")}`,
+        );
+        new Notice(parts.join(""), 8000);
       } else {
         new Notice(parts[0]);
       }
     } else {
-      const errors = result.errors?.issues.map((i) => `  - ${i.path.join('.')}: ${i.message}`).join('\n') ?? '';
-      new Notice(`Frontmatter invalid (${result.schema} schema)\n${errors}`, 10000);
+      const errors =
+        result.errors?.issues
+          .map((i) => `  - ${i.path.join(".")}: ${i.message}`)
+          .join("\n") ?? "";
+      new Notice(
+        `Frontmatter invalid (${result.schema} schema)\n${errors}`,
+        10000,
+      );
     }
   }
 
@@ -687,7 +748,10 @@ export default class YaaePlugin extends Plugin {
     const content = await this.app.vault.read(file);
     const result = validateMarkdown(content);
     if (!result.valid) {
-      console.warn(`[yaae] ${file.path}: validation errors`, result.errors?.issues);
+      console.warn(
+        `[yaae] ${file.path}: validation errors`,
+        result.errors?.issues,
+      );
     } else if (result.warnings.length > 0) {
       console.warn(`[yaae] ${file.path}: warnings`, result.warnings);
     } else {
@@ -705,7 +769,7 @@ export default class YaaePlugin extends Plugin {
     // the file we started with — that would write a TOC for the previous
     // document into the now-active one. Bail with a debug message.
     if (this.app.workspace.getActiveFile() !== file) {
-      console.debug('[yaae] TOC abort: active file changed mid-read');
+      console.debug("[yaae] TOC abort: active file changed mid-read");
       return;
     }
 
@@ -714,7 +778,9 @@ export default class YaaePlugin extends Plugin {
 
     const { content: updated, entryCount } = generateToc(content, depth);
     await this.app.vault.modify(file, updated);
-    console.info(`[yaae] Successfully generated TOC. File: ${file.path}, Entries: ${entryCount}, Depth: ${depth}`);
+    console.info(
+      `[yaae] Successfully generated TOC. File: ${file.path}, Entries: ${entryCount}, Depth: ${depth}`,
+    );
     new Notice(`Table of Contents generated with ${entryCount} entries`);
   }
 
@@ -731,11 +797,11 @@ export default class YaaePlugin extends Plugin {
       // non-string entries — filter to strings before startsWith().
       const existing: unknown[] = Array.isArray(fm.cssclasses)
         ? fm.cssclasses
-        : typeof fm.cssclasses === 'string'
+        : typeof fm.cssclasses === "string"
           ? [fm.cssclasses]
           : [];
       const userClasses = existing.filter(
-        (c): c is string => typeof c === 'string' && !c.startsWith('pdf-'),
+        (c): c is string => typeof c === "string" && !c.startsWith("pdf-"),
       );
       if (userClasses.length === existing.length) return;
       changed = true;
@@ -769,7 +835,7 @@ export default class YaaePlugin extends Plugin {
       this.printStyles.refreshDocument();
       return;
     }
-    if (startFile.extension !== 'md') {
+    if (startFile.extension !== "md") {
       // Active leaf is non-markdown (e.g., embedded PDF, canvas). Leave the
       // existing print state alone so the last markdown file's
       // classification is preserved for export.
@@ -786,7 +852,9 @@ export default class YaaePlugin extends Plugin {
       seq !== this.printStateSeq ||
       this.app.workspace.getActiveFile() !== startFile
     ) {
-      console.debug('[yaae] updatePrintStateFromActiveFile: superseded mid-read, aborting');
+      console.debug(
+        "[yaae] updatePrintStateFromActiveFile: superseded mid-read, aborting",
+      );
       return;
     }
 
@@ -798,11 +866,11 @@ export default class YaaePlugin extends Plugin {
   }
 }
 
-type SettingsTab = 'writing' | 'document' | 'about';
+type SettingsTab = "writing" | "document" | "about";
 
 class YaaeSettingTab extends PluginSettingTab {
   plugin: YaaePlugin;
-  private activeTab: SettingsTab = 'writing';
+  private activeTab: SettingsTab = "writing";
   private expandedSections = new Set<string>();
 
   constructor(app: App, plugin: YaaePlugin) {
@@ -813,41 +881,41 @@ class YaaeSettingTab extends PluginSettingTab {
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.addClass('yaae-settings');
+    containerEl.addClass("yaae-settings");
 
     // --- Tab Navigation ---
-    const nav = containerEl.createDiv('yaae-settings-nav');
+    const nav = containerEl.createDiv("yaae-settings-nav");
     const tabs: { id: SettingsTab; label: string }[] = [
-      { id: 'writing', label: 'Writing' },
-      { id: 'document', label: 'Document' },
-      { id: 'about', label: 'About' },
+      { id: "writing", label: "Writing" },
+      { id: "document", label: "Document" },
+      { id: "about", label: "About" },
     ];
 
     for (const tab of tabs) {
-      const btn = nav.createEl('button', {
+      const btn = nav.createEl("button", {
         text: tab.label,
-        cls: `yaae-settings-tab${this.activeTab === tab.id ? ' is-active' : ''}`,
+        cls: `yaae-settings-tab${this.activeTab === tab.id ? " is-active" : ""}`,
       });
       // PluginSettingTab does not extend Component, so `this.registerDomEvent`
       // is unavailable here. Route through the plugin (Plugin extends Component)
       // so the listener is detached on plugin unload.
-      this.plugin.registerDomEvent(btn, 'click', () => {
+      this.plugin.registerDomEvent(btn, "click", () => {
         this.activeTab = tab.id;
         this.display();
       });
     }
 
     // --- Tab Content ---
-    const content = containerEl.createDiv('yaae-settings-content');
+    const content = containerEl.createDiv("yaae-settings-content");
 
     switch (this.activeTab) {
-      case 'writing':
+      case "writing":
         this.renderWritingTab(content);
         break;
-      case 'document':
+      case "document":
         renderDocumentSettings(content, this.plugin, this.expandedSections);
         break;
-      case 'about':
+      case "about":
         this.renderAboutTab(content);
         break;
     }
@@ -855,83 +923,95 @@ class YaaeSettingTab extends PluginSettingTab {
 
   private renderWritingTab(containerEl: HTMLElement): void {
     // Prose highlight settings (renders its own collapsible sections)
-    renderProseHighlightSettings(containerEl, this.plugin, this.expandedSections);
+    renderProseHighlightSettings(
+      containerEl,
+      this.plugin,
+      this.expandedSections,
+    );
 
     // Readability settings
     const readabilityContent = createCollapsibleSection(
-      containerEl, this.expandedSections, 'writing-readability', 'Readability', true,
+      containerEl,
+      this.expandedSections,
+      "writing-readability",
+      "Readability",
+      true,
     );
 
     new Setting(readabilityContent)
-      .setName('Syntax dimming')
+      .setName("Syntax dimming")
       .setDesc(
-        'Reduce opacity of markdown formatting characters (**, *, #, etc.) while keeping them visible.'
+        "Reduce opacity of markdown formatting characters (**, *, #, etc.) while keeping them visible.",
       )
       .addToggle((toggle) =>
-        toggle.setValue(this.plugin.settings.syntaxDimming).onChange(async (value) => {
-          this.plugin.settings.syntaxDimming = value;
-          this.plugin.applyBodyClasses();
-          this.plugin.updateSyntaxDimmingStatus();
-          await this.plugin.saveSettings();
-        })
+        toggle
+          .setValue(this.plugin.settings.syntaxDimming)
+          .onChange(async (value) => {
+            this.plugin.settings.syntaxDimming = value;
+            this.plugin.applyBodyClasses();
+            this.plugin.updateSyntaxDimmingStatus();
+            await this.plugin.saveSettings();
+          }),
       );
 
     new Setting(readabilityContent)
-      .setName('Guttered headings')
+      .setName("Guttered headings")
       .setDesc(
-        'Outdent # heading markers into the left gutter so heading text aligns with body text.'
+        "Outdent # heading markers into the left gutter so heading text aligns with body text.",
       )
       .addToggle((toggle) =>
-        toggle.setValue(this.plugin.settings.gutteredHeadings).onChange(async (value) => {
-          this.plugin.settings.gutteredHeadings = value;
-          this.plugin.reconfigureGutteredHeadings();
-          await this.plugin.saveSettings();
-        })
+        toggle
+          .setValue(this.plugin.settings.gutteredHeadings)
+          .onChange(async (value) => {
+            this.plugin.settings.gutteredHeadings = value;
+            this.plugin.reconfigureGutteredHeadings();
+            await this.plugin.saveSettings();
+          }),
       );
 
     new Setting(readabilityContent)
-      .setName('Focus mode')
-      .setDesc(
-        'Dim all text except the active sentence or paragraph.'
-      )
+      .setName("Focus mode")
+      .setDesc("Dim all text except the active sentence or paragraph.")
       .addDropdown((dropdown) =>
         dropdown
-          .addOption('off', 'Off')
-          .addOption('sentence', 'Sentence')
-          .addOption('paragraph', 'Paragraph')
+          .addOption("off", "Off")
+          .addOption("sentence", "Sentence")
+          .addOption("paragraph", "Paragraph")
           .setValue(this.plugin.settings.focusMode)
           .onChange(async (value) => {
             this.plugin.settings.focusMode = value as FocusMode;
             this.plugin.reconfigureFocus();
             this.plugin.updateFocusModeStatus();
             await this.plugin.saveSettings();
-          })
+          }),
       );
-
   }
 
   private renderAboutTab(containerEl: HTMLElement): void {
-    new Setting(containerEl).setName('YAAE').setDesc('Why Author Anywhere Else').setHeading();
+    new Setting(containerEl)
+      .setName("YAAE")
+      .setDesc("Why Author Anywhere Else")
+      .setHeading();
 
     new Setting(containerEl)
-      .setName('Version')
+      .setName("Version")
       .setDesc(this.plugin.manifest.version);
 
     new Setting(containerEl)
-      .setName('Author')
+      .setName("Author")
       .setDesc(this.plugin.manifest.author);
 
-    const githubSetting = new Setting(containerEl).setName('GitHub');
-    const githubLink = document.createElement('a');
-    githubLink.textContent = 'Open';
-    githubLink.href = 'https://github.com/cameronsjo/yaae';
-    githubLink.target = '_blank';
-    githubLink.rel = 'noopener noreferrer';
-    githubLink.classList.add('mod-cta');
+    const githubSetting = new Setting(containerEl).setName("GitHub");
+    const githubLink = document.createElement("a");
+    githubLink.textContent = "Open";
+    githubLink.href = "https://github.com/cameronsjo/yaae";
+    githubLink.target = "_blank";
+    githubLink.rel = "noopener noreferrer";
+    githubLink.classList.add("mod-cta");
     githubSetting.controlEl.append(githubLink);
 
     new Setting(containerEl)
-      .setName('Description')
+      .setName("Description")
       .setDesc(this.plugin.manifest.description);
   }
 }

@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 /**
  * Lifecycle / wiring regression tests for main.ts.
@@ -12,20 +12,20 @@ import { join } from 'node:path';
  * Each block maps to a finding F1..F12 from the bug hunt.
  */
 
-const MAIN_TS = readFileSync(join(__dirname, '..', 'main.ts'), 'utf-8');
+const MAIN_TS = readFileSync(join(__dirname, "..", "main.ts"), "utf-8");
 
 // --- F1: theme propagation ------------------------------------------------
 
-describe('F1 — export.pdf.theme propagates to the print pipeline', () => {
-  it('updatePrintStateFromActiveFile captures raw + validated frontmatter', () => {
+describe("F1 — export.pdf.theme propagates to the print pipeline", () => {
+  it("updatePrintStateFromActiveFile captures raw + validated frontmatter", () => {
     expect(MAIN_TS).toMatch(/raw:\s*extractFrontmatter\(content\)/);
     expect(MAIN_TS).toMatch(/validated:\s*validateMarkdown\(content\)\.data/);
   });
 
-  it('PrintDocumentState carries a ThemeMode theme field, presence-gated', () => {
+  it("PrintDocumentState carries a ThemeMode theme field, presence-gated", () => {
     const stateTs = readFileSync(
-      join(__dirname, '..', 'src', 'document', 'print', 'state.ts'),
-      'utf-8',
+      join(__dirname, "..", "src", "document", "print", "state.ts"),
+      "utf-8",
     );
     expect(stateTs).toMatch(/theme:\s*ThemeMode/);
     // Presence-gated on raw frontmatter: the schema's theme default must
@@ -36,8 +36,8 @@ describe('F1 — export.pdf.theme propagates to the print pipeline', () => {
 
 // --- F2: validateOnSave toggle is reactive --------------------------------
 
-describe('F2 — validateOnSave toggle takes effect without reload', () => {
-  it('does not gate the modify handler on startup setting value', () => {
+describe("F2 — validateOnSave toggle takes effect without reload", () => {
+  it("does not gate the modify handler on startup setting value", () => {
     // The buggy form was: if (this.settings.document.validateOnSave) { registerEvent(...) }
     // The fix gates *inside* the handler. So the registerEvent(vault.on('modify', ...))
     // should not be wrapped in an outer if (this.settings.document.validateOnSave).
@@ -51,7 +51,7 @@ describe('F2 — validateOnSave toggle takes effect without reload', () => {
     );
   });
 
-  it('checks validateOnSave inside the modify handler at runtime', () => {
+  it("checks validateOnSave inside the modify handler at runtime", () => {
     expect(MAIN_TS).toMatch(
       /this\.app\.vault\.on\(\s*'modify'[\s\S]*?if\s*\(\s*!this\.settings\.document\.validateOnSave\s*\)\s*return/,
     );
@@ -60,18 +60,20 @@ describe('F2 — validateOnSave toggle takes effect without reload', () => {
 
 // --- F3: race in updatePrintStateFromActiveFile ---------------------------
 
-describe('F3 — updatePrintStateFromActiveFile is race-safe', () => {
-  it('captures startFile before vault.read', () => {
-    expect(MAIN_TS).toMatch(/const\s+startFile\s*=\s*this\.app\.workspace\.getActiveFile\(\)/);
+describe("F3 — updatePrintStateFromActiveFile is race-safe", () => {
+  it("captures startFile before vault.read", () => {
+    expect(MAIN_TS).toMatch(
+      /const\s+startFile\s*=\s*this\.app\.workspace\.getActiveFile\(\)/,
+    );
   });
 
-  it('re-checks getActiveFile() after vault.read and bails if changed', () => {
+  it("re-checks getActiveFile() after vault.read and bails if changed", () => {
     expect(MAIN_TS).toMatch(
       /await\s+this\.app\.vault\.read\(startFile\)[\s\S]*?this\.app\.workspace\.getActiveFile\(\)\s*!==\s*startFile[\s\S]*?return/,
     );
   });
 
-  it('guards against a superseding invocation with a sequence token', () => {
+  it("guards against a superseding invocation with a sequence token", () => {
     // active-leaf-change and metadataCache 'changed' can both drive the
     // update for the same file; a stale read must not clobber a newer one.
     expect(MAIN_TS).toMatch(/const\s+seq\s*=\s*\+\+this\.printStateSeq/);
@@ -81,28 +83,32 @@ describe('F3 — updatePrintStateFromActiveFile is race-safe', () => {
 
 // --- F4: race in generateTocForCurrentFile --------------------------------
 
-describe('F4 — generateTocForCurrentFile is race-safe', () => {
-  it('re-checks active file after vault.read and bails before vault.modify', () => {
-    const tocFn = MAIN_TS.match(/async\s+generateTocForCurrentFile\s*\(\s*\)[\s\S]*?\n\s{2}\}/);
+describe("F4 — generateTocForCurrentFile is race-safe", () => {
+  it("re-checks active file after vault.read and bails before vault.modify", () => {
+    const tocFn = MAIN_TS.match(
+      /async\s+generateTocForCurrentFile\s*\(\s*\)[\s\S]*?\n\s{2}\}/,
+    );
     expect(tocFn).not.toBeNull();
     const body = tocFn![0];
-    const readIdx = body.indexOf('vault.read(file)');
-    const guardIdx = body.search(/this\.app\.workspace\.getActiveFile\(\)\s*!==\s*file/);
-    const modifyIdx = body.indexOf('vault.modify(file');
+    const readIdx = body.indexOf("vault.read(file)");
+    const guardIdx = body.search(
+      /this\.app\.workspace\.getActiveFile\(\)\s*!==\s*file/,
+    );
+    const modifyIdx = body.indexOf("vault.modify(file");
     expect(readIdx).toBeGreaterThan(-1);
     expect(guardIdx).toBeGreaterThan(readIdx);
     expect(modifyIdx).toBeGreaterThan(guardIdx);
   });
 
-  it('emits a debug message when aborting due to race', () => {
+  it("emits a debug message when aborting due to race", () => {
     expect(MAIN_TS).toMatch(/console\.debug\([^)]*TOC abort/);
   });
 });
 
 // --- F5: bootstrap on layout ready ----------------------------------------
 
-describe('F5 — print state bootstraps from active file on startup', () => {
-  it('calls updatePrintStateFromActiveFile from onLayoutReady', () => {
+describe("F5 — print state bootstraps from active file on startup", () => {
+  it("calls updatePrintStateFromActiveFile from onLayoutReady", () => {
     expect(MAIN_TS).toMatch(
       /onLayoutReady\(\s*\(\)\s*=>\s*\{[\s\S]*?this\.updatePrintStateFromActiveFile\(\)/,
     );
@@ -111,8 +117,8 @@ describe('F5 — print state bootstraps from active file on startup', () => {
 
 // --- F6: non-markdown active leaf does not clobber chrome ----------------
 
-describe('F6 — non-markdown active leaf preserves last markdown print state', () => {
-  it('returns early without refreshing print state for non-md files', () => {
+describe("F6 — non-markdown active leaf preserves last markdown print state", () => {
+  it("returns early without refreshing print state for non-md files", () => {
     // After the startFile null/extension check, when extension !== 'md',
     // we must NOT touch activeDoc or refresh — we just `return`.
     const fn = MAIN_TS.match(
@@ -134,20 +140,28 @@ describe('F6 — non-markdown active leaf preserves last markdown print state', 
 
 // --- F7: TFile type guards -----------------------------------------------
 
-describe('F7 — vault.read call sites guard with TFile instanceof', () => {
-  it('validateCurrentFile checks instanceof TFile', () => {
-    const fn = MAIN_TS.match(/async\s+validateCurrentFile\s*\(\s*\)\s*\{[\s\S]*?\n\s{2}\}/);
+describe("F7 — vault.read call sites guard with TFile instanceof", () => {
+  it("validateCurrentFile checks instanceof TFile", () => {
+    const fn = MAIN_TS.match(
+      /async\s+validateCurrentFile\s*\(\s*\)\s*\{[\s\S]*?\n\s{2}\}/,
+    );
     expect(fn).not.toBeNull();
-    expect(fn![0]).toMatch(/if\s*\(\s*!\(\s*file\s+instanceof\s+TFile\s*\)\s*\)\s*return/);
+    expect(fn![0]).toMatch(
+      /if\s*\(\s*!\(\s*file\s+instanceof\s+TFile\s*\)\s*\)\s*return/,
+    );
   });
 
-  it('generateTocForCurrentFile checks instanceof TFile', () => {
-    const fn = MAIN_TS.match(/async\s+generateTocForCurrentFile\s*\(\s*\)\s*\{[\s\S]*?\n\s{2}\}/);
+  it("generateTocForCurrentFile checks instanceof TFile", () => {
+    const fn = MAIN_TS.match(
+      /async\s+generateTocForCurrentFile\s*\(\s*\)\s*\{[\s\S]*?\n\s{2}\}/,
+    );
     expect(fn).not.toBeNull();
-    expect(fn![0]).toMatch(/if\s*\(\s*!\(\s*file\s+instanceof\s+TFile\s*\)\s*\)\s*return/);
+    expect(fn![0]).toMatch(
+      /if\s*\(\s*!\(\s*file\s+instanceof\s+TFile\s*\)\s*\)\s*return/,
+    );
   });
 
-  it('clean-css-classes commands gate on markdown files', () => {
+  it("clean-css-classes commands gate on markdown files", () => {
     // cleanCssClassesFromFile takes a TFile parameter (typed at the seam);
     // both command entry points gate on extension/type before calling it.
     expect(MAIN_TS).toMatch(/cleanCssClassesFromFile\(file:\s*TFile\)/);
@@ -159,14 +173,14 @@ describe('F7 — vault.read call sites guard with TFile instanceof', () => {
 
 // --- F8: customClassifications resilience ---------------------------------
 
-describe('F8 — loadSettings resets non-array customClassifications to []', () => {
-  it('contains an Array.isArray guard for customClassifications', () => {
+describe("F8 — loadSettings resets non-array customClassifications to []", () => {
+  it("contains an Array.isArray guard for customClassifications", () => {
     expect(MAIN_TS).toMatch(
       /Array\.isArray\(\s*this\.settings\.document\.customClassifications\s*\)/,
     );
   });
 
-  it('resets to [] when not an array', () => {
+  it("resets to [] when not an array", () => {
     expect(MAIN_TS).toMatch(
       /!Array\.isArray\(\s*this\.settings\.document\.customClassifications\s*\)[\s\S]*?this\.settings\.document\.customClassifications\s*=\s*\[\]/,
     );
@@ -174,25 +188,33 @@ describe('F8 — loadSettings resets non-array customClassifications to []', () 
 
   // Behavioral test of the guard logic, copy-pasted from main.ts to avoid
   // importing the plugin (which pulls in CM6 / browser-only modules).
-  it('guard logic resets null to []', () => {
-    const document: { customClassifications: unknown } = { customClassifications: null };
+  it("guard logic resets null to []", () => {
+    const document: { customClassifications: unknown } = {
+      customClassifications: null,
+    };
     if (!Array.isArray(document.customClassifications)) {
       document.customClassifications = [];
     }
     expect(document.customClassifications).toEqual([]);
   });
 
-  it('guard logic resets a string to []', () => {
-    const document: { customClassifications: unknown } = { customClassifications: 'corrupt' };
+  it("guard logic resets a string to []", () => {
+    const document: { customClassifications: unknown } = {
+      customClassifications: "corrupt",
+    };
     if (!Array.isArray(document.customClassifications)) {
       document.customClassifications = [];
     }
     expect(document.customClassifications).toEqual([]);
   });
 
-  it('guard logic preserves a valid non-empty array', () => {
-    const value = [{ id: 'tlp-red', label: 'TLP:RED', color: '#f00', background: '#000' }];
-    const document: { customClassifications: unknown } = { customClassifications: value };
+  it("guard logic preserves a valid non-empty array", () => {
+    const value = [
+      { id: "tlp-red", label: "TLP:RED", color: "#f00", background: "#000" },
+    ];
+    const document: { customClassifications: unknown } = {
+      customClassifications: value,
+    };
     if (!Array.isArray(document.customClassifications)) {
       document.customClassifications = [];
     }
@@ -202,33 +224,40 @@ describe('F8 — loadSettings resets non-array customClassifications to []', () 
 
 // --- F9: cssclasses filter is type-safe -----------------------------------
 
-describe('F9 — cssclasses filter rejects non-string entries safely', () => {
-  it('filter callback uses a typeof string guard', () => {
-    expect(MAIN_TS).toMatch(/typeof\s+c\s*===\s*'string'\s*&&\s*!c\.startsWith\(\s*'pdf-'\s*\)/);
+describe("F9 — cssclasses filter rejects non-string entries safely", () => {
+  it("filter callback uses a typeof string guard", () => {
+    expect(MAIN_TS).toMatch(
+      /typeof\s+c\s*===\s*'string'\s*&&\s*!c\.startsWith\(\s*'pdf-'\s*\)/,
+    );
   });
 
   // Behavioral reproduction of the filter logic.
   function filterUserCssClasses(input: unknown[]): string[] {
     return input.filter(
-      (c): c is string => typeof c === 'string' && !c.startsWith('pdf-'),
+      (c): c is string => typeof c === "string" && !c.startsWith("pdf-"),
     );
   }
 
-  it('does not throw on numeric entries', () => {
-    expect(() => filterUserCssClasses([1, 'pdf-foo', 'user-class'])).not.toThrow();
+  it("does not throw on numeric entries", () => {
+    expect(() =>
+      filterUserCssClasses([1, "pdf-foo", "user-class"]),
+    ).not.toThrow();
   });
 
-  it('drops non-strings and pdf-* entries, keeps user classes', () => {
-    expect(filterUserCssClasses([1, null, 'pdf-internal', 'theme-dark', 'pdf-foo']))
-      .toEqual(['theme-dark']);
+  it("drops non-strings and pdf-* entries, keeps user classes", () => {
+    expect(
+      filterUserCssClasses([1, null, "pdf-internal", "theme-dark", "pdf-foo"]),
+    ).toEqual(["theme-dark"]);
   });
 
-  it('handles empty input', () => {
+  it("handles empty input", () => {
     expect(filterUserCssClasses([])).toEqual([]);
   });
 
-  it('handles mixed undefined / boolean entries', () => {
-    expect(filterUserCssClasses([undefined, true, false, 'keep'])).toEqual(['keep']);
+  it("handles mixed undefined / boolean entries", () => {
+    expect(filterUserCssClasses([undefined, true, false, "keep"])).toEqual([
+      "keep",
+    ]);
   });
 });
 
@@ -239,11 +268,13 @@ describe('F9 — cssclasses filter rejects non-string entries safely', () => {
 // extends Component). This test guards against re-introducing either the
 // broken `this.registerDomEvent(...)` call or unmanaged `addEventListener`.
 
-describe('F10 — settings tab nav buttons use plugin.registerDomEvent', () => {
-  it('routes click handlers through this.plugin.registerDomEvent', () => {
+describe("F10 — settings tab nav buttons use plugin.registerDomEvent", () => {
+  it("routes click handlers through this.plugin.registerDomEvent", () => {
     const cls = MAIN_TS.match(/class\s+YaaeSettingTab[\s\S]*$/);
     expect(cls).not.toBeNull();
-    expect(cls![0]).toMatch(/this\.plugin\.registerDomEvent\(\s*btn\s*,\s*'click'/);
+    expect(cls![0]).toMatch(
+      /this\.plugin\.registerDomEvent\(\s*btn\s*,\s*'click'/,
+    );
     expect(cls![0]).not.toMatch(/this\.registerDomEvent\(\s*btn\s*,\s*'click'/);
     expect(cls![0]).not.toMatch(/btn\.addEventListener\(\s*'click'/);
   });
@@ -251,21 +282,23 @@ describe('F10 — settings tab nav buttons use plugin.registerDomEvent', () => {
 
 // --- F11: editorCheckCallback honors the checking flag --------------------
 
-describe('F11 — yaae-generate-toc respects checking flag', () => {
-  it('only invokes generateTocForCurrentFile when not checking', () => {
+describe("F11 — yaae-generate-toc respects checking flag", () => {
+  it("only invokes generateTocForCurrentFile when not checking", () => {
     const cmdBlock = MAIN_TS.match(/id:\s*'yaae-generate-toc'[\s\S]*?\}\)\s*;/);
     expect(cmdBlock).not.toBeNull();
-    expect(cmdBlock![0]).toMatch(/if\s*\(\s*!checking\s*\)\s*this\.generateTocForCurrentFile\(\)/);
+    expect(cmdBlock![0]).toMatch(
+      /if\s*\(\s*!checking\s*\)\s*this\.generateTocForCurrentFile\(\)/,
+    );
     expect(cmdBlock![0]).toMatch(/!file\s*\|\|\s*file\.extension\s*!==\s*'md'/);
   });
 
   // Behavioral simulation of the command's check/exec phases.
-  it('checking=true returns true without firing work', () => {
+  it("checking=true returns true without firing work", () => {
     let workFired = 0;
     const fakeCommand = {
       editorCheckCallback: (checking: boolean) => {
-        const file = { extension: 'md' };
-        if (!file || file.extension !== 'md') return false;
+        const file = { extension: "md" };
+        if (!file || file.extension !== "md") return false;
         if (!checking) workFired++;
         return true;
       },
@@ -275,12 +308,12 @@ describe('F11 — yaae-generate-toc respects checking flag', () => {
     expect(workFired).toBe(0);
   });
 
-  it('checking=false fires the work', () => {
+  it("checking=false fires the work", () => {
     let workFired = 0;
     const fakeCommand = {
       editorCheckCallback: (checking: boolean) => {
-        const file = { extension: 'md' };
-        if (!file || file.extension !== 'md') return false;
+        const file = { extension: "md" };
+        if (!file || file.extension !== "md") return false;
         if (!checking) workFired++;
         return true;
       },
@@ -290,12 +323,12 @@ describe('F11 — yaae-generate-toc respects checking flag', () => {
     expect(workFired).toBe(1);
   });
 
-  it('returns false (and does no work) for non-md files even when checking=false', () => {
+  it("returns false (and does no work) for non-md files even when checking=false", () => {
     let workFired = 0;
     const fakeCommand = {
       editorCheckCallback: (checking: boolean) => {
-        const file = { extension: 'pdf' };
-        if (!file || file.extension !== 'md') return false;
+        const file = { extension: "pdf" };
+        if (!file || file.extension !== "md") return false;
         if (!checking) workFired++;
         return true;
       },
@@ -308,8 +341,8 @@ describe('F11 — yaae-generate-toc respects checking flag', () => {
 
 // --- F12: deferred saveSettings during loadSettings migration -------------
 
-describe('F12 — saveSettings during migration is deferred', () => {
-  it('migration uses queueMicrotask instead of inline await saveSettings', () => {
+describe("F12 — saveSettings during migration is deferred", () => {
+  it("migration uses queueMicrotask instead of inline await saveSettings", () => {
     const block = MAIN_TS.match(
       /Migrate deprecated expandLinks\/plainLinks[\s\S]*?\n\s{2}\}/,
     );

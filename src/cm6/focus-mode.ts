@@ -1,16 +1,16 @@
-import type { Extension, Range } from '@codemirror/state';
+import type { Extension, Range } from "@codemirror/state";
 import {
   ViewPlugin,
   type ViewUpdate,
   Decoration,
   type DecorationSet,
   type EditorView,
-} from '@codemirror/view';
-import type { FocusMode } from '../types';
-import { findSentenceBounds, findParagraphBounds } from './sentence-detection';
+} from "@codemirror/view";
+import type { FocusMode } from "../types";
+import { findSentenceBounds, findParagraphBounds } from "./sentence-detection";
 
-const dimmedMark = Decoration.mark({ class: 'yaae-dimmed' });
-const dimmedLine = Decoration.line({ class: 'yaae-dimmed' });
+const dimmedMark = Decoration.mark({ class: "yaae-dimmed" });
+const dimmedLine = Decoration.line({ class: "yaae-dimmed" });
 
 class FocusModePlugin {
   decorations: DecorationSet;
@@ -25,11 +25,7 @@ class FocusModePlugin {
 
   update(update: ViewUpdate) {
     if (this.scrolling) return;
-    if (
-      update.docChanged ||
-      update.selectionSet ||
-      update.viewportChanged
-    ) {
+    if (update.docChanged || update.selectionSet || update.viewportChanged) {
       this.decorations = this.buildDecorations(update.view);
     }
   }
@@ -64,7 +60,7 @@ class FocusModePlugin {
     let activeFrom: number;
     let activeTo: number;
 
-    if (this.mode === 'sentence') {
+    if (this.mode === "sentence") {
       const bounds = findSentenceBounds(docText, pos);
       activeFrom = bounds.from;
       activeTo = bounds.to;
@@ -88,7 +84,8 @@ class FocusModePlugin {
     // separately so paragraph gaps outside the focus region are dimmed too.
     for (let lineNumber = 1; lineNumber <= state.doc.lines; lineNumber++) {
       const line = state.doc.line(lineNumber);
-      const isOutsideActiveRegion = line.to <= activeFrom || line.from >= activeTo;
+      const isOutsideActiveRegion =
+        line.to <= activeFrom || line.from >= activeTo;
       if (line.length === 0 && isOutsideActiveRegion) {
         decorations.push(dimmedLine.range(line.from));
       }
@@ -113,7 +110,7 @@ export function focusExtension(mode: FocusMode): Extension {
             this.handleScroll();
           },
         },
-      }
+      },
     ),
   ];
 }

@@ -14,13 +14,16 @@
  * Style Settings can now retint the chrome).
  */
 
-import { escapeCssString, sanitizeColor } from '../css-sanitize';
-import type { PrintDocumentState } from './state';
-import type { PrintVars } from './vars';
-import { resolveBanner, chromeTextBase, bannerTextBase } from './chrome-shared';
+import { escapeCssString, sanitizeColor } from "../css-sanitize";
+import type { PrintDocumentState } from "./state";
+import type { PrintVars } from "./vars";
+import { resolveBanner, chromeTextBase, bannerTextBase } from "./chrome-shared";
 
 /** Build the yaae-print-chrome CSS for the margin-box strategy. */
-export function buildMarginBoxCss(state: PrintDocumentState, vars: PrintVars): string {
+export function buildMarginBoxCss(
+  state: PrintDocumentState,
+  vars: PrintVars,
+): string {
   const headerLeft = state.headerLeft.trim();
   const headerRight = state.headerRight.trim();
   const footerLeft = state.footerLeft.trim();
@@ -30,11 +33,15 @@ export function buildMarginBoxCss(state: PrintDocumentState, vars: PrintVars): s
   // showClassificationBanner only controls the reading view banner.
   const { meta, hasTopBanner, hasBottomBanner } = resolveBanner(state);
   const hasAny =
-    hasTopBanner || hasBottomBanner ||
-    headerLeft || headerRight || footerLeft || footerRight ||
+    hasTopBanner ||
+    hasBottomBanner ||
+    headerLeft ||
+    headerRight ||
+    footerLeft ||
+    footerRight ||
     state.pageNumbers;
 
-  if (!hasAny) return '';
+  if (!hasAny) return "";
 
   const BANNER_BASE = bannerTextBase(vars);
   const CHROME_TEXT_BASE = chromeTextBase(vars);
@@ -43,13 +50,15 @@ export function buildMarginBoxCss(state: PrintDocumentState, vars: PrintVars): s
   // --- Classification banners ---
   // For 'dark' theme use colorDark/backgroundDark (light fallback); for
   // 'auto' emit light here and a nested @media override below.
-  const useDarkBase = state.theme === 'dark';
+  const useDarkBase = state.theme === "dark";
   if (meta) {
     const label = escapeCssString(meta.label);
     const baseColor = useDarkBase ? (meta.colorDark ?? meta.color) : meta.color;
-    const baseBg = useDarkBase ? (meta.backgroundDark ?? meta.background) : meta.background;
-    const color = sanitizeColor(baseColor, '#000');
-    const bg = sanitizeColor(baseBg, '#fff');
+    const baseBg = useDarkBase
+      ? (meta.backgroundDark ?? meta.background)
+      : meta.background;
+    const color = sanitizeColor(baseColor, "#000");
+    const bg = sanitizeColor(baseBg, "#fff");
 
     if (hasTopBanner) {
       marginBoxes.push(`    @top-center {
@@ -91,8 +100,8 @@ export function buildMarginBoxCss(state: PrintDocumentState, vars: PrintVars): s
 
   // --- Bottom-right: page numbers + optional footer right ---
   const pageNumberBase = `
-    font-size: ${vars['--yaae-print-page-number-font-size']};
-    color: ${vars['--yaae-print-page-number-color']};
+    font-size: ${vars["--yaae-print-page-number-font-size"]};
+    color: ${vars["--yaae-print-page-number-color"]};
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;`;
   const pageCounterExpr = '"Page " counter(page) " of " counter(pages)';
@@ -114,10 +123,10 @@ export function buildMarginBoxCss(state: PrintDocumentState, vars: PrintVars): s
   // the combined form is silently ignored by Chromium's print engine.
   // Always emitted for 'auto' even without explicit dark colors (light
   // fallback) so 'auto' never silently degrades for custom classifications.
-  let autoOverride = '';
-  if (state.theme === 'auto' && meta) {
-    const altColor = sanitizeColor(meta.colorDark ?? meta.color, '#000');
-    const altBg = sanitizeColor(meta.backgroundDark ?? meta.background, '#fff');
+  let autoOverride = "";
+  if (state.theme === "auto" && meta) {
+    const altColor = sanitizeColor(meta.colorDark ?? meta.color, "#000");
+    const altBg = sanitizeColor(meta.backgroundDark ?? meta.background, "#fff");
     const altLabel = escapeCssString(meta.label);
     const altBoxes: string[] = [];
     if (hasTopBanner) {
@@ -140,7 +149,7 @@ export function buildMarginBoxCss(state: PrintDocumentState, vars: PrintVars): s
       autoOverride = `
   @media (prefers-color-scheme: dark) {
     @page {
-${altBoxes.join('\n')}
+${altBoxes.join("\n")}
     }
   }`;
     }
@@ -149,7 +158,7 @@ ${altBoxes.join('\n')}
   return `@media print {
   @page {
     margin: 1in !important;
-${marginBoxes.join('\n')}
+${marginBoxes.join("\n")}
   }${autoOverride}
 }`;
 }

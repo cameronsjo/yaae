@@ -1,7 +1,7 @@
-import type { ProseHighlightSettings } from '../types';
-import { buildUniqueClassSuffixes } from './word-lists';
+import type { ProseHighlightSettings } from "../types";
+import { buildUniqueClassSuffixes } from "./word-lists";
 
-const STYLE_ID = 'yaae-prose-highlight-styles';
+const STYLE_ID = "yaae-prose-highlight-styles";
 
 /**
  * Manages a dynamic <style> element for custom word list colors.
@@ -20,11 +20,11 @@ export class POSStyleManager {
     if (this.styleEl) {
       this.destroy();
     }
-    this.styleEl = document.createElement('style');
+    this.styleEl = document.createElement("style");
     this.styleEl.id = STYLE_ID;
     document.head.appendChild(this.styleEl);
     this.update(settings);
-    console.debug('[yaae] POSStyleManager initialized.');
+    console.debug("[yaae] POSStyleManager initialized.");
   }
 
   /** Regenerate dynamic rules — only custom word lists need <style> injection */
@@ -48,7 +48,7 @@ export class POSStyleManager {
         rules.push(`.yaae-list-${cls} { color: ${list.color}; }`);
       }
     }
-    this.styleEl.textContent = rules.join('\n');
+    this.styleEl.textContent = rules.join("\n");
   }
 
   /** Remove the <style> element from the DOM */

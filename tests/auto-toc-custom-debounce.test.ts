@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { AutoTocManager } from '../src/document/auto-toc';
-import type { AutoTocHost } from '../src/document/auto-toc';
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { AutoTocManager } from "../src/document/auto-toc";
+import type { AutoTocHost } from "../src/document/auto-toc";
 
 /**
  * `AutoTocManager` accepts an optional constructor `debounceMs` override
@@ -11,21 +11,21 @@ import type { AutoTocHost } from '../src/document/auto-toc';
  */
 
 const DOC_WITH_TOC = [
-  '# Title',
-  '',
-  '## Table of Contents',
-  '',
-  '- [Old Entry](#old-entry)',
-  '',
-  '---',
-  '',
-  '## Section One',
-].join('\n');
+  "# Title",
+  "",
+  "## Table of Contents",
+  "",
+  "- [Old Entry](#old-entry)",
+  "",
+  "---",
+  "",
+  "## Section One",
+].join("\n");
 
-describe('AutoTocManager — custom debounceMs', () => {
+describe("AutoTocManager — custom debounceMs", () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    vi.spyOn(console, 'info').mockImplementation(() => {});
+    vi.spyOn(console, "info").mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -33,8 +33,8 @@ describe('AutoTocManager — custom debounceMs', () => {
     vi.restoreAllMocks();
   });
 
-  it('does not fire before the custom debounce window elapses', async () => {
-    const files = new Map([['note.md', DOC_WITH_TOC]]);
+  it("does not fire before the custom debounce window elapses", async () => {
+    const files = new Map([["note.md", DOC_WITH_TOC]]);
     const counts = { writes: 0 };
     const host: AutoTocHost = {
       isEnabled: () => true,
@@ -47,7 +47,7 @@ describe('AutoTocManager — custom debounceMs', () => {
     };
     const mgr = new AutoTocManager(host, 500);
 
-    mgr.notifyModified('note.md');
+    mgr.notifyModified("note.md");
     await vi.advanceTimersByTimeAsync(400);
     expect(counts.writes).toBe(0);
 
@@ -55,8 +55,8 @@ describe('AutoTocManager — custom debounceMs', () => {
     expect(counts.writes).toBe(1);
   });
 
-  it('fires immediately-ish with a zero debounce', async () => {
-    const files = new Map([['note.md', DOC_WITH_TOC]]);
+  it("fires immediately-ish with a zero debounce", async () => {
+    const files = new Map([["note.md", DOC_WITH_TOC]]);
     const counts = { writes: 0 };
     const host: AutoTocHost = {
       isEnabled: () => true,
@@ -69,7 +69,7 @@ describe('AutoTocManager — custom debounceMs', () => {
     };
     const mgr = new AutoTocManager(host, 0);
 
-    mgr.notifyModified('note.md');
+    mgr.notifyModified("note.md");
     await vi.advanceTimersByTimeAsync(0);
     expect(counts.writes).toBe(1);
   });

@@ -21,17 +21,17 @@
  * Correctness never depends on them; document-styles bakes the same rules.
  */
 
-import type { PrintDocumentState } from './state';
-import { buildBaseCss } from './base-styles';
-import { buildDocumentCss, deriveStateClasses } from './document-styles';
-import { buildMarginBoxCss } from './chrome-margin-boxes';
-import { buildFixedChromeCss } from './chrome-fixed';
-import { resolvePrintVars, type PrintVars } from './vars';
-import { detectChromeMajor, supportsMarginBoxes } from './chrome-version';
+import type { PrintDocumentState } from "./state";
+import { buildBaseCss } from "./base-styles";
+import { buildDocumentCss, deriveStateClasses } from "./document-styles";
+import { buildMarginBoxCss } from "./chrome-margin-boxes";
+import { buildFixedChromeCss } from "./chrome-fixed";
+import { resolvePrintVars, type PrintVars } from "./vars";
+import { detectChromeMajor, supportsMarginBoxes } from "./chrome-version";
 
-const BASE_STYLE_ID = 'yaae-print-base';
-const DOCUMENT_STYLE_ID = 'yaae-print-document';
-const CHROME_STYLE_ID = 'yaae-print-chrome';
+const BASE_STYLE_ID = "yaae-print-base";
+const DOCUMENT_STYLE_ID = "yaae-print-document";
+const CHROME_STYLE_ID = "yaae-print-chrome";
 
 export interface PrintStyleHost {
   /** Current render state (settings merged with active-doc overrides). */
@@ -52,7 +52,8 @@ export class PrintStyleManager {
 
   constructor(private host: PrintStyleHost) {
     this.chromeMajor = detectChromeMajor(
-      host.userAgent ?? (typeof navigator === 'undefined' ? '' : navigator.userAgent),
+      host.userAgent ??
+        (typeof navigator === "undefined" ? "" : navigator.userAgent),
     );
   }
 
@@ -71,10 +72,10 @@ export class PrintStyleManager {
     this.refreshDocument();
     console.info(
       `[yaae] PrintStyleManager initialized. Chrome: ${this.chromeMajor}, ` +
-        `chrome strategy: ${this.usesMarginBoxes ? '@page margin boxes' : 'position:fixed fallback'}` +
+        `chrome strategy: ${this.usesMarginBoxes ? "@page margin boxes" : "position:fixed fallback"}` +
         (this.usesMarginBoxes
-          ? ''
-          : ' — page numbers are unavailable below Chrome 131'),
+          ? ""
+          : " — page numbers are unavailable below Chrome 131"),
     );
   }
 
@@ -112,13 +113,19 @@ export class PrintStyleManager {
    */
   refreshDocument(): void {
     if (!this.documentEl && !this.chromeEl) return;
-    const vars = this.vars ?? resolvePrintVars(
-      this.host.readCssVar ??
-        ((name) => getComputedStyle(document.body).getPropertyValue(name)),
-    );
+    const vars =
+      this.vars ??
+      resolvePrintVars(
+        this.host.readCssVar ??
+          ((name) => getComputedStyle(document.body).getPropertyValue(name)),
+      );
     const state = this.host.getState();
     if (this.documentEl) {
-      this.documentEl.textContent = buildDocumentCss(state, vars, this.usesMarginBoxes);
+      this.documentEl.textContent = buildDocumentCss(
+        state,
+        vars,
+        this.usesMarginBoxes,
+      );
     }
     if (this.chromeEl) {
       this.chromeEl.textContent = this.usesMarginBoxes
@@ -133,13 +140,14 @@ export class PrintStyleManager {
 
   /** Replace OUR tracked pdf-* classes on <body>; user classes untouched. */
   private syncBodyClasses(classes: string[]): void {
-    for (const cls of this.trackedBodyClasses) document.body.classList.remove(cls);
+    for (const cls of this.trackedBodyClasses)
+      document.body.classList.remove(cls);
     for (const cls of classes) document.body.classList.add(cls);
     this.trackedBodyClasses = classes;
   }
 
   private createStyleEl(id: string): HTMLStyleElement {
-    const el = document.createElement('style');
+    const el = document.createElement("style");
     el.id = id;
     document.head.appendChild(el);
     return el;
@@ -147,17 +155,27 @@ export class PrintStyleManager {
 
   destroy(): void {
     this.syncBodyClasses([]);
-    for (const el of [this.baseEl, this.documentEl, this.chromeEl]) el?.remove();
+    for (const el of [this.baseEl, this.documentEl, this.chromeEl])
+      el?.remove();
     this.baseEl = this.documentEl = this.chromeEl = null;
-    console.debug('[yaae] PrintStyleManager destroyed.');
+    console.debug("[yaae] PrintStyleManager destroyed.");
   }
 }
 
-export type { PrintDocumentState } from './state';
-export { detectChromeMajor, supportsMarginBoxes, MARGIN_BOX_MIN_CHROME } from './chrome-version';
-export { PRINT_VAR_DEFAULTS, resolvePrintVars, bakePrintVars, defaultPrintVars } from './vars';
-export { buildBaseCss } from './base-styles';
-export { buildDocumentCss, deriveStateClasses } from './document-styles';
-export { buildMarginBoxCss } from './chrome-margin-boxes';
-export { buildFixedChromeCss } from './chrome-fixed';
-export { WATERMARK_PRESETS, buildWatermarkDataUri } from './watermark';
+export type { PrintDocumentState } from "./state";
+export {
+  detectChromeMajor,
+  supportsMarginBoxes,
+  MARGIN_BOX_MIN_CHROME,
+} from "./chrome-version";
+export {
+  PRINT_VAR_DEFAULTS,
+  resolvePrintVars,
+  bakePrintVars,
+  defaultPrintVars,
+} from "./vars";
+export { buildBaseCss } from "./base-styles";
+export { buildDocumentCss, deriveStateClasses } from "./document-styles";
+export { buildMarginBoxCss } from "./chrome-margin-boxes";
+export { buildFixedChromeCss } from "./chrome-fixed";
+export { WATERMARK_PRESETS, buildWatermarkDataUri } from "./watermark";

@@ -10,7 +10,7 @@
  * and loop-guard logic is testable with plain fakes and fake timers.
  */
 
-import { generateToc, hasToc } from './toc-generator';
+import { generateToc, hasToc } from "./toc-generator";
 
 export const AUTO_TOC_DEBOUNCE_MS = 2000;
 
@@ -48,13 +48,18 @@ export class AutoTocManager {
     if (!this.host.isEnabled()) return;
     const pending = this.timers.get(path);
     if (pending !== undefined) clearTimeout(pending);
-    console.debug(`[yaae] Preparing to regenerate TOC. File: ${path}, Debounce: ${this.debounceMs}ms`);
+    console.debug(
+      `[yaae] Preparing to regenerate TOC. File: ${path}, Debounce: ${this.debounceMs}ms`,
+    );
     this.timers.set(
       path,
       setTimeout(() => {
         this.timers.delete(path);
         this.regenerate(path).catch((err) => {
-          console.warn(`[yaae] Auto TOC regeneration failed. File: ${path}`, err);
+          console.warn(
+            `[yaae] Auto TOC regeneration failed. File: ${path}`,
+            err,
+          );
         });
       }, this.debounceMs),
     );
@@ -63,29 +68,39 @@ export class AutoTocManager {
   private async regenerate(path: string): Promise<void> {
     // Re-check at fire time — the toggle may have flipped during the debounce.
     if (!this.host.isEnabled()) {
-      console.debug(`[yaae] Skipping auto TOC. File: ${path}, Reason: setting disabled at fire time`);
+      console.debug(
+        `[yaae] Skipping auto TOC. File: ${path}, Reason: setting disabled at fire time`,
+      );
       return;
     }
     const content = await this.host.read(path);
     if (content === null) {
-      console.debug(`[yaae] Skipping auto TOC. File: ${path}, Reason: file deleted or renamed`);
+      console.debug(
+        `[yaae] Skipping auto TOC. File: ${path}, Reason: file deleted or renamed`,
+      );
       return; // deleted or renamed since scheduling
     }
     if (!hasToc(content)) {
-      console.debug(`[yaae] Skipping auto TOC. File: ${path}, Reason: no existing TOC block (regenerate-only mode)`);
+      console.debug(
+        `[yaae] Skipping auto TOC. File: ${path}, Reason: no existing TOC block (regenerate-only mode)`,
+      );
       return; // regenerate-only: no TOC block, not opted in
     }
     const depth = this.host.resolveDepth(content);
     const { content: updated, entryCount } = generateToc(content, depth);
     if (updated === content) {
-      console.debug(`[yaae] Skipping auto TOC write. File: ${path}, Reason: content already fresh (loop terminator)`);
+      console.debug(
+        `[yaae] Skipping auto TOC write. File: ${path}, Reason: content already fresh (loop terminator)`,
+      );
       return; // already fresh — loop terminator
     }
     // Race guard: a newer edit arrived while we were reading. Its own pass
     // will regenerate against the newer content; writing ours now could
     // clobber that edit with the stale read.
     if (this.timers.has(path)) {
-      console.debug(`[yaae] Skipping auto TOC write. File: ${path}, Reason: newer edit arrived during read (race guard)`);
+      console.debug(
+        `[yaae] Skipping auto TOC write. File: ${path}, Reason: newer edit arrived during read (race guard)`,
+      );
       return;
     }
     await this.host.write(path, updated);

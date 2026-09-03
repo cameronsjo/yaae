@@ -1,7 +1,7 @@
 /**
  * Test setup file - mocks browser globals not available in Node.js
  */
-import { vi } from 'vitest';
+import { vi } from "vitest";
 
 // Mock document for DOM operations
 const mockDocument = {
@@ -10,7 +10,7 @@ const mockDocument = {
   documentElement: { style: {} },
   createElement: vi.fn((_tag: string) => ({
     style: {
-      cssText: '',
+      cssText: "",
       setProperty: vi.fn(),
     },
     classList: { add: vi.fn(), remove: vi.fn() },
@@ -29,11 +29,11 @@ const mockDocument = {
   },
 };
 
-if (typeof document === 'undefined') {
+if (typeof document === "undefined") {
   (globalThis as unknown as Record<string, unknown>).document = mockDocument;
 }
 
 // Mock window
-if (typeof window === 'undefined') {
+if (typeof window === "undefined") {
   (globalThis as unknown as Record<string, unknown>).window = globalThis;
 }

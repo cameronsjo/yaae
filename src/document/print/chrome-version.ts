@@ -11,9 +11,9 @@ export const MARGIN_BOX_MIN_CHROME = 131;
 
 /** Parse the Chrome major version from a user-agent string. 0 when absent. */
 export function detectChromeMajor(userAgent: string): number {
-  return parseInt(userAgent.match(/Chrome\/(\d+)/)?.[1] ?? '0', 10);
+ return parseInt(userAgent.match(/Chrome\/(\d+)/)?.[1] ?? "0", 10);
 }
 
 export function supportsMarginBoxes(chromeMajor: number): boolean {
-  return chromeMajor >= MARGIN_BOX_MIN_CHROME;
+ return chromeMajor >= MARGIN_BOX_MIN_CHROME;
 }

@@ -414,7 +414,10 @@ body {
   --yaae-pos-noun-color: var(--yaae-pos-noun-color-light, #ce4924);
   --yaae-pos-adverb-color: var(--yaae-pos-adverb-color-light, #c333a7);
   --yaae-pos-verb-color: var(--yaae-pos-verb-color-light, #177eb8);
-  --yaae-pos-conjunction-color: var(--yaae-pos-conjunction-color-light, #01934e);
+  --yaae-pos-conjunction-color: var(
+    --yaae-pos-conjunction-color-light,
+    #01934e
+  );
 
   /* Syntax dimming */
   --yaae-syntax-dimming-opacity: 0.3;
@@ -496,11 +499,21 @@ body.theme-dark {
    Prose Highlighting — POS category and custom list class rules
    ========================================================================== */
 
-.yaae-pos-adjective { color: var(--yaae-pos-adjective-color); }
-.yaae-pos-noun { color: var(--yaae-pos-noun-color); }
-.yaae-pos-adverb { color: var(--yaae-pos-adverb-color); }
-.yaae-pos-verb { color: var(--yaae-pos-verb-color); }
-.yaae-pos-conjunction { color: var(--yaae-pos-conjunction-color); }
+.yaae-pos-adjective {
+  color: var(--yaae-pos-adjective-color);
+}
+.yaae-pos-noun {
+  color: var(--yaae-pos-noun-color);
+}
+.yaae-pos-adverb {
+  color: var(--yaae-pos-adverb-color);
+}
+.yaae-pos-verb {
+  color: var(--yaae-pos-verb-color);
+}
+.yaae-pos-conjunction {
+  color: var(--yaae-pos-conjunction-color);
+}
 
 /* ==========================================================================
    Classification Banner — reading view
@@ -538,7 +551,8 @@ body.theme-dark .yaae-classification-banner {
     box-sizing: border-box;
   }
 
-  pre, code {
+  pre,
+  code {
     white-space: pre-wrap;
     overflow-wrap: break-word;
   }
@@ -553,7 +567,6 @@ body.theme-dark .yaae-classification-banner {
     max-width: 100%;
     height: auto;
   }
-
 }
 
 .print [class*="yaae-pos-"],
@@ -708,7 +721,9 @@ body.is-mobile .yaae-heading-gutter-marker {
   font-weight: 500;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
-  transition: color 0.15s ease, border-color 0.15s ease;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .yaae-settings-tab:hover {

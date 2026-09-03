@@ -4,54 +4,54 @@ import {
   Decoration,
   type DecorationSet,
   type EditorView,
-} from '@codemirror/view';
-import { RangeSetBuilder } from '@codemirror/state';
-import { syntaxTree } from '@codemirror/language';
-import type YaaePlugin from '../../main';
-import type { POSTag } from './tagger';
-import { CompromiseTagger } from './tagger';
-import { WordListMatcher } from './word-lists';
-import type { WordListMatch } from './word-lists';
-import type { POSCategory } from '../types';
-import { recordProseHighlightError } from './debug';
+} from "@codemirror/view";
+import { RangeSetBuilder } from "@codemirror/state";
+import { syntaxTree } from "@codemirror/language";
+import type YaaePlugin from "../../main";
+import type { POSTag } from "./tagger";
+import { CompromiseTagger } from "./tagger";
+import { WordListMatcher } from "./word-lists";
+import type { WordListMatch } from "./word-lists";
+import type { POSCategory } from "../types";
+import { recordProseHighlightError } from "./debug";
 
 /** Markdown node types to exclude from NLP processing */
 const EXCLUDED_NODE_TYPES = new Set([
-  'CodeBlock',
-  'FencedCode',
-  'InlineCode',
-  'HyperMD-codeblock',
-  'HyperMD-codeblock-begin',
-  'HyperMD-codeblock-end',
-  'inline-code',
-  'CodeText',
-  'CodeInfo',
-  'CodeMark',
-  'FrontMatter',
-  'YAMLFrontMatter',
-  'hmd-frontmatter',
-  'URL',
-  'LinkMark',
-  'formatting',
-  'formatting-code',
-  'formatting-code-block',
-  'comment',
-  'CommentBlock',
-  'HTMLTag',
+  "CodeBlock",
+  "FencedCode",
+  "InlineCode",
+  "HyperMD-codeblock",
+  "HyperMD-codeblock-begin",
+  "HyperMD-codeblock-end",
+  "inline-code",
+  "CodeText",
+  "CodeInfo",
+  "CodeMark",
+  "FrontMatter",
+  "YAMLFrontMatter",
+  "hmd-frontmatter",
+  "URL",
+  "LinkMark",
+  "formatting",
+  "formatting-code",
+  "formatting-code-block",
+  "comment",
+  "CommentBlock",
+  "HTMLTag",
   // Table headers — structural, not prose
-  'HyperMD-table-title',
-  'HyperMD-table-title-line',
-  'table-header',
-  'TableHeader',
+  "HyperMD-table-title",
+  "HyperMD-table-title-line",
+  "table-header",
+  "TableHeader",
 ]);
 
 /** Node types that indicate their children should also be excluded */
 const EXCLUDED_PARENT_TYPES = new Set([
-  'FencedCode',
-  'CodeBlock',
-  'FrontMatter',
-  'YAMLFrontMatter',
-  'CommentBlock',
+  "FencedCode",
+  "CodeBlock",
+  "FrontMatter",
+  "YAMLFrontMatter",
+  "CommentBlock",
 ]);
 
 /**
@@ -83,7 +83,7 @@ export function isHeadingLine(lineText: string): boolean {
  * `CodeText` all contain `code`. Kept to code/frontmatter/comment families so
  * structural nodes (`Document`, `Paragraph`, …) are never swept in.
  */
-const EXCLUDED_NAME_SUBSTRINGS = ['code', 'frontmatter', 'comment'];
+const EXCLUDED_NAME_SUBSTRINGS = ["code", "frontmatter", "comment"];
 
 /**
  * Whether a syntax-tree node name marks content that must not be tagged.
@@ -162,11 +162,11 @@ export function isExcluded(
 
 /** POS category → CSS class */
 const POS_CLASS: Record<POSCategory, string> = {
-  adjective: 'yaae-pos-adjective',
-  noun: 'yaae-pos-noun',
-  adverb: 'yaae-pos-adverb',
-  verb: 'yaae-pos-verb',
-  conjunction: 'yaae-pos-conjunction',
+  adjective: "yaae-pos-adjective",
+  noun: "yaae-pos-noun",
+  adverb: "yaae-pos-adverb",
+  verb: "yaae-pos-verb",
+  conjunction: "yaae-pos-conjunction",
 };
 
 /** Pre-built decoration marks (shared across all instances) */
@@ -203,7 +203,7 @@ export function createHighlighterExtension(plugin: YaaePlugin) {
       try {
         this.decorations = this.buildDecorations(view);
       } catch (err) {
-        recordProseHighlightError(err, 'decoration-build');
+        recordProseHighlightError(err, "decoration-build");
         this.resetHighlighting();
       }
     }
@@ -216,7 +216,7 @@ export function createHighlighterExtension(plugin: YaaePlugin) {
       try {
         this.applyUpdate(update);
       } catch (err) {
-        recordProseHighlightError(err, 'update');
+        recordProseHighlightError(err, "update");
         this.resetHighlighting();
       }
     }
@@ -237,24 +237,20 @@ export function createHighlighterExtension(plugin: YaaePlugin) {
       }
 
       if (update.docChanged) {
-        if (
-          update.startState.doc.lines === update.state.doc.lines
-        ) {
+        if (update.startState.doc.lines === update.state.doc.lines) {
           // Same line count — check for single-character insert
           let changeCount = 0;
           let changedLine = 0;
           let singleCharInsert = true;
 
-          update.changes.iterChangedRanges(
-            (_fromA, toA, fromB, toB) => {
-              changeCount++;
-              if (changeCount > 1) singleCharInsert = false;
-              // Single char: old range is empty (fromA===toA) and new range is 1 char
-              if (!(toA === _fromA && toB === fromB + 1))
-                singleCharInsert = false;
-              changedLine = update.view.state.doc.lineAt(toB).number;
-            },
-          );
+          update.changes.iterChangedRanges((_fromA, toA, fromB, toB) => {
+            changeCount++;
+            if (changeCount > 1) singleCharInsert = false;
+            // Single char: old range is empty (fromA===toA) and new range is 1 char
+            if (!(toA === _fromA && toB === fromB + 1))
+              singleCharInsert = false;
+            changedLine = update.view.state.doc.lineAt(toB).number;
+          });
 
           if (singleCharInsert && changeCount === 1) {
             // Only retag the changed line
@@ -283,9 +279,7 @@ export function createHighlighterExtension(plugin: YaaePlugin) {
 
     /** Rebuild: recompile word lists if settings changed */
     recompileIfNeeded() {
-      listMatcher.compile(
-        plugin.settings.proseHighlight.customWordLists,
-      );
+      listMatcher.compile(plugin.settings.proseHighlight.customWordLists);
     }
 
     /** Tag a single line and update its cache entry */

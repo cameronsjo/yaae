@@ -24,13 +24,16 @@
  * elements render into.
  */
 
-import { escapeCssString, sanitizeColor } from '../css-sanitize';
-import type { PrintDocumentState } from './state';
-import type { PrintVars } from './vars';
-import { resolveBanner, chromeTextBase, bannerTextBase } from './chrome-shared';
+import { escapeCssString, sanitizeColor } from "../css-sanitize";
+import type { PrintDocumentState } from "./state";
+import type { PrintVars } from "./vars";
+import { resolveBanner, chromeTextBase, bannerTextBase } from "./chrome-shared";
 
 /** Build the yaae-print-chrome CSS for the fixed-position fallback strategy. */
-export function buildFixedChromeCss(state: PrintDocumentState, vars: PrintVars): string {
+export function buildFixedChromeCss(
+  state: PrintDocumentState,
+  vars: PrintVars,
+): string {
   const headerLeft = state.headerLeft.trim();
   const headerRight = state.headerRight.trim();
   const footerLeft = state.footerLeft.trim();
@@ -44,18 +47,22 @@ export function buildFixedChromeCss(state: PrintDocumentState, vars: PrintVars):
   const chromeText = `\n    position: fixed;${chromeTextBase(vars)}`;
 
   if (meta) {
-    const useDark = state.theme === 'dark';
+    const useDark = state.theme === "dark";
     const color = sanitizeColor(
-      useDark ? (meta.colorDark ?? meta.color) : meta.color, '#000');
+      useDark ? (meta.colorDark ?? meta.color) : meta.color,
+      "#000",
+    );
     const bg = sanitizeColor(
-      useDark ? (meta.backgroundDark ?? meta.background) : meta.background, '#fff');
+      useDark ? (meta.backgroundDark ?? meta.background) : meta.background,
+      "#fff",
+    );
     const label = escapeCssString(meta.label);
     const bannerBase = `
     position: fixed;
     left: 0;
     right: 0;
     text-align: center;
-    padding: ${vars['--yaae-print-banner-padding']};${bannerTextBase(vars)}`;
+    padding: ${vars["--yaae-print-banner-padding"]};${bannerTextBase(vars)}`;
 
     if (hasTopBanner) {
       rules.push(`  body::before {
@@ -112,6 +119,6 @@ export function buildFixedChromeCss(state: PrintDocumentState, vars: PrintVars):
   @page {
     margin: 1in !important;
   }
-${rules.join('\n')}
+${rules.join("\n")}
 }`;
 }

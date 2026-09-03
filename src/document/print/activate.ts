@@ -21,7 +21,7 @@
  * and flat `selector { declarations }` rules. It is not a general CSS parser.
  */
 
-const VIEW_TARGET = '.print .markdown-preview-view';
+const VIEW_TARGET = ".print .markdown-preview-view";
 
 interface CssRule {
   selector: string;
@@ -38,18 +38,18 @@ export function parseRules(css: string): CssRule[] {
 }
 
 function stripComments(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, '');
+  return css.replace(/\/\*[\s\S]*?\*\//g, "");
 }
 
 function walk(css: string, wrappers: string[], out: CssRule[]): void {
   let i = 0;
   while (i < css.length) {
-    const open = css.indexOf('{', i);
+    const open = css.indexOf("{", i);
     if (open === -1) break;
     const prelude = css.slice(i, open).trim();
     const close = matchBrace(css, open);
     const body = css.slice(open + 1, close);
-    if (prelude.startsWith('@')) {
+    if (prelude.startsWith("@")) {
       walk(body, [...wrappers, prelude], out);
     } else if (prelude) {
       out.push({ selector: prelude, body: body.trim(), wrappers });
@@ -62,8 +62,8 @@ function walk(css: string, wrappers: string[], out: CssRule[]): void {
 function matchBrace(css: string, open: number): number {
   let depth = 0;
   for (let i = open; i < css.length; i++) {
-    if (css[i] === '{') depth++;
-    else if (css[i] === '}' && --depth === 0) return i;
+    if (css[i] === "{") depth++;
+    else if (css[i] === "}" && --depth === 0) return i;
   }
   return css.length;
 }
@@ -75,7 +75,10 @@ const PDF_CLASS_TOKEN = /\.pdf-[a-z0-9-]+/g;
  * view-targeted rules. Returns CSS ready to inject (wrapped in its original
  * at-rules).
  */
-export function activateStateCss(css: string, activeClasses: Set<string>): string {
+export function activateStateCss(
+  css: string,
+  activeClasses: Set<string>,
+): string {
   const activated: string[] = [];
 
   for (const rule of parseRules(css)) {
@@ -85,7 +88,7 @@ export function activateStateCss(css: string, activeClasses: Set<string>): strin
     // permanently-mounted print-document element would leak a screen rule.
     if (!rule.wrappers.some((w) => /@media\b[^{]*\bprint\b/.test(w))) continue;
 
-    const selectors = rule.selector.split(',').map((s) => s.trim());
+    const selectors = rule.selector.split(",").map((s) => s.trim());
     const rewritten: string[] = [];
 
     for (const sel of selectors) {
@@ -98,11 +101,13 @@ export function activateStateCss(css: string, activeClasses: Set<string>): strin
     }
 
     if (rewritten.length > 0) {
-      activated.push(wrap(rule.wrappers, `${rewritten.join(',\n')} {\n  ${rule.body}\n}`));
+      activated.push(
+        wrap(rule.wrappers, `${rewritten.join(",\n")} {\n  ${rule.body}\n}`),
+      );
     }
   }
 
-  return activated.join('\n');
+  return activated.join("\n");
 }
 
 /**
@@ -119,5 +124,8 @@ function collapseTarget(selector: string): string {
 }
 
 function wrap(wrappers: string[], rule: string): string {
-  return wrappers.reduceRight((inner, prelude) => `${prelude} {\n${inner}\n}`, rule);
+  return wrappers.reduceRight(
+    (inner, prelude) => `${prelude} {\n${inner}\n}`,
+    rule,
+  );
 }

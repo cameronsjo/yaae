@@ -37,14 +37,14 @@ touch "$PLUGIN_DIR/.hotreload"
 echo "  Created .hotreload marker"
 
 # Obsidian config: enable the plugin
-cat > "$VAULT_DIR/.obsidian/community-plugins.json" << 'EOF'
+cat >"$VAULT_DIR/.obsidian/community-plugins.json" <<'EOF'
 ["yaae"]
 EOF
 echo "  Enabled yaae in community-plugins.json"
 
 # Minimal app config
 if [ ! -f "$VAULT_DIR/.obsidian/app.json" ]; then
-  cat > "$VAULT_DIR/.obsidian/app.json" << 'EOF'
+  cat >"$VAULT_DIR/.obsidian/app.json" <<'EOF'
 {
   "livePreview": true,
   "defaultViewMode": "source",

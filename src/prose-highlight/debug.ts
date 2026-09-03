@@ -10,9 +10,9 @@
  */
 
 export type ProseHighlightErrorPhase =
-  | 'decoration-build'
-  | 'update'
-  | 'reading-view';
+  | "decoration-build"
+  | "update"
+  | "reading-view";
 
 export interface ProseHighlightErrorRecord {
   message: string;
@@ -77,33 +77,33 @@ export function buildProseHighlightDebugInfo(
 ): string {
   const error = getProseHighlightLastError();
   const lines = [
-    '## YAAE prose highlighting debug info',
-    '',
+    "## YAAE prose highlighting debug info",
+    "",
     `- Plugin version: ${ctx.pluginVersion}`,
     `- Mobile: ${ctx.isMobile}`,
     `- Mobile debug override: ${ctx.mobileDebugOverride}`,
     `- Highlighting enabled: ${ctx.highlightingEnabled}`,
     `- Reading view enabled: ${ctx.readingViewEnabled}`,
     `- User agent: ${ctx.userAgent}`,
-    '',
+    "",
   ];
 
   if (error) {
     lines.push(
-      '### Last error',
-      '',
+      "### Last error",
+      "",
       `- Phase: ${error.phase}`,
       `- Message: ${error.message}`,
       `- Last seen: ${error.at}`,
       `- Occurrences: ${error.count}`,
-      '',
-      '```',
-      error.stack ?? '(no stack available)',
-      '```',
+      "",
+      "```",
+      error.stack ?? "(no stack available)",
+      "```",
     );
   } else {
-    lines.push('### Last error', '', 'none recorded this session');
+    lines.push("### Last error", "", "none recorded this session");
   }
 
-  return lines.join('\n');
+  return lines.join("\n");
 }

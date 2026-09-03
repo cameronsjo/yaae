@@ -22,9 +22,9 @@
  * Temporary tooling — remove once the 3a gate is decided.
  */
 
-const PROBE_STYLE_ID = 'yaae-print-probe';
-const PROBE_BODY_CLASS = 'yaae-probe-body';
-const PROBE_VIEW_CLASS = 'yaae-probe-view';
+const PROBE_STYLE_ID = "yaae-print-probe";
+const PROBE_BODY_CLASS = "yaae-probe-body";
+const PROBE_VIEW_CLASS = "yaae-probe-view";
 const MAX_LOG_ENTRIES = 300;
 
 const PROBE_CSS = `
@@ -49,15 +49,15 @@ export class PrintProbe {
   private viewEl: HTMLElement | null = null;
   private mediaListener = (e: MediaQueryListEvent) => {
     this.record(`matchMedia('print') → ${e.matches}`);
-    this.snapshot(e.matches ? 'print-media-on' : 'print-media-off');
+    this.snapshot(e.matches ? "print-media-on" : "print-media-off");
   };
   private beforePrint = () => {
-    this.record('beforeprint event fired');
-    this.snapshot('beforeprint');
+    this.record("beforeprint event fired");
+    this.snapshot("beforeprint");
   };
   private afterPrint = () => {
-    this.record('afterprint event fired');
-    this.snapshot('afterprint');
+    this.record("afterprint event fired");
+    this.snapshot("afterprint");
   };
 
   get active(): boolean {
@@ -77,10 +77,12 @@ export class PrintProbe {
         `armed. View container: <${viewEl.tagName.toLowerCase()} class="${viewEl.className}">`,
       );
     } else {
-      this.record('armed. No active markdown view — view-scoped rule (blue) is inert.');
+      this.record(
+        "armed. No active markdown view — view-scoped rule (blue) is inert.",
+      );
     }
 
-    this.styleEl = document.head.createEl('style');
+    this.styleEl = document.head.createEl("style");
     this.styleEl.id = PROBE_STYLE_ID;
     this.styleEl.textContent = PROBE_CSS;
 
@@ -88,13 +90,16 @@ export class PrintProbe {
       for (const m of mutations) {
         for (const node of Array.from(m.addedNodes)) {
           if (!(node instanceof HTMLElement)) continue;
-          const cls = node.className && typeof node.className === 'string'
-            ? node.className
-            : '';
-          this.record(`DOM added: <${node.tagName.toLowerCase()}${cls ? ` class="${cls}"` : ''}>`);
-          if (cls.includes('print')) this.snapshot('print-node-added');
+          const cls =
+            node.className && typeof node.className === "string"
+              ? node.className
+              : "";
+          this.record(
+            `DOM added: <${node.tagName.toLowerCase()}${cls ? ` class="${cls}"` : ""}>`,
+          );
+          if (cls.includes("print")) this.snapshot("print-node-added");
         }
-        if (m.type === 'attributes' && m.target === document.body) {
+        if (m.type === "attributes" && m.target === document.body) {
           this.record(`body class changed: "${document.body.className}"`);
         }
       }
@@ -102,23 +107,23 @@ export class PrintProbe {
     this.observer.observe(document.body, {
       childList: true,
       attributes: true,
-      attributeFilter: ['class'],
+      attributeFilter: ["class"],
     });
     // Direct children of documentElement too — an export container could be
     // mounted beside body rather than inside it.
     this.observer.observe(document.documentElement, { childList: true });
 
-    this.printMedia = window.matchMedia('print');
-    this.printMedia.addEventListener('change', this.mediaListener);
-    window.addEventListener('beforeprint', this.beforePrint);
-    window.addEventListener('afterprint', this.afterPrint);
+    this.printMedia = window.matchMedia("print");
+    this.printMedia.addEventListener("change", this.mediaListener);
+    window.addEventListener("beforeprint", this.beforePrint);
+    window.addEventListener("afterprint", this.afterPrint);
 
-    this.snapshot('baseline');
+    this.snapshot("baseline");
   }
 
   disable(): void {
     if (!this.active) return;
-    this.record('disarmed');
+    this.record("disarmed");
     document.body.classList.remove(PROBE_BODY_CLASS);
     this.viewEl?.classList.remove(PROBE_VIEW_CLASS);
     this.viewEl = null;
@@ -126,21 +131,21 @@ export class PrintProbe {
     this.styleEl = null;
     this.observer?.disconnect();
     this.observer = null;
-    this.printMedia?.removeEventListener('change', this.mediaListener);
+    this.printMedia?.removeEventListener("change", this.mediaListener);
     this.printMedia = null;
-    window.removeEventListener('beforeprint', this.beforePrint);
-    window.removeEventListener('afterprint', this.afterPrint);
+    window.removeEventListener("beforeprint", this.beforePrint);
+    window.removeEventListener("afterprint", this.afterPrint);
   }
 
   /** One structural snapshot: the presence checks the 3a gate cares about. */
   private snapshot(label: string): void {
-    const printEl = document.querySelector('.print');
-    const sizer = document.querySelector('.markdown-preview-sizer');
-    const preview = document.querySelector('.markdown-preview-view');
+    const printEl = document.querySelector(".print");
+    const sizer = document.querySelector(".markdown-preview-sizer");
+    const preview = document.querySelector(".markdown-preview-view");
     this.record(
-      `[${label}] .print=${printEl ? describe(printEl) : 'absent'} ` +
-        `.markdown-preview-sizer=${sizer ? 'present' : 'absent'} ` +
-        `.markdown-preview-view=${preview ? describe(preview) : 'absent'} ` +
+      `[${label}] .print=${printEl ? describe(printEl) : "absent"} ` +
+        `.markdown-preview-sizer=${sizer ? "present" : "absent"} ` +
+        `.markdown-preview-view=${preview ? describe(preview) : "absent"} ` +
         `body.${PROBE_BODY_CLASS}=${document.body.classList.contains(PROBE_BODY_CLASS)}`,
     );
   }
@@ -154,21 +159,23 @@ export class PrintProbe {
 
   buildReport(): string {
     return [
-      '## YAAE print probe report',
-      '',
-      `- Chrome: ${navigator.userAgent.match(/Chrome\/(\d+)/)?.[1] ?? 'unknown'}`,
+      "## YAAE print probe report",
+      "",
+      `- Chrome: ${navigator.userAgent.match(/Chrome\/(\d+)/)?.[1] ?? "unknown"}`,
       `- User agent: ${navigator.userAgent}`,
       `- Probe active: ${this.active}`,
-      '',
-      'PDF verdict key: underline only → class scoping dead; red H1 → body-class',
-      'scoping works; blue H1 → view-class scoping works.',
-      '',
-      '### Event log',
-      '',
-      '```',
-      ...(this.log.length ? this.log : ['(empty — arm the probe, export a PDF, then copy this report)']),
-      '```',
-    ].join('\n');
+      "",
+      "PDF verdict key: underline only → class scoping dead; red H1 → body-class",
+      "scoping works; blue H1 → view-class scoping works.",
+      "",
+      "### Event log",
+      "",
+      "```",
+      ...(this.log.length
+        ? this.log
+        : ["(empty — arm the probe, export a PDF, then copy this report)"]),
+      "```",
+    ].join("\n");
   }
 }
 

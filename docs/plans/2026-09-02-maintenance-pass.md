@@ -30,13 +30,13 @@ Work from integrity outward: first make type checking authoritative, then addres
 ## Checklist
 
 - [x] Establish `tsc --noEmit` as a passing, automated validation check; repair configuration, stale symbols, API typing, and module declarations.
-- [ ] Fix focus mode’s blank-line dimming (#23) with behavior tests.
-- [ ] Investigate typewriter scroll (#24); repair and test it, or remove its public surface and close the issue with rationale.
-- [ ] Verify responsive mobile gutter behavior (#33) and add coverage; close or implement the remaining gap.
-- [ ] Verify runtime PDF-style injection against #28 and reconcile the issue state.
-- [ ] Investigate PDF TOC navigation (#26); implement a supported fix or document and close an Obsidian export limitation.
-- [ ] Add advanced watermark preset configuration (#27) with validation, settings UI, and tests.
-- [ ] Correct and version the theming precedence contract (#38).
+- [x] Fix focus mode's blank-line dimming (#23) with behavior tests.
+- [x] Investigate typewriter scroll (#24); repair and test it, or remove its public surface and close the issue with rationale.
+- [x] Verify responsive mobile gutter behavior (#33) and add coverage; close or implement the remaining gap.
+- [x] Verify runtime PDF-style injection against #28 and reconcile the issue state.
+- [x] Investigate PDF TOC navigation (#26); implement a supported fix or document and close an Obsidian export limitation.
+- [x] Add advanced watermark preset configuration (#27) with validation, settings UI, and tests.
+- [x] Correct and version the theming precedence contract (#38).
 - [ ] Run fresh typecheck, tests, build, and relevant E2E/manual checks; reconcile every issue and update this plan with any deviations.
 
 ## Dispatch Assessment

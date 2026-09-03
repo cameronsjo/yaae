@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { readFileSync, readdirSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { describe, it, expect } from "vitest";
+import { readFileSync, readdirSync, existsSync } from "node:fs";
+import { join } from "node:path";
 
 /**
  * CSS structure tests — verify that expected selectors and properties
@@ -9,45 +9,45 @@ import { join } from 'node:path';
  * These catch accidental deletions, renames, or broken selectors.
  */
 
-const ROOT = join(__dirname, '..');
-const STYLES_CSS = readFileSync(join(ROOT, 'styles.css'), 'utf-8');
+const ROOT = join(__dirname, "..");
+const STYLES_CSS = readFileSync(join(ROOT, "styles.css"), "utf-8");
 
-describe('styles.css — guttered headings', () => {
-  it('sizes the CM6 gutter container to the gutter width variable', () => {
-    expect(STYLES_CSS).toContain('.cm-gutter.yaae-heading-gutter');
+describe("styles.css — guttered headings", () => {
+  it("sizes the CM6 gutter container to the gutter width variable", () => {
+    expect(STYLES_CSS).toContain(".cm-gutter.yaae-heading-gutter");
     expect(STYLES_CSS).toMatch(
-      /\.cm-gutter\.yaae-heading-gutter\s*\{[^}]*width:\s*var\(--yaae-gutter-width\)/s
+      /\.cm-gutter\.yaae-heading-gutter\s*\{[^}]*width:\s*var\(--yaae-gutter-width\)/s,
     );
   });
 
-  it('right-aligns the heading marker inside the gutter', () => {
-    expect(STYLES_CSS).toContain('.yaae-heading-gutter-marker');
+  it("right-aligns the heading marker inside the gutter", () => {
+    expect(STYLES_CSS).toContain(".yaae-heading-gutter-marker");
     expect(STYLES_CSS).toMatch(
-      /\.yaae-heading-gutter-marker\s*\{[^}]*text-align:\s*right/s
+      /\.yaae-heading-gutter-marker\s*\{[^}]*text-align:\s*right/s,
     );
   });
 
-  it('defines the gutter width CSS variable', () => {
+  it("defines the gutter width CSS variable", () => {
     expect(STYLES_CSS).toMatch(/--yaae-gutter-width:\s*[\d.]+\w+/);
   });
 });
 
-describe('styles.css — syntax dimming', () => {
-  it('has dimming rules scoped to body class', () => {
-    expect(STYLES_CSS).toContain('body.yaae-syntax-dimming');
+describe("styles.css — syntax dimming", () => {
+  it("has dimming rules scoped to body class", () => {
+    expect(STYLES_CSS).toContain("body.yaae-syntax-dimming");
   });
 
-  it('sets opacity on formatting elements', () => {
+  it("sets opacity on formatting elements", () => {
     expect(STYLES_CSS).toMatch(/\.cm-formatting[^{]*\{[^}]*opacity/s);
   });
 });
 
-describe('styles.css — focus mode', () => {
-  it('defines the dimmed class', () => {
-    expect(STYLES_CSS).toContain('.yaae-dimmed');
+describe("styles.css — focus mode", () => {
+  it("defines the dimmed class", () => {
+    expect(STYLES_CSS).toContain(".yaae-dimmed");
   });
 
-  it('dimmed class sets color and transition', () => {
+  it("dimmed class sets color and transition", () => {
     expect(STYLES_CSS).toMatch(/\.yaae-dimmed\s*\{[^}]*color/s);
     expect(STYLES_CSS).toMatch(/\.yaae-dimmed\s*\{[^}]*transition/s);
   });
@@ -61,54 +61,58 @@ describe('styles.css — focus mode', () => {
     expect(STYLES_CSS).not.toMatch(/default:\s*['"]#['"]/);
   });
 
-  it('dimmed-color variables fall back to --text-faint when unset', () => {
-    expect(STYLES_CSS).toContain('var(--yaae-dimmed-color-light, var(--text-faint))');
-    expect(STYLES_CSS).toContain('var(--yaae-dimmed-color-dark, var(--text-faint))');
+  it("dimmed-color variables fall back to --text-faint when unset", () => {
+    expect(STYLES_CSS).toContain(
+      "var(--yaae-dimmed-color-light, var(--text-faint))",
+    );
+    expect(STYLES_CSS).toContain(
+      "var(--yaae-dimmed-color-dark, var(--text-faint))",
+    );
   });
 });
 
-describe('styles.css — print media', () => {
-  it('hides prose highlighting in print', () => {
+describe("styles.css — print media", () => {
+  it("hides prose highlighting in print", () => {
     // Uses attribute selector [class*="yaae-pos-"] inside @media print
-    expect(STYLES_CSS).toContain('@media print');
-    expect(STYLES_CSS).toContain('yaae-pos-');
-    expect(STYLES_CSS).toContain('color: inherit !important');
+    expect(STYLES_CSS).toContain("@media print");
+    expect(STYLES_CSS).toContain("yaae-pos-");
+    expect(STYLES_CSS).toContain("color: inherit !important");
   });
 });
 
-describe('bundled print CSS (src/document/print-css)', () => {
-  const PRINT_CSS_DIR = join(ROOT, 'src/document/print-css');
+describe("bundled print CSS (src/document/print-css)", () => {
+  const PRINT_CSS_DIR = join(ROOT, "src/document/print-css");
 
   // watermark.css (dead .print > div DOM; runtime generates watermarks) and
   // landscape.css (documented no-op) were dropped in the #28 bundling move.
   // page-numbers and classification live in the chrome manager.
   const EXPECTED_FILES = [
-    'appearance.css',
-    'code.css',
-    'copy-safe.css',
-    'images.css',
-    'links.css',
-    'page-break.css',
-    'signature-block.css',
-    'tables.css',
-    'toc.css',
-    'typography.css',
+    "appearance.css",
+    "code.css",
+    "copy-safe.css",
+    "images.css",
+    "links.css",
+    "page-break.css",
+    "signature-block.css",
+    "tables.css",
+    "toc.css",
+    "typography.css",
   ];
 
-  it('all expected print CSS files exist — and nothing else', () => {
+  it("all expected print CSS files exist — and nothing else", () => {
     const actual = readdirSync(PRINT_CSS_DIR).sort();
     expect(actual).toEqual([...EXPECTED_FILES].sort());
   });
 
-  it('every print CSS file contains @media print', () => {
+  it("every print CSS file contains @media print", () => {
     for (const file of EXPECTED_FILES) {
-      const css = readFileSync(join(PRINT_CSS_DIR, file), 'utf-8');
+      const css = readFileSync(join(PRINT_CSS_DIR, file), "utf-8");
       expect(css, `${file} missing @media print`).toMatch(/@media\s+print/);
     }
   });
 
-  it('the snippet package is gone', () => {
-    expect(existsSync(join(ROOT, 'packages'))).toBe(false);
-    expect(existsSync(join(ROOT, 'pnpm-workspace.yaml'))).toBe(false);
+  it("the snippet package is gone", () => {
+    expect(existsSync(join(ROOT, "packages"))).toBe(false);
+    expect(existsSync(join(ROOT, "pnpm-workspace.yaml"))).toBe(false);
   });
 });

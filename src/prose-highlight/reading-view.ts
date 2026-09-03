@@ -1,16 +1,17 @@
-import type { MarkdownPostProcessorContext } from 'obsidian';
-import type YaaePlugin from '../../main';
-import { CompromiseTagger } from './tagger';
-import { WordListMatcher } from './word-lists';
-import type { POSTag } from './tagger';
-import type { WordListMatch } from './word-lists';
-import type { CustomWordList, POSCategory } from '../types';
+import type { MarkdownPostProcessorContext } from "obsidian";
+import type YaaePlugin from "../../main";
+import { CompromiseTagger } from "./tagger";
+import { WordListMatcher } from "./word-lists";
+import type { POSTag } from "./tagger";
+import type { WordListMatch } from "./word-lists";
+import type { CustomWordList, POSCategory } from "../types";
 
 /** Elements whose text content should not be processed */
-const SKIP_SELECTORS = 'code, pre, .frontmatter, .metadata-container, th, .math, .MathJax';
+const SKIP_SELECTORS =
+  "code, pre, .frontmatter, .metadata-container, th, .math, .MathJax";
 
 /** Heading elements — skipped unless "highlight inside headings" is on (#40). */
-const HEADING_SELECTORS = 'h1, h2, h3, h4, h5, h6';
+const HEADING_SELECTORS = "h1, h2, h3, h4, h5, h6";
 
 /**
  * The `closest()` selector for elements whose text is left unhighlighted.
@@ -25,11 +26,11 @@ export function buildSkipSelectors(highlightInsideHeadings: boolean): string {
 
 /** POS category → CSS class */
 const POS_CLASS: Record<POSCategory, string> = {
-  adjective: 'yaae-pos-adjective',
-  noun: 'yaae-pos-noun',
-  adverb: 'yaae-pos-adverb',
-  verb: 'yaae-pos-verb',
-  conjunction: 'yaae-pos-conjunction',
+  adjective: "yaae-pos-adjective",
+  noun: "yaae-pos-noun",
+  adverb: "yaae-pos-adverb",
+  verb: "yaae-pos-verb",
+  conjunction: "yaae-pos-conjunction",
 };
 
 /**
@@ -69,23 +70,19 @@ export function createReadingViewPostProcessor(plugin: YaaePlugin) {
 
     // Collect text nodes, skipping code/pre/frontmatter (and headings)
     const textNodes: Text[] = [];
-    const walker = document.createTreeWalker(
-      el,
-      NodeFilter.SHOW_TEXT,
-      {
-        acceptNode(node: Text): number {
-          // Skip if inside an excluded element
-          if (node.parentElement?.closest(skipSelectors)) {
-            return NodeFilter.FILTER_REJECT;
-          }
-          // Skip whitespace-only nodes
-          if (!node.textContent?.trim()) {
-            return NodeFilter.FILTER_SKIP;
-          }
-          return NodeFilter.FILTER_ACCEPT;
-        },
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
+      acceptNode(node: Text): number {
+        // Skip if inside an excluded element
+        if (node.parentElement?.closest(skipSelectors)) {
+          return NodeFilter.FILTER_REJECT;
+        }
+        // Skip whitespace-only nodes
+        if (!node.textContent?.trim()) {
+          return NodeFilter.FILTER_SKIP;
+        }
+        return NodeFilter.FILTER_ACCEPT;
       },
-    );
+    });
 
     while (walker.nextNode()) {
       textNodes.push(walker.currentNode as Text);
@@ -93,7 +90,7 @@ export function createReadingViewPostProcessor(plugin: YaaePlugin) {
 
     // Process each text node
     for (const textNode of textNodes) {
-      const text = textNode.textContent || '';
+      const text = textNode.textContent || "";
       if (!text.trim()) continue;
 
       // Get POS tags and word list matches
@@ -117,7 +114,7 @@ export function createReadingViewPostProcessor(plugin: YaaePlugin) {
         }
 
         // The highlighted span
-        const spanEl = document.createElement('span');
+        const spanEl = document.createElement("span");
         spanEl.className = span.cssClass;
         spanEl.textContent = text.slice(span.start, span.end);
         fragment.appendChild(spanEl);
@@ -127,9 +124,7 @@ export function createReadingViewPostProcessor(plugin: YaaePlugin) {
 
       // Remaining text after last span
       if (lastEnd < text.length) {
-        fragment.appendChild(
-          document.createTextNode(text.slice(lastEnd)),
-        );
+        fragment.appendChild(document.createTextNode(text.slice(lastEnd)));
       }
 
       textNode.parentNode?.replaceChild(fragment, textNode);
