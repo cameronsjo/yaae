@@ -37,7 +37,7 @@ Work from integrity outward: first make type checking authoritative, then addres
 - [x] Investigate PDF TOC navigation (#26); implement a supported fix or document and close an Obsidian export limitation.
 - [x] Add advanced watermark preset configuration (#27) with validation, settings UI, and tests.
 - [x] Correct and version the theming precedence contract (#38).
-- [ ] Run fresh typecheck, tests, build, and relevant E2E/manual checks; reconcile every issue and update this plan with any deviations.
+- [x] Run fresh typecheck, tests, build, and relevant E2E/manual checks; reconcile every issue and update this plan with any deviations.
 
 ## Dispatch Assessment
 
