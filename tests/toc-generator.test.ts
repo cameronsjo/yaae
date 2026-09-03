@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generateToc } from '../src/document/toc-generator';
+import { generateToc, hasToc, resolveTocDepth } from '../src/document/toc-generator';
 
 const fm = (body: string) =>
   `---\ntitle: Test\ncreated: 2024-01-01\n---\n${body}`;
@@ -353,5 +353,139 @@ describe('generateToc', () => {
     expect(tocBlock).toContain('- [A]');
     expect(tocBlock).toContain('- [B]');
     expect(tocBlock).not.toContain('hidden');
+  });
+
+  // --- Horizontal rules vs frontmatter ---
+
+  it('does not mistake a horizontal rule for frontmatter in docs without frontmatter', () => {
+    // A bare `---` beyond line 0 is an hr, not a frontmatter fence. Headings
+    // after it must still be collected.
+    const content = '# Title\n\nIntro.\n\n---\n\n## After The Rule\n';
+    const { entryCount, content: result } = generateToc(content);
+    expect(entryCount).toBe(2);
+    expect(result).toContain('- [After The Rule](#after-the-rule)');
+  });
+
+  it('is idempotent on documents without frontmatter', () => {
+    // The generated TOC block itself ends with `---`; a second pass must not
+    // read that as frontmatter-open and drop every later heading.
+    const content = '# Title\n\n## Section One\n\n## Section Two\n';
+    const first = generateToc(content);
+    expect(first.entryCount).toBe(3);
+    const second = generateToc(first.content);
+    expect(second.entryCount).toBe(3);
+    expect(second.content).toBe(first.content);
+  });
+
+  it('still skips headings inside real frontmatter', () => {
+    const content = '---\ntitle: "# Not A Heading"\n---\n\n## Real Heading\n';
+    const { entryCount, content: result } = generateToc(content);
+    expect(entryCount).toBe(1);
+    expect(result).toContain('- [Real Heading](#real-heading)');
+  });
+});
+
+describe('fenced TOC samples (corruption guard)', () => {
+  const fencedSample = [
+    '# Notes on the plugin',
+    '',
+    'The generated block looks like this:',
+    '',
+    '```markdown',
+    '## Table of Contents',
+    '',
+    '- [Example](#example)',
+    '',
+    '---',
+    '```',
+    '',
+    '## Real Section',
+  ].join('\n');
+
+  it('a TOC inside a code fence does not count as opted in', async () => {
+    const { hasToc } = await import('../src/document/toc-generator');
+    expect(hasToc(fencedSample)).toBe(false);
+  });
+
+  it('generateToc never splices into a fenced TOC sample', () => {
+    const { content: result } = generateToc(fencedSample);
+    // The fenced sample must survive byte-for-byte; the new TOC is inserted
+    // at the top (no frontmatter), not into the fence.
+    expect(result).toContain('```markdown\n## Table of Contents\n\n- [Example](#example)\n\n---\n```');
+    expect(result.startsWith('## Table of Contents')).toBe(true);
+  });
+
+  it('replaces the real TOC while leaving a fenced sample untouched', () => {
+    const withRealToc = generateToc(fencedSample).content;
+    // Add a heading, regenerate — the real TOC updates, the sample survives.
+    const edited = `${withRealToc}\n\n## Added Later`;
+    const { content: regenerated } = generateToc(edited);
+    expect(regenerated).toContain('- [Added Later](#added-later)');
+    expect(regenerated).toContain('```markdown\n## Table of Contents\n\n- [Example](#example)\n\n---\n```');
+    // Exactly one unfenced TOC heading.
+    const headings = regenerated.split('\n').filter((l) => l === '## Table of Contents');
+    expect(headings).toHaveLength(2); // one real + one inside the fence
+  });
+});
+
+describe('CRLF line endings', () => {
+  it('detects frontmatter and headings in CRLF content', () => {
+    const content =
+      '---\r\ntitle: Test\r\ncreated: 2024-01-01\r\n---\r\n\r\n## Section One\r\n\r\n## Section Two\r\n';
+    const { entryCount } = generateToc(content);
+    expect(entryCount).toBe(2);
+  });
+
+  it('detects an existing TOC block in CRLF content (no duplicate insertion)', () => {
+    const content = [
+      '## Table of Contents',
+      '',
+      '- [Old](#old)',
+      '',
+      '---',
+      '',
+      '## Section One',
+    ].join('\r\n');
+    expect(hasToc(content)).toBe(true);
+    const { content: result } = generateToc(content);
+    const headings = result
+      .split('\n')
+      .filter((l) => l.replace(/\r$/, '') === '## Table of Contents');
+    expect(headings).toHaveLength(1);
+    expect(result).toContain('- [Section One](#section-one)');
+  });
+});
+
+describe('unclosed frontmatter (indeterminate documents)', () => {
+  it('refuses to modify a document whose frontmatter never closes', () => {
+    // Line-0 `---` with no close is usually a mid-edit state; YAML `#`
+    // comments must not become TOC entries.
+    const content =
+      '---\ntitle: Test\n# this is a YAML comment, not a heading\ncreated: 2024-01-01\n\n## Real Heading\n';
+    const { content: result, entryCount } = generateToc(content);
+    expect(result).toBe(content);
+    expect(entryCount).toBe(0);
+  });
+
+  it('hasToc is false for an unclosed-frontmatter document', () => {
+    const unclosed = '---\ntitle: Test\n\n## Table of Contents\n\n- [x](#x)\n';
+    expect(hasToc(unclosed)).toBe(false);
+  });
+});
+
+describe('resolveTocDepth', () => {
+  it('prefers the per-file export.pdf.tocDepth frontmatter override', () => {
+    const content =
+      '---\ntitle: Test\ncreated: 2024-01-01\nexport:\n  pdf:\n    tocDepth: 2\n---\n\n## H2\n';
+    expect(resolveTocDepth(content, 5)).toBe(2);
+  });
+
+  it('falls back to the settings default without an override', () => {
+    const content = fm('\n## H2\n');
+    expect(resolveTocDepth(content, 4)).toBe(4);
+  });
+
+  it('falls back on content without frontmatter', () => {
+    expect(resolveTocDepth('# Just a heading\n', 3)).toBe(3);
   });
 });

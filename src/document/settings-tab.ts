@@ -45,6 +45,7 @@ export function renderDocumentSettings(
         .onChange(async (value) => {
           plugin.settings.document.defaultClassification = value;
           await plugin.saveSettings();
+          plugin.printStyles.refreshDocument();
         });
     });
 
@@ -57,6 +58,7 @@ export function renderDocumentSettings(
         .onChange(async (value) => {
           plugin.settings.document.showClassificationBanner = value;
           await plugin.saveSettings();
+          plugin.printStyles.refreshDocument();
         }),
     );
 
@@ -71,6 +73,7 @@ export function renderDocumentSettings(
         .onChange(async (value) => {
           plugin.settings.document.bannerPosition = value as 'top' | 'both';
           await plugin.saveSettings();
+          plugin.printStyles.refreshDocument();
         }),
     );
 
@@ -88,7 +91,7 @@ export function renderDocumentSettings(
 
   async function saveAndRefreshPrintStyles() {
     await plugin.saveSettings();
-    plugin.pageChromeManager.update(plugin.buildPageChromeState());
+    plugin.printStyles.refreshDocument();
   }
 
   // Draft entry for the "Add classification" flow. Held outside
@@ -143,11 +146,11 @@ export function renderDocumentSettings(
                 !(source.kind === 'persisted' && i === source.index),
             );
             row.setDesc(
-              !valid
-                ? 'ID required — at least one letter or digit'
-                : duplicate
+              valid
+                ? duplicate
                   ? `ID "${entry.id}" already in use — choose a different ID`
-                  : `Frontmatter value: ${entry.id}`,
+                  : `Frontmatter value: ${entry.id}`
+                : 'ID required — at least one letter or digit',
             );
             row.settingEl.toggleClass('is-invalid', !valid || duplicate);
 
@@ -289,11 +292,12 @@ export function renderDocumentSettings(
         .onChange(async (value) => {
           plugin.settings.document.theme = value as ThemeMode;
           await plugin.saveSettings();
+          plugin.printStyles.refreshDocument();
         }),
     );
 
   // Font family: named presets pipe to static CSS classes; arbitrary strings
-  // go through DynamicPdfPrintStyleManager. The dropdown surfaces a
+  // are state-baked by the print pipeline (document-styles). The dropdown surfaces a
   // "Custom..." option that reveals the text input row below — this prevents
   // the prior bug where opening the dropdown to inspect would silently
   // overwrite an arbitrary `fontFamily` (e.g. "Inter") with "sans" because
@@ -316,8 +320,8 @@ export function renderDocumentSettings(
           const trimmed = value.trim();
           if (!trimmed) return;
           plugin.settings.document.fontFamily = trimmed;
-          plugin.dynamicPdfPrintStyles.update(plugin.settings.document);
-          await plugin.saveSettings();
+                    await plugin.saveSettings();
+                    plugin.printStyles.refreshDocument();
         });
     });
   if (!fontIsCustom) customFontRow.settingEl.setAttribute('hidden', '');
@@ -344,8 +348,8 @@ export function renderDocumentSettings(
             return;
           }
           plugin.settings.document.fontFamily = value;
-          plugin.dynamicPdfPrintStyles.update(plugin.settings.document);
-          await plugin.saveSettings();
+                    await plugin.saveSettings();
+                    plugin.printStyles.refreshDocument();
           customFontRow.settingEl.setAttribute('hidden', '');
         }),
     );
@@ -360,8 +364,8 @@ export function renderDocumentSettings(
         .setDynamicTooltip()
         .onChange(async (value) => {
           plugin.settings.document.fontSize = value;
-          plugin.dynamicPdfPrintStyles.update(plugin.settings.document);
-          await plugin.saveSettings();
+                    await plugin.saveSettings();
+                    plugin.printStyles.refreshDocument();
         }),
     );
 
@@ -375,8 +379,8 @@ export function renderDocumentSettings(
         .setDynamicTooltip()
         .onChange(async (value) => {
           plugin.settings.document.lineHeight = value / 10;
-          plugin.dynamicPdfPrintStyles.update(plugin.settings.document);
-          await plugin.saveSettings();
+                    await plugin.saveSettings();
+                    plugin.printStyles.refreshDocument();
         }),
     );
 
@@ -404,6 +408,7 @@ export function renderDocumentSettings(
         .onChange(async (value) => {
           plugin.settings.document.links = value as LinksMode;
           await plugin.saveSettings();
+          plugin.printStyles.refreshDocument();
         }),
     );
 
@@ -418,6 +423,7 @@ export function renderDocumentSettings(
         .onChange(async (value) => {
           plugin.settings.document.copyPasteSafe = value;
           await plugin.saveSettings();
+          plugin.printStyles.refreshDocument();
         }),
     );
 
@@ -430,6 +436,7 @@ export function renderDocumentSettings(
         .onChange(async (value) => {
           plugin.settings.document.compactTables = value;
           await plugin.saveSettings();
+          plugin.printStyles.refreshDocument();
         }),
     );
 
@@ -440,14 +447,40 @@ export function renderDocumentSettings(
     containerEl, expandedSections, 'doc-layout', 'PDF layout',
   );
 
+  // Page numbers need @page margin boxes (Chrome 131+). Below that they
+  // degrade to nothing — say so loudly instead of failing silently (#29).
+  const pageNumbersDesc = plugin.printStyles.usesMarginBoxes
+    ? 'Show page numbers in PDF export.'
+    : `Show page numbers in PDF export. ⚠ Unavailable in this Obsidian ` +
+      `install — its Chrome ${plugin.printStyles.chromeMajor} predates the ` +
+      `@page margin-box support (Chrome 131) page numbers require. ` +
+      `Reinstall Obsidian from a current installer to update Chrome.`;
+
   new Setting(layoutContent)
     .setName('Page numbers')
-    .setDesc('Show page numbers in PDF export.')
+    .setDesc(pageNumbersDesc)
     .addToggle((toggle) =>
       toggle
         .setValue(plugin.settings.document.pageNumbers)
         .onChange(async (value) => {
           plugin.settings.document.pageNumbers = value;
+          await plugin.saveSettings();
+          plugin.printStyles.refreshDocument();
+        }),
+    );
+
+  new Setting(layoutContent)
+    .setName('Automatic TOC updates')
+    .setDesc(
+      'Keep tables of contents fresh as notes change. Only affects notes that ' +
+      'already contain a generated TOC — insert one first with the ' +
+      '"Generate table of contents" command.',
+    )
+    .addToggle((toggle) =>
+      toggle
+        .setValue(plugin.settings.document.autoToc)
+        .onChange(async (value) => {
+          plugin.settings.document.autoToc = value;
           await plugin.saveSettings();
         }),
     );
@@ -463,6 +496,7 @@ export function renderDocumentSettings(
         .onChange(async (value) => {
           plugin.settings.document.tocDepth = value;
           await plugin.saveSettings();
+          plugin.printStyles.refreshDocument();
         }),
     );
 
@@ -487,6 +521,7 @@ export function renderDocumentSettings(
         .onChange(async (value) => {
           plugin.settings.document.defaultWatermarkForDrafts = value as WatermarkLevel;
           await plugin.saveSettings();
+          plugin.printStyles.refreshDocument();
         }),
     );
 
@@ -499,14 +534,14 @@ export function renderDocumentSettings(
         .setValue(plugin.settings.document.watermarkText)
         .onChange(async (value) => {
           plugin.settings.document.watermarkText = value || 'DRAFT';
-          plugin.dynamicPdfPrintStyles.update(plugin.settings.document);
-          await plugin.saveSettings();
+                    await plugin.saveSettings();
+                    plugin.printStyles.refreshDocument();
         }),
     );
 
   async function saveAndRefreshHeaderFooter() {
     await plugin.saveSettings();
-    plugin.pageChromeManager.update(plugin.buildPageChromeState());
+    plugin.printStyles.refreshDocument();
   }
 
   new Setting(brandingContent)
@@ -576,6 +611,7 @@ export function renderDocumentSettings(
         .onChange(async (value) => {
           plugin.settings.document.validateOnSave = value;
           await plugin.saveSettings();
+          plugin.printStyles.refreshDocument();
         }),
     );
 }

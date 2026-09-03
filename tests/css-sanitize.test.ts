@@ -161,6 +161,18 @@ describe('sanitizeFontFamily', () => {
     expect(result).toBe('"Arial; } * { color: red } .x {"');
     // The quotes prevent the semicolons/braces from being parsed as CSS
   });
+
+  it('escapes newlines so the value cannot terminate the CSS string', () => {
+    // A raw newline would end the string token and let the payload break out
+    // of the declaration — the classification-banner-strip vector.
+    const result = sanitizeFontFamily('Arial\n} body::before { display: none } .x {');
+    expect(result).not.toContain('\n');
+    expect(result).toContain('\\a ');
+  });
+
+  it('drops carriage returns and form feeds', () => {
+    expect(sanitizeFontFamily('Arial\r\f')).toBe('"Arial"');
+  });
 });
 
 describe('sanitizeCssId', () => {

@@ -1,10 +1,10 @@
-import { type Extension, type Range } from '@codemirror/state';
+import type { Extension, Range } from '@codemirror/state';
 import {
   ViewPlugin,
-  ViewUpdate,
+  type ViewUpdate,
   Decoration,
-  DecorationSet,
-  EditorView,
+  type DecorationSet,
+  type EditorView,
 } from '@codemirror/view';
 import type { FocusMode } from '../types';
 import { findSentenceBounds, findParagraphBounds } from './sentence-detection';
@@ -109,7 +109,7 @@ export function focusExtension(mode: FocusMode): Extension {
       {
         decorations: (v) => v.decorations,
         eventHandlers: {
-          scroll(event, view) {
+          scroll(_event, _view) {
             this.handleScroll();
           },
         },

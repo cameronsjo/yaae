@@ -28,7 +28,7 @@ Frontmatter-driven document management with Zod-validated schemas:
 - **Watermark levels** — Four presets (whisper, heads-up, loud, screaming) with opacity-based intensity
 - **Schema validation** — Auto-validate frontmatter on save with smart warnings (e.g., "draft without watermark", "confidential without reviewers")
 - **Specialized schemas** — ADR, threat model, runbook, and slides with required field validation
-- **Table of contents** — Generate GitHub-compatible TOC from headings, inserted after frontmatter
+- **Table of contents** — Generate GitHub-compatible TOC from headings, inserted after frontmatter; optional automatic updates keep an inserted TOC fresh as the note changes
 - **CSS class derivation** — Apply `cssclasses` values from frontmatter for PDF export styling (merges with existing user classes)
 
 ### Print Styles
@@ -57,8 +57,10 @@ Plugin-injected styles for Obsidian's PDF export:
 ## Commands
 
 | Command | Description |
-|---------|-------------|
+| --------- | ------------- |
 | Toggle prose highlighting | Enable/disable part-of-speech coloring |
+| Copy prose highlighting debug info | Copy platform + last highlighter error to the clipboard (#32 diagnosis) |
+| Toggle prose highlighting mobile override (debug) | Lift the mobile block to re-test highlighting on a phone |
 | Toggle syntax dimming | Dim markdown formatting characters |
 | Toggle guttered headings | Outdent heading markers to gutter (Source Mode) |
 | Cycle focus mode | Off → Sentence → Paragraph |
@@ -86,10 +88,9 @@ pnpm run test:e2e        # E2E tests (launches Obsidian via WebdriverIO)
 │   ├── types.ts              # Shared types and defaults
 │   ├── schemas/              # Zod frontmatter schemas
 │   ├── document/             # Document management (settings, TOC, banner)
+│   │   └── print-css/        # PDF export CSS, bundled + runtime-injected
 │   ├── prose-highlight/      # POS highlighting engine
 │   └── cm6/                  # CodeMirror 6 extensions
-├── packages/
-│   └── print-styles/         # @yaae/print-styles — PDF export CSS
 ├── templates/                # Document templates (ADR, threat model, etc.)
 ├── tests/                    # Vitest unit tests
 ├── e2e/                      # WebdriverIO E2E tests

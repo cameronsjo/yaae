@@ -1,9 +1,9 @@
 import {
   ViewPlugin,
-  ViewUpdate,
+  type ViewUpdate,
   Decoration,
-  DecorationSet,
-  EditorView,
+  type DecorationSet,
+  type EditorView,
 } from '@codemirror/view';
 import { RangeSetBuilder } from '@codemirror/state';
 import { syntaxTree } from '@codemirror/language';
@@ -13,6 +13,7 @@ import { CompromiseTagger } from './tagger';
 import { WordListMatcher } from './word-lists';
 import type { WordListMatch } from './word-lists';
 import type { POSCategory } from '../types';
+import { recordProseHighlightError } from './debug';
 
 /** Markdown node types to exclude from NLP processing */
 const EXCLUDED_NODE_TYPES = new Set([
@@ -53,6 +54,48 @@ const EXCLUDED_PARENT_TYPES = new Set([
   'CommentBlock',
 ]);
 
+/**
+ * A markdown ATX heading line (`#`..`######` then a space), tolerating up to
+ * three leading spaces (CommonMark; four+ is a code indent) and any depth of
+ * blockquote markers (`> # H`, `>> ## H`). By default POS highlighting skips
+ * these — heading text is chrome, not prose, and a tinted word inside an h2
+ * reads as a glitch (Artificer #40). The trailing `\s` is required: a bare
+ * `#foo` with no space is not a heading.
+ *
+ * Setext headings (a title line underlined by `===`/`---`) are NOT detected
+ * here: the title's heading-ness depends on the *next* line, but the editor
+ * retags one line at a time (the single-char-insert fast path), so a
+ * neighbor-dependent check can't stay correct incrementally. Reading View
+ * renders setext as real <h1>/<h2> and skips it via buildSkipSelectors, so
+ * the gap is editor-only and accepted.
+ */
+const HEADING_LINE = /^ {0,3}(?:> ?)*#{1,6}\s/;
+
+/** True when a source line is an ATX heading (skipped by default, #40). */
+export function isHeadingLine(lineText: string): boolean {
+  return HEADING_LINE.test(lineText);
+}
+
+/**
+ * Case-insensitive substrings that mark a node family as non-prose. Catches
+ * HyperMD/Lezer naming variants (casing, `hmd-*` forms) that the exact-match
+ * Set above does not enumerate — e.g. `formatting-code`, `hmd-codeblock`,
+ * `CodeText` all contain `code`. Kept to code/frontmatter/comment families so
+ * structural nodes (`Document`, `Paragraph`, …) are never swept in.
+ */
+const EXCLUDED_NAME_SUBSTRINGS = ['code', 'frontmatter', 'comment'];
+
+/**
+ * Whether a syntax-tree node name marks content that must not be tagged.
+ * Exact-match against the enumerated set, then a substring allowlist so
+ * unenumerated code/frontmatter/comment variants are still excluded.
+ */
+export function isExcludedNodeType(name: string): boolean {
+  if (EXCLUDED_NODE_TYPES.has(name)) return true;
+  const lower = name.toLowerCase();
+  return EXCLUDED_NAME_SUBSTRINGS.some((s) => lower.includes(s));
+}
+
 interface LineTags {
   posTags: POSTag[];
   listMatches: WordListMatch[];
@@ -62,7 +105,7 @@ interface LineTags {
  * Collect ranges within the visible viewport that should be excluded
  * from NLP processing (code blocks, frontmatter, inline code, etc.)
  */
-function getExcludedRanges(
+export function getExcludedRanges(
   view: EditorView,
   from: number,
   to: number,
@@ -78,7 +121,7 @@ function getExcludedRanges(
         excluded.push({ from: node.from, to: node.to });
         return false; // don't descend
       }
-      if (EXCLUDED_NODE_TYPES.has(node.type.name)) {
+      if (isExcludedNodeType(node.type.name)) {
         excluded.push({ from: node.from, to: node.to });
       }
     },
@@ -88,7 +131,7 @@ function getExcludedRanges(
 }
 
 /** Merge overlapping/adjacent ranges */
-function mergeRanges(
+export function mergeRanges(
   ranges: Array<{ from: number; to: number }>,
 ): Array<{ from: number; to: number }> {
   if (ranges.length === 0) return [];
@@ -106,7 +149,7 @@ function mergeRanges(
 }
 
 /** Check if a position falls within any excluded range */
-function isExcluded(
+export function isExcluded(
   pos: number,
   excluded: Array<{ from: number; to: number }>,
 ): boolean {
@@ -147,19 +190,48 @@ export function createHighlighterExtension(plugin: YaaePlugin) {
   listMatcher.compile(plugin.settings.proseHighlight.customWordLists);
 
   class ProseHighlighter {
-    decorations: DecorationSet;
+    // Initialized at declaration: the constructor assigns inside try/catch,
+    // which TS's definite-assignment analysis treats as maybe-skipped.
+    decorations: DecorationSet = Decoration.none;
     private cache = new Map<number, LineTags>();
 
     constructor(view: EditorView) {
-      this.decorations = this.buildDecorations(view);
+      // A throw here would keep the ViewPlugin from ever installing (#32).
+      // Degrade to unhighlighted and record the error for the debug command.
+      // buildDecorations populates the cache via retagLine before throwing,
+      // so the reset's cache.clear() is load-bearing even at construction.
+      try {
+        this.decorations = this.buildDecorations(view);
+      } catch (err) {
+        recordProseHighlightError(err, 'decoration-build');
+        this.resetHighlighting();
+      }
     }
 
     update(update: ViewUpdate) {
+      // CM6 ejects a ViewPlugin whose update() throws — the whole feature
+      // then silently dies, which is the reported mobile symptom (#32).
+      // Catch, record for the debug command, and degrade to unhighlighted;
+      // the next update gets a fresh try against a cleared cache.
+      try {
+        this.applyUpdate(update);
+      } catch (err) {
+        recordProseHighlightError(err, 'update');
+        this.resetHighlighting();
+      }
+    }
+
+    /** Degrade to unhighlighted: no decorations, empty tag cache. */
+    private resetHighlighting(): void {
+      this.decorations = Decoration.none;
+      this.cache.clear();
+    }
+
+    private applyUpdate(update: ViewUpdate) {
       const settings = plugin.settings.proseHighlight;
       if (!settings.enabled) {
         if (this.decorations !== Decoration.none) {
-          this.decorations = Decoration.none;
-          this.cache.clear();
+          this.resetHighlighting();
         }
         return;
       }
@@ -194,6 +266,16 @@ export function createHighlighterExtension(plugin: YaaePlugin) {
         // Bulk change or line count changed — full rebuild
         this.cache.clear();
         this.decorations = this.buildDecorations(update.view);
+      } else if (syntaxTree(update.startState) !== syntaxTree(update.state)) {
+        // Markdown parses asynchronously: on first paint the code-block region
+        // is often unparsed, so getExcludedRanges() returned nothing and code
+        // words were tagged and cached. The cache holds tags computed before
+        // exclusion was known — invalidate it and rebuild on parse progress.
+        // Checked BEFORE viewportChanged: a scroll that coincides with the
+        // final parse step (both true in one update) must still clear the
+        // cache, and a full rebuild handles the new viewport implicitly.
+        this.cache.clear();
+        this.decorations = this.buildDecorations(update.view);
       } else if (update.viewportChanged) {
         this.decorations = this.buildDecorations(update.view);
       }
@@ -209,8 +291,20 @@ export function createHighlighterExtension(plugin: YaaePlugin) {
     /** Tag a single line and update its cache entry */
     private retagLine(view: EditorView, lineNum: number): void {
       const line = view.state.doc.line(lineNum);
-      const excluded = getExcludedRanges(view, line.from, line.to);
       const lineText = view.state.sliceDoc(line.from, line.to);
+
+      // Skip heading lines unless the user opted in — decided from the line
+      // text alone, so it runs before the getExcludedRanges tree traversal.
+      // Keeps heading words out of POS processing entirely.
+      if (
+        !plugin.settings.proseHighlight.highlightInsideHeadings &&
+        isHeadingLine(lineText)
+      ) {
+        this.cache.set(lineNum, { posTags: [], listMatches: [] });
+        return;
+      }
+
+      const excluded = getExcludedRanges(view, line.from, line.to);
 
       // Check if entire line is excluded
       if (

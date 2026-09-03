@@ -143,6 +143,18 @@ settings:
     default: 4.5rem
     format: px
   -
+    id: yaae-gutter-width-mobile
+    title: Gutter width (mobile)
+    description: Width reserved for heading markers on phones and tablets
+    type: variable-text
+    default: 1.75rem
+  -
+    id: yaae-gutter-marker-font-size-mobile
+    title: Marker size (mobile)
+    description: Font size of the # markers in the narrow mobile gutter
+    type: variable-text
+    default: 0.7em
+  -
     id: yaae-print-heading
     title: PDF Print Styles
     type: heading
@@ -205,24 +217,6 @@ settings:
     level: 2
     collapsed: true
   -
-    id: yaae-print-page-number-bottom
-    title: Bottom offset
-    type: variable-number-slider
-    default: 12
-    min: 0
-    max: 40
-    step: 2
-    format: px
-  -
-    id: yaae-print-page-number-right
-    title: Right offset
-    type: variable-number-slider
-    default: 16
-    min: 0
-    max: 40
-    step: 2
-    format: px
-  -
     id: yaae-print-page-number-font-size
     title: Font size
     type: variable-text
@@ -233,6 +227,23 @@ settings:
     type: variable-color
     format: hex
     default: '#888888'
+  -
+    id: yaae-print-signature-heading
+    title: Signature Block
+    type: heading
+    level: 2
+    collapsed: true
+  -
+    id: yaae-print-sig-margin-top
+    title: Top margin
+    description: Space above the signature block
+    type: variable-text
+    default: 3em
+  -
+    id: yaae-print-sig-font-size
+    title: Font size
+    type: variable-text
+    default: 10pt
   -
     id: yaae-print-tables-heading
     title: Tables
@@ -428,10 +439,12 @@ body {
   --yaae-print-link-url-color: #666;
 
   /* PDF Print — Page Numbers */
-  --yaae-print-page-number-bottom: 12px;
-  --yaae-print-page-number-right: 16px;
   --yaae-print-page-number-font-size: 9px;
   --yaae-print-page-number-color: #888;
+
+  /* PDF Print — Signature Block */
+  --yaae-print-sig-margin-top: 3em;
+  --yaae-print-sig-font-size: 10pt;
 
   /* PDF Print — Tables */
   --yaae-print-table-font-size: 0.85em;
@@ -634,6 +647,20 @@ body.yaae-syntax-dimming .cm-active .cm-formatting {
   color: var(--text-faint);
   font-family: var(--font-monospace);
   white-space: nowrap;
+}
+
+/* Mobile: 4.5rem eats a big slice of a narrow viewport (#33). Layered knob —
+   set --yaae-gutter-width-mobile via Style Settings to resize. Obsidian sets
+   body.is-mobile on phones and tablets. */
+body.is-mobile {
+  --yaae-gutter-width: var(--yaae-gutter-width-mobile, 1.75rem);
+}
+
+body.is-mobile .yaae-heading-gutter-marker {
+  /* H4-H6 markers are 4-6 monospace glyphs; shrink them so deep headings
+     stay legible inside the narrow mobile gutter instead of clipping. */
+  font-size: var(--yaae-gutter-marker-font-size-mobile, 0.7em);
+  padding-right: 0.25rem;
 }
 
 /* ==========================================================================

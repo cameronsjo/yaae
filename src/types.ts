@@ -18,7 +18,7 @@ export const POS_CATEGORIES: POSCategory[] = [
 /** Per-POS toggle and color settings */
 export interface POSCategorySettings {
   enabled: boolean;
-  /** @deprecated Customize via Style Settings or `--yaae-pos-*-color-{light,dark}` overrides. Read by one-shot migration in POSStyleManager. */
+  /** @deprecated Unread. Customize via Style Settings or the `--yaae-pos-*-color-{light,dark}` overrides. Retained only so old data.json files load. */
   color: string;
 }
 
@@ -42,11 +42,29 @@ export interface ProseHighlightSettings {
   /** Custom word lists */
   customWordLists: CustomWordList[];
   /**
-   * One-shot migration latch for legacy POS color customizations. Once set
-   * to true, the migration in POSStyleManager.init no longer fires, leaving
-   * Style Settings as the sole writer of `--yaae-pos-*-color-{light,dark}`.
+   * When true, part-of-speech spans are emitted on heading lines too. Default
+   * (false) skips headings — heading text is chrome, not prose, and a
+   * POS-tinted word inside an h2 reads as a glitch. Opt in per Artificer #40.
+   */
+  highlightInsideHeadings?: boolean;
+  /**
+   * @deprecated No longer read. Was a one-shot latch for the legacy
+   * inline-style POS color migration, which wrote a volatile `body.style`
+   * property that evaporated on restart while persisting this flag — so the
+   * migration silently lost the user's color after one restart (Artificer
+   * #39). The migration is removed; Style Settings and theme CSS are the sole
+   * writers of `--yaae-pos-*-color-{light,dark}`. Retained only so old
+   * data.json files load without error.
    */
   posColorsMigrated?: boolean;
+  /**
+   * Debug-only (#32): lifts the Platform.isMobile block so prose
+   * highlighting can be re-tested on a phone. Toggled by the hidden
+   * "Toggle prose highlighting mobile override (debug)" command — no
+   * settings UI on purpose. With the highlighter's error capture in place,
+   * the worst case is unhighlighted text plus a recorded error.
+   */
+  mobileDebugOverride?: boolean;
 }
 
 /** Default colors matching iA Writer's palette */
@@ -69,6 +87,7 @@ export const DEFAULT_PROSE_HIGHLIGHT_SETTINGS: ProseHighlightSettings = {
   },
   readingViewEnabled: false,
   customWordLists: [],
+  highlightInsideHeadings: false,
 };
 
 export type FocusMode = "off" | "sentence" | "paragraph";
