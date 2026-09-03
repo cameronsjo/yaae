@@ -584,7 +584,7 @@ export function renderDocumentSettings(
     .setDesc(
       "Advanced: customize per-level watermark intensity (opacity, font size, " +
         "tile size, rotation). Configure via the plugin's data.json: " +
-        "{\"document\":{\"watermarkPresets\":{\"loud\":{\"opacity\":0.2,\"fontSize\":120}}}}. " +
+        '{"document":{"watermarkPresets":{"loud":{"opacity":0.2,"fontSize":120}}}}. ' +
         "Absent fields inherit the hardcoded defaults.",
     )
     .addButton((btn) =>
