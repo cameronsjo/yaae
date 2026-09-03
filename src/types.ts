@@ -1,13 +1,18 @@
 /** Part-of-speech category identifiers */
-export type POSCategory = 'adjective' | 'noun' | 'adverb' | 'verb' | 'conjunction';
+export type POSCategory =
+  | "adjective"
+  | "noun"
+  | "adverb"
+  | "verb"
+  | "conjunction";
 
 /** All POS categories in display order */
 export const POS_CATEGORIES: POSCategory[] = [
-  'adjective',
-  'noun',
-  'adverb',
-  'verb',
-  'conjunction',
+  "adjective",
+  "noun",
+  "adverb",
+  "verb",
+  "conjunction",
 ];
 
 /** Per-POS toggle and color settings */
@@ -46,11 +51,11 @@ export interface ProseHighlightSettings {
 
 /** Default colors matching iA Writer's palette */
 export const DEFAULT_POS_COLORS: Record<POSCategory, string> = {
-  adjective: '#b97a0a',
-  noun: '#ce4924',
-  adverb: '#c333a7',
-  verb: '#177eB8',
-  conjunction: '#01934e',
+  adjective: "#b97a0a",
+  noun: "#ce4924",
+  adverb: "#c333a7",
+  verb: "#177eB8",
+  conjunction: "#01934e",
 };
 
 export const DEFAULT_PROSE_HIGHLIGHT_SETTINGS: ProseHighlightSettings = {
@@ -66,17 +71,16 @@ export const DEFAULT_PROSE_HIGHLIGHT_SETTINGS: ProseHighlightSettings = {
   customWordLists: [],
 };
 
-export type FocusMode = 'off' | 'sentence' | 'paragraph';
+export type FocusMode = "off" | "sentence" | "paragraph";
 
-import type { DocumentSettings } from './document/settings';
-import { DEFAULT_DOCUMENT_SETTINGS } from './document/settings';
+import type { DocumentSettings } from "./document/settings";
+import { DEFAULT_DOCUMENT_SETTINGS } from "./document/settings";
 
 export interface YaaeSettings {
   proseHighlight: ProseHighlightSettings;
   syntaxDimming: boolean;
   gutteredHeadings: boolean;
   focusMode: FocusMode;
-  typewriterScroll: boolean;
   document: DocumentSettings;
 }
 
@@ -84,7 +88,6 @@ export const DEFAULT_SETTINGS: YaaeSettings = {
   proseHighlight: DEFAULT_PROSE_HIGHLIGHT_SETTINGS,
   syntaxDimming: true,
   gutteredHeadings: true,
-  focusMode: 'off',
-  typewriterScroll: false,
+  focusMode: "off",
   document: DEFAULT_DOCUMENT_SETTINGS,
 };
