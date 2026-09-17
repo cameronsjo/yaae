@@ -26,7 +26,8 @@
   },
   "include": [
     "src/**/*.ts",
-    "main.ts"
+    "main.ts",
+    "bench/**/*.ts"
   ],
   "exclude": [
     "node_modules"
