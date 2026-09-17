@@ -101,6 +101,57 @@ interface LineTags {
   listMatches: WordListMatch[];
 }
 
+/** Default capacity of the content-keyed tag cache (see LineTagCache). */
+const DEFAULT_CACHE_CAPACITY = 4096;
+
+/**
+ * LRU cache from line TEXT (not line number) to its unfiltered POS/list-match
+ * tags. Keying by content — not position — means an Enter, paste, or undo
+ * that shifts line numbers around unchanged text is still a cache hit: the
+ * tags are a pure function of the text, so identical lines legitimately share
+ * one entry. Exclusion (code blocks, headings, etc.) is NOT applied here; it
+ * depends on the line's position in the syntax tree, so it's applied by the
+ * caller at decoration-build time instead.
+ *
+ * LRU by ACCESS order: a `get()` hit re-inserts the key so it counts as
+ * recently used, not just recently written. `Map` iteration order is
+ * insertion order, so the first key is always the least recently used one.
+ */
+export class LineTagCache {
+  private readonly capacity: number;
+  private readonly map = new Map<string, LineTags>();
+
+  constructor(capacity: number = DEFAULT_CACHE_CAPACITY) {
+    this.capacity = capacity;
+  }
+
+  get size(): number {
+    return this.map.size;
+  }
+
+  get(text: string): LineTags | undefined {
+    const tags = this.map.get(text);
+    if (tags === undefined) return undefined;
+    // Re-insert to mark as most recently accessed.
+    this.map.delete(text);
+    this.map.set(text, tags);
+    return tags;
+  }
+
+  set(text: string, tags: LineTags): void {
+    this.map.delete(text);
+    this.map.set(text, tags);
+    if (this.map.size > this.capacity) {
+      const oldest = this.map.keys().next().value;
+      if (oldest !== undefined) this.map.delete(oldest);
+    }
+  }
+
+  clear(): void {
+    this.map.clear();
+  }
+}
+
 /**
  * Collect ranges within the visible viewport that should be excluded
  * from NLP processing (code blocks, frontmatter, inline code, etc.)
@@ -193,12 +244,12 @@ export function createHighlighterExtension(plugin: YaaePlugin) {
     // Initialized at declaration: the constructor assigns inside try/catch,
     // which TS's definite-assignment analysis treats as maybe-skipped.
     decorations: DecorationSet = Decoration.none;
-    private cache = new Map<number, LineTags>();
+    private cache = new LineTagCache();
 
     constructor(view: EditorView) {
       // A throw here would keep the ViewPlugin from ever installing (#32).
       // Degrade to unhighlighted and record the error for the debug command.
-      // buildDecorations populates the cache via retagLine before throwing,
+      // buildDecorations populates the cache via tagsFor before throwing,
       // so the reset's cache.clear() is load-bearing even at construction.
       try {
         this.decorations = this.buildDecorations(view);
@@ -240,7 +291,6 @@ export function createHighlighterExtension(plugin: YaaePlugin) {
         if (update.startState.doc.lines === update.state.doc.lines) {
           // Same line count — check for single-character insert
           let changeCount = 0;
-          let changedLine = 0;
           let singleCharInsert = true;
 
           update.changes.iterChangedRanges((_fromA, toA, fromB, toB) => {
@@ -249,31 +299,31 @@ export function createHighlighterExtension(plugin: YaaePlugin) {
             // Single char: old range is empty (fromA===toA) and new range is 1 char
             if (!(toA === _fromA && toB === fromB + 1))
               singleCharInsert = false;
-            changedLine = update.view.state.doc.lineAt(toB).number;
           });
 
           if (singleCharInsert && changeCount === 1) {
-            // Only retag the changed line
-            this.retagLine(update.view, changedLine);
+            // The changed line's text is different from before, so it's a
+            // plain cache miss — tagsFor() (called from buildDecorationSet)
+            // tags and stores it. No cache invalidation needed: the cache is
+            // keyed by content, so every OTHER line's entry is still valid.
             this.decorations = this.buildDecorationSet(update.view);
             return;
           }
         }
-        // Bulk change or line count changed — full rebuild
-        this.cache.clear();
-        this.decorations = this.buildDecorations(update.view);
+        // Bulk change or line count changed — full rebuild, but the cache is
+        // NOT cleared: it's keyed by line content, so unchanged lines (most
+        // of the document, even across an Enter/paste/undo) are still hits.
+        this.decorations = this.buildDecorationSet(update.view);
       } else if (syntaxTree(update.startState) !== syntaxTree(update.state)) {
         // Markdown parses asynchronously: on first paint the code-block region
-        // is often unparsed, so getExcludedRanges() returned nothing and code
-        // words were tagged and cached. The cache holds tags computed before
-        // exclusion was known — invalidate it and rebuild on parse progress.
-        // Checked BEFORE viewportChanged: a scroll that coincides with the
-        // final parse step (both true in one update) must still clear the
-        // cache, and a full rebuild handles the new viewport implicitly.
-        this.cache.clear();
-        this.decorations = this.buildDecorations(update.view);
+        // is often unparsed, so getExcludedRanges() returns nothing yet.
+        // Exclusion is now applied at decoration-emit time (buildDecorationSet),
+        // not baked into the cached tags, so a parse-progress update needs no
+        // cache invalidation or retagging — just re-run exclusion with the
+        // now-more-complete syntax tree.
+        this.decorations = this.buildDecorationSet(update.view);
       } else if (update.viewportChanged) {
-        this.decorations = this.buildDecorations(update.view);
+        this.decorations = this.buildDecorationSet(update.view);
       }
     }
 
@@ -282,74 +332,38 @@ export function createHighlighterExtension(plugin: YaaePlugin) {
       listMatcher.compile(plugin.settings.proseHighlight.customWordLists);
     }
 
-    /** Tag a single line and update its cache entry */
-    private retagLine(view: EditorView, lineNum: number): void {
-      const line = view.state.doc.line(lineNum);
-      const lineText = view.state.sliceDoc(line.from, line.to);
+    /**
+     * Look up a line's UNFILTERED tags by content, tagging and caching on a
+     * miss. Pure function of `text` — no exclusion or heading logic here;
+     * that depends on the line's position in the document/syntax tree and is
+     * applied by the caller (buildDecorationSet) at emit time instead.
+     */
+    private tagsFor(text: string): LineTags {
+      const cached = this.cache.get(text);
+      if (cached) return cached;
 
-      // Skip heading lines unless the user opted in — decided from the line
-      // text alone, so it runs before the getExcludedRanges tree traversal.
-      // Keeps heading words out of POS processing entirely.
-      if (
-        !plugin.settings.proseHighlight.highlightInsideHeadings &&
-        isHeadingLine(lineText)
-      ) {
-        this.cache.set(lineNum, { posTags: [], listMatches: [] });
-        return;
-      }
-
-      const excluded = getExcludedRanges(view, line.from, line.to);
-
-      // Check if entire line is excluded
-      if (
-        excluded.length === 1 &&
-        excluded[0].from <= line.from &&
-        excluded[0].to >= line.to
-      ) {
-        this.cache.set(lineNum, { posTags: [], listMatches: [] });
-        return;
-      }
-
-      const tags = tagger.tag(lineText);
-      const listMatches = listMatcher.match(lineText);
-
-      // Filter out tags/matches that fall in excluded ranges
-      const filteredTags = tags.filter(
-        (t) =>
-          !isExcluded(line.from + t.start, excluded) &&
-          !isExcluded(line.from + t.end - 1, excluded),
-      );
-      const filteredMatches = listMatches.filter(
-        (m) =>
-          !isExcluded(line.from + m.start, excluded) &&
-          !isExcluded(line.from + m.end - 1, excluded),
-      );
-
-      this.cache.set(lineNum, {
-        posTags: filteredTags,
-        listMatches: filteredMatches,
-      });
+      const tags: LineTags = {
+        posTags: tagger.tag(text),
+        listMatches: listMatcher.match(text),
+      };
+      this.cache.set(text, tags);
+      return tags;
     }
 
     /** Build decorations for all visible lines */
     private buildDecorations(view: EditorView): DecorationSet {
       const settings = plugin.settings.proseHighlight;
       if (!settings.enabled) return Decoration.none;
-
-      for (const { from, to } of view.visibleRanges) {
-        const startLine = view.state.doc.lineAt(from).number;
-        const endLine = view.state.doc.lineAt(to).number;
-        for (let i = startLine; i <= endLine; i++) {
-          if (!this.cache.has(i)) {
-            this.retagLine(view, i);
-          }
-        }
-      }
-
       return this.buildDecorationSet(view);
     }
 
-    /** Convert cached tags into a DecorationSet */
+    /**
+     * Tag (from cache or fresh) and emit decorations for every visible line.
+     * Exclusion (code blocks, frontmatter, etc.) and the heading-line skip
+     * are both applied HERE, per line, rather than baked into the cached
+     * tags — the cache is a pure function of line text, so it stays valid
+     * across a syntax-tree update that changes what's excluded.
+     */
     private buildDecorationSet(view: EditorView): DecorationSet {
       const settings = plugin.settings.proseHighlight;
       const builder = new RangeSetBuilder<Decoration>();
@@ -366,14 +380,40 @@ export function createHighlighterExtension(plugin: YaaePlugin) {
         const endLine = view.state.doc.lineAt(to).number;
 
         for (let i = startLine; i <= endLine; i++) {
-          const cached = this.cache.get(i);
-          if (!cached) continue;
-
           const line = view.state.doc.line(i);
+          const lineText = view.state.sliceDoc(line.from, line.to);
+
+          // Skip heading lines unless the user opted in — decided from the
+          // line text alone, before the getExcludedRanges tree traversal.
+          if (
+            !settings.highlightInsideHeadings &&
+            isHeadingLine(lineText)
+          ) {
+            continue;
+          }
+
+          const excluded = getExcludedRanges(view, line.from, line.to);
+
+          // Whole line excluded (e.g. inside a fenced code block) — skip it.
+          if (
+            excluded.length === 1 &&
+            excluded[0].from <= line.from &&
+            excluded[0].to >= line.to
+          ) {
+            continue;
+          }
+
+          const cached = this.tagsFor(lineText);
 
           // Custom list matches first (they take precedence)
           const listCovered = new Set<number>();
           for (const m of cached.listMatches) {
+            if (
+              isExcluded(line.from + m.start, excluded) ||
+              isExcluded(line.from + m.end - 1, excluded)
+            ) {
+              continue;
+            }
             const absFrom = line.from + m.start;
             const absTo = line.from + m.end;
             if (absFrom >= from && absTo <= to) {
@@ -389,10 +429,17 @@ export function createHighlighterExtension(plugin: YaaePlugin) {
             }
           }
 
-          // POS tags — skip if category disabled or position covered by list
+          // POS tags — skip if category disabled, position covered by list,
+          // or the tag falls in an excluded range.
           for (const tag of cached.posTags) {
             if (!settings.categories[tag.pos]?.enabled) continue;
             if (listCovered.has(tag.start)) continue;
+            if (
+              isExcluded(line.from + tag.start, excluded) ||
+              isExcluded(line.from + tag.end - 1, excluded)
+            ) {
+              continue;
+            }
 
             const absFrom = line.from + tag.start;
             const absTo = line.from + tag.end;
