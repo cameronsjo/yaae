@@ -41,6 +41,9 @@ vectors/
 
 # Test coverage
 coverage/
+
+# Downloaded accuracy benchmark treebank (scripts/fetch-ud-ewt.sh)
+bench/data/
 mcp-sessions.json
 *.local.md
 
