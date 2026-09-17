@@ -37,3 +37,18 @@ precision/recall/F1 per category plus macro-F1 (`bench/accuracy.ts`) for
 every candidate under both `auxIsVerb` variants. Without the data file the
 UD-EWT case is skipped (message: "run scripts/fetch-ud-ewt.sh first"); the
 parser and scorer unit tests still run.
+
+## Side-by-side sample
+
+```bash
+pnpm vitest run bench/sample.test.ts
+```
+
+Prints eight fixture lines as `word/CATEGORY` for every candidate, with a `*`
+after each word the candidates disagree on. A felt check to read next to the
+accuracy table; it asserts nothing.
+
+## Results
+
+The 2026-09-17 run and the swap decision are in
+`docs/research/2026-09-17-pos-tagger-bakeoff.md`.
