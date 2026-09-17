@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { CompromiseTagger } from '../src/prose-highlight/tagger';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { CompromiseTagger, categoryForTags } from '../src/prose-highlight/tagger';
 import type { POSTag } from '../src/prose-highlight/tagger';
 
 describe('CompromiseTagger', () => {
@@ -78,5 +80,55 @@ describe('CompromiseTagger', () => {
     const categories = new Set(tags.map((t) => t.pos));
     // Should have at least adjective, noun, verb, adverb
     expect(categories.size).toBeGreaterThanOrEqual(3);
+  });
+
+  it('should not tag pronouns or possessives as nouns', () => {
+    const tags = tagger.tag('He ran to his house');
+    const nouns = tags.filter((t) => t.pos === 'noun');
+    expect(nouns.map((t) => t.text)).toEqual(['house']);
+  });
+
+  it('should offer offset-integrity across a realistic prose fixture', () => {
+    const fixturePath = join(__dirname, 'fixtures', 'prose-sample.md');
+    const lines = readFileSync(fixturePath, 'utf-8')
+      .split('\n')
+      .filter((line) => line.trim().length > 0);
+
+    for (const line of lines) {
+      const tags = tagger.tag(line);
+
+      for (const tag of tags) {
+        expect(line.slice(tag.start, tag.end)).toBe(tag.text);
+      }
+
+      for (let i = 1; i < tags.length; i++) {
+        expect(tags[i].start).toBeGreaterThanOrEqual(tags[i - 1].start);
+        expect(tags[i].start).toBeGreaterThanOrEqual(tags[i - 1].end);
+      }
+    }
+  });
+});
+
+describe('categoryForTags', () => {
+  it('classifies adjectives ahead of everything else', () => {
+    expect(categoryForTags(['Adjective', 'Verb'])).toBe('adjective');
+  });
+
+  it('classifies nouns, excluding pronouns and possessives', () => {
+    expect(categoryForTags(['Noun', 'Singular'])).toBe('noun');
+    expect(categoryForTags(['Noun', 'Pronoun'])).toBeNull();
+    expect(categoryForTags(['Noun', 'Possessive'])).toBeNull();
+    expect(categoryForTags(['Noun', 'Possessive', 'Pronoun'])).toBeNull();
+  });
+
+  it('classifies adverbs, verbs, and conjunctions', () => {
+    expect(categoryForTags(['Adverb'])).toBe('adverb');
+    expect(categoryForTags(['Verb', 'PastTense'])).toBe('verb');
+    expect(categoryForTags(['Conjunction'])).toBe('conjunction');
+  });
+
+  it('returns null when no known category applies', () => {
+    expect(categoryForTags(['Determiner'])).toBeNull();
+    expect(categoryForTags([])).toBeNull();
   });
 });
