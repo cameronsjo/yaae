@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import nlp from 'compromise';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { proseSampleLines } from './fixtures/prose-sample';
 import { CompromiseTagger } from '../src/prose-highlight/tagger';
 import type { POSTag } from '../src/prose-highlight/tagger';
 import type { POSCategory } from '../src/types';
@@ -66,10 +65,7 @@ function deduplicateOverlaps(tags: POSTag[]): POSTag[] {
   return result;
 }
 
-const fixturePath = join(__dirname, 'fixtures', 'prose-sample.md');
-const fixtureLines = readFileSync(fixturePath, 'utf-8')
-  .split('\n')
-  .filter((line) => line.trim().length > 0);
+const fixtureLines = proseSampleLines();
 
 /**
  * Terms the legacy tagger mistagged as nouns because its noun exclusion,

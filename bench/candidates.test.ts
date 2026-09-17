@@ -1,12 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { proseSampleLines, expectTagContract } from '../tests/fixtures/prose-sample';
 import { candidates } from './taggers';
 
-const fixturePath = join(__dirname, '..', 'tests', 'fixtures', 'prose-sample.md');
-const fixtureLines = readFileSync(fixturePath, 'utf-8')
-  .split('\n')
-  .filter((line) => line.trim().length > 0);
+const fixtureLines = proseSampleLines();
 
 describe.each(Object.entries(candidates))('%s candidate tagger', (_name, makeTagger) => {
   const tagger = makeTagger();
@@ -14,14 +10,7 @@ describe.each(Object.entries(candidates))('%s candidate tagger', (_name, makeTag
   it.each(fixtureLines.map((line, i) => [i, line] as const))(
     'line %i: tags are lossless, sorted, and non-overlapping',
     (_i, line) => {
-      const tags = tagger.tag(line);
-
-      let lastEnd = -1;
-      for (const tag of tags) {
-        expect(line.slice(tag.start, tag.end)).toBe(tag.text);
-        expect(tag.start).toBeGreaterThanOrEqual(lastEnd);
-        lastEnd = tag.end;
-      }
+      expectTagContract(line, tagger.tag(line));
     }
   );
 

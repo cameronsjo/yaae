@@ -249,10 +249,13 @@ export function createHighlighterExtension(plugin: YaaePlugin) {
     constructor(view: EditorView) {
       // A throw here would keep the ViewPlugin from ever installing (#32).
       // Degrade to unhighlighted and record the error for the debug command.
-      // buildDecorations populates the cache via tagsFor before throwing,
-      // so the reset's cache.clear() is load-bearing even at construction.
+      // The reset also drops whatever tagsFor cached before the throw; those
+      // entries are valid (the cache is keyed by content) but a failed build
+      // is the wrong moment to keep memory for lines that never rendered.
       try {
-        this.decorations = this.buildDecorations(view);
+        this.decorations = plugin.settings.proseHighlight.enabled
+          ? this.buildDecorationSet(view)
+          : Decoration.none;
       } catch (err) {
         recordProseHighlightError(err, "decoration-build");
         this.resetHighlighting();
@@ -287,42 +290,17 @@ export function createHighlighterExtension(plugin: YaaePlugin) {
         return;
       }
 
-      if (update.docChanged) {
-        if (update.startState.doc.lines === update.state.doc.lines) {
-          // Same line count — check for single-character insert
-          let changeCount = 0;
-          let singleCharInsert = true;
-
-          update.changes.iterChangedRanges((_fromA, toA, fromB, toB) => {
-            changeCount++;
-            if (changeCount > 1) singleCharInsert = false;
-            // Single char: old range is empty (fromA===toA) and new range is 1 char
-            if (!(toA === _fromA && toB === fromB + 1))
-              singleCharInsert = false;
-          });
-
-          if (singleCharInsert && changeCount === 1) {
-            // The changed line's text is different from before, so it's a
-            // plain cache miss — tagsFor() (called from buildDecorationSet)
-            // tags and stores it. No cache invalidation needed: the cache is
-            // keyed by content, so every OTHER line's entry is still valid.
-            this.decorations = this.buildDecorationSet(update.view);
-            return;
-          }
-        }
-        // Bulk change or line count changed — full rebuild, but the cache is
-        // NOT cleared: it's keyed by line content, so unchanged lines (most
-        // of the document, even across an Enter/paste/undo) are still hits.
-        this.decorations = this.buildDecorationSet(update.view);
-      } else if (syntaxTree(update.startState) !== syntaxTree(update.state)) {
-        // Markdown parses asynchronously: on first paint the code-block region
-        // is often unparsed, so getExcludedRanges() returns nothing yet.
-        // Exclusion is now applied at decoration-emit time (buildDecorationSet),
-        // not baked into the cached tags, so a parse-progress update needs no
-        // cache invalidation or retagging — just re-run exclusion with the
-        // now-more-complete syntax tree.
-        this.decorations = this.buildDecorationSet(update.view);
-      } else if (update.viewportChanged) {
+      // One rebuild path for every kind of change. The cache is keyed by line
+      // content and never cleared here:
+      // - docChanged (keystroke, Enter, paste, undo): only lines whose text
+      //   changed are misses; every other visible line is a hit.
+      // - syntax tree progressed: markdown parses asynchronously, so on first
+      //   paint a code block is often unparsed. Exclusion is applied at emit
+      //   time from the current tree, so a re-emit is enough; no retagging.
+      // - viewportChanged: newly visible lines are tagged on demand.
+      const treeChanged =
+        syntaxTree(update.startState) !== syntaxTree(update.state);
+      if (update.docChanged || treeChanged || update.viewportChanged) {
         this.decorations = this.buildDecorationSet(update.view);
       }
     }
@@ -350,19 +328,13 @@ export function createHighlighterExtension(plugin: YaaePlugin) {
       return tags;
     }
 
-    /** Build decorations for all visible lines */
-    private buildDecorations(view: EditorView): DecorationSet {
-      const settings = plugin.settings.proseHighlight;
-      if (!settings.enabled) return Decoration.none;
-      return this.buildDecorationSet(view);
-    }
-
     /**
      * Tag (from cache or fresh) and emit decorations for every visible line.
      * Exclusion (code blocks, frontmatter, etc.) and the heading-line skip
      * are both applied HERE, per line, rather than baked into the cached
      * tags — the cache is a pure function of line text, so it stays valid
-     * across a syntax-tree update that changes what's excluded.
+     * across a syntax-tree update that changes what's excluded. The syntax
+     * tree is walked once per visible range, not once per line.
      */
     private buildDecorationSet(view: EditorView): DecorationSet {
       const settings = plugin.settings.proseHighlight;
@@ -378,13 +350,14 @@ export function createHighlighterExtension(plugin: YaaePlugin) {
       for (const { from, to } of view.visibleRanges) {
         const startLine = view.state.doc.lineAt(from).number;
         const endLine = view.state.doc.lineAt(to).number;
+        const excluded = getExcludedRanges(view, from, to);
 
         for (let i = startLine; i <= endLine; i++) {
           const line = view.state.doc.line(i);
           const lineText = view.state.sliceDoc(line.from, line.to);
 
           // Skip heading lines unless the user opted in — decided from the
-          // line text alone, before the getExcludedRanges tree traversal.
+          // line text alone.
           if (
             !settings.highlightInsideHeadings &&
             isHeadingLine(lineText)
@@ -392,14 +365,8 @@ export function createHighlighterExtension(plugin: YaaePlugin) {
             continue;
           }
 
-          const excluded = getExcludedRanges(view, line.from, line.to);
-
           // Whole line excluded (e.g. inside a fenced code block) — skip it.
-          if (
-            excluded.length === 1 &&
-            excluded[0].from <= line.from &&
-            excluded[0].to >= line.to
-          ) {
+          if (excluded.some((r) => r.from <= line.from && r.to >= line.to)) {
             continue;
           }
 

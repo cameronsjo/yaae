@@ -1,8 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { proseSampleLines, expectTagContract } from './fixtures/prose-sample';
 import { CompromiseTagger, categoryForTags } from '../src/prose-highlight/tagger';
-import type { POSTag } from '../src/prose-highlight/tagger';
 
 describe('CompromiseTagger', () => {
   const tagger = new CompromiseTagger();
@@ -89,22 +87,8 @@ describe('CompromiseTagger', () => {
   });
 
   it('should offer offset-integrity across a realistic prose fixture', () => {
-    const fixturePath = join(__dirname, 'fixtures', 'prose-sample.md');
-    const lines = readFileSync(fixturePath, 'utf-8')
-      .split('\n')
-      .filter((line) => line.trim().length > 0);
-
-    for (const line of lines) {
-      const tags = tagger.tag(line);
-
-      for (const tag of tags) {
-        expect(line.slice(tag.start, tag.end)).toBe(tag.text);
-      }
-
-      for (let i = 1; i < tags.length; i++) {
-        expect(tags[i].start).toBeGreaterThanOrEqual(tags[i - 1].start);
-        expect(tags[i].start).toBeGreaterThanOrEqual(tags[i - 1].end);
-      }
+    for (const line of proseSampleLines()) {
+      expectTagContract(line, tagger.tag(line));
     }
   });
 });

@@ -59,7 +59,17 @@ export function parseConllu(text: string): ConlluSentence[] {
 
     const numericId = Number(id);
     if (mwtSpan && mwtEnd !== null && numericId <= mwtEnd) {
-      tokens.push({ form, upos, start: mwtSpan.start, end: mwtSpan.end });
+      // Sub-token of a multiword token. Its own span is the next `form.length`
+      // characters of the MWT surface when the sub-token forms concatenate to
+      // it (`do` + `n't` = `don't`, true for every MWT in UD-EWT test); otherwise
+      // it shares the whole MWT span. Distinct sub-spans keep one predicted tag
+      // over the contraction from matching every sub-token in the scorer.
+      const span: { start: number; end: number } = mwtSpan;
+      const start: number = span.start;
+      const end: number =
+        form.length <= span.end - span.start ? start + form.length : span.end;
+      tokens.push({ form, upos, start, end });
+      mwtSpan = { start: end, end: span.end };
       if (numericId === mwtEnd) {
         mwtEnd = null;
         mwtSpan = null;

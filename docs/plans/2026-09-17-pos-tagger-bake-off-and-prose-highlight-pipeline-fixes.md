@@ -280,7 +280,7 @@ The bake-off lives in `bench/` (vitest `bench` mode for throughput, ordinary vit
 
 ## Learnings
 
-- **Decision: keep compromise.** wink-nlp passes accuracy (+11.2 macro-F1), latency (1.0 ms vs 14.2 ms viewport), and maintenance, but its gzip bundle (1,026,648 B alone; 1,082,647 B projected shipped) is four times the 260,626 B ceiling. en-pos fails size, maintenance, and misses the 5-point accuracy bar (+4.1). Full numbers: `docs/research/2026-09-17-pos-tagger-bakeoff.md`.
+- **Decision: keep compromise.** wink-nlp passes accuracy (+11.7 macro-F1), latency (1.0 ms vs 14.2 ms viewport), and maintenance, but its gzip bundle (1,026,648 B alone; 1,082,647 B projected shipped) is four times the 260,626 B ceiling. en-pos fails size, maintenance, and misses the 5-point accuracy bar (+4.2). Full numbers: `docs/research/2026-09-17-pos-tagger-bakeoff.md`.
 - **compromise's viewport is 14.2 ms mean, 15.9 ms p99 on the M3 Air.** Under the 16 ms budget, but with no margin on a slower machine. The worker question stays closed; a breach would reopen it, and the wink numbers say the wink route beats the worker route if that day comes.
 - **The plan's compromise shape note was wrong.** `doc.json({ offset: true })` in compromise 14.14.5 does carry a per-term `offset`; Task 2 used it directly and kept an `indexOf` fallback that never fires on tested input.
 - **Agent worktrees branch from `origin/main`, not the orchestrator's HEAD** (`worktree.baseRef: fresh`). Task 3 was built without Task 2's tagger in its tree and Tasks 5 and 6 had to fast-forward to the plan tip first. The merges were clean because every task owned disjoint files, but a plan that chains tasks through one file needs the fast-forward step in every brief.

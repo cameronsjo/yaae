@@ -6,7 +6,7 @@ Date: 2026-09-17. Machine: MacBook Air M3 (`sjomba`). Plan: `docs/plans/2026-09-
 
 **Keep compromise. No swap.** wink-nlp is more accurate and much faster, but its bundle is roughly four times the size ceiling the decision rule fixed before the numbers existed. en-pos fails on size and on maintenance. The pipeline fixes that shipped with this bake-off (minified build, single-pass tagging with the pronoun defect fixed, content-keyed cache) stand on their own.
 
-If the size ceiling is ever revisited, wink-nlp is the candidate: 87.3% macro-F1 against compromise's 76.1%, and a 60-line viewport in about 1 ms against 14 ms.
+If the size ceiling is ever revisited, wink-nlp is the candidate: 87.8% macro-F1 against compromise's 76.1%, and a 60-line viewport in about 1 ms against 14 ms.
 
 ## Decision rule (fixed in the plan before measurement)
 
@@ -19,7 +19,7 @@ Recommend a swap only if all four hold for the candidate:
 
 | Rule | wink-nlp | en-pos |
 |---|---|---|
-| 1. Accuracy +5 F1 | PASS (+11.2) | FAIL (+4.1) |
+| 1. Accuracy +5 F1 | PASS (+11.7) | FAIL (+4.2) |
 | 2. Viewport latency | PASS (1.0 ms, 0.07×) | PASS (3.2 ms, 0.22×) |
 | 3. Size ceiling 260,626 B gzip | FAIL (1,082,647 B) | FAIL (1,482,863 B) |
 | 4. Release in last 12 months | PASS (2025-06-30) | FAIL (2017-04-09) |
@@ -62,25 +62,25 @@ Each candidate bundled alone (`esbuild --bundle --minify --format=cjs`, one entr
 
 ## Accuracy against UD English EWT
 
-`pnpm bench:accuracy` after `scripts/fetch-ud-ewt.sh`. Test split of UD_English-EWT at commit `4a4d77f`, 2,077 sentences. A gold token counts as predicted category X when a predicted span overlaps it and carries X. Precision also counts false positives on tokens whose gold category is none of the five.
+`pnpm bench:accuracy` after `scripts/fetch-ud-ewt.sh`. Test split of UD_English-EWT at commit `4a4d77f`, 2,077 sentences. A gold token counts as predicted category X when a predicted span overlaps it and carries X. Precision also counts false positives on tokens whose gold category is none of the five. Sub-tokens of a multiword token (`don't` is gold `do` + `n't`) get consecutive sub-spans of the contraction, so one predicted tag over the whole contraction is scored against one sub-token, not both.
 
 Primary variant (`auxIsVerb: true`, auxiliaries count as verbs, matching iA Writer):
 
 | Category F1 | compromise | wink-nlp | en-pos |
 |---|---:|---:|---:|
 | adjective | 74.8% | **78.1%** | 69.8% |
-| noun | 87.3% | **90.9%** | 88.3% |
+| noun | 87.3% | **91.3%** | 88.3% |
 | adverb | 64.9% | **85.1%** | 76.0% |
-| verb | 88.1% | **91.6%** | 89.8% |
+| verb | 88.1% | **94.0%** | 89.8% |
 | conjunction | 65.2% | **90.8%** | 77.4% |
-| **Macro-F1** | 76.1% | **87.3%** | 80.2% |
+| **Macro-F1** | 76.1% | **87.8%** | 80.3% |
 
 Secondary variant (`auxIsVerb: false`), for context:
 
 | Category F1 | compromise | wink-nlp | en-pos |
 |---|---:|---:|---:|
-| verb | 68.9% | 69.5% | **72.1%** |
-| **Macro-F1** | 72.2% | **82.9%** | 76.7% |
+| verb | 68.9% | 71.7% | **72.2%** |
+| **Macro-F1** | 72.2% | **83.4%** | 76.7% |
 
 *Higher is better. Only the verb row changes between variants; every tagger colors auxiliaries as verbs, so the secondary variant mostly measures how many auxiliaries the treebank contains.*
 
@@ -89,7 +89,7 @@ Per-category precision and recall for the primary variant:
 | Candidate | adjective P/R | noun P/R | adverb P/R | verb P/R | conjunction P/R |
 |---|---|---|---|---|---|
 | compromise | 80.1 / 70.1 | 84.5 / 90.3 | 81.4 / 54.0 | 85.4 / 91.1 | 55.9 / 78.2 |
-| wink-nlp | 89.1 / 69.5 | 87.6 / 94.5 | 88.9 / 81.5 | 89.1 / 94.2 | 97.3 / 85.0 |
+| wink-nlp | 89.1 / 69.5 | 88.3 / 94.5 | 89.1 / 81.5 | 93.7 / 94.2 | 97.3 / 85.0 |
 | en-pos | 63.4 / 77.7 | 86.3 / 90.4 | 78.9 / 73.3 | 92.2 / 87.5 | 99.9 / 63.1 |
 
 Where compromise loses: adverb recall (54%) and conjunction precision (56%). It misses about half the adverbs and over-tags conjunctions, mostly `to` and sentence-initial `So`, as the sample below shows.
@@ -140,7 +140,7 @@ wink       There/- was/V nothing/-* so/ADV *very*/- remarkable/ADJ in/- that,/- 
 en-pos     There/- was/V nothing/V* so/ADV *very*/- remarkable/ADJ in/- that,/- nor/CONJ did/V Alice/N think/V it/- so/ADV
 ```
 
-Felt read: compromise's visible misses are `to` colored as a conjunction (twice), `sitting` and `feel` as nouns, `the hot` as nouns, and `close` as a verb. wink-nlp's are `sitting/V` (arguably right), `worth/ADJ` (right), and a missed `nothing`. Three of the eight lines have a compromise error a reader would notice; wink-nlp has none that a reader would call wrong. The scorer's 11-point gap is the same story at scale.
+Felt read: compromise's visible misses are `to` colored as a conjunction (twice), `sitting` and `feel` as nouns, `the hot` as nouns, and `close` as a verb. wink-nlp's are `sitting/V` (arguably right), `worth/ADJ` (right), and a missed `nothing`. Three of the eight lines have a compromise error a reader would notice; wink-nlp has none that a reader would call wrong. The scorer's 12-point gap is the same story at scale.
 
 Markdown-wrapped words (`*very*`, `**White`, `_what`) get no category from any tagger because the marker is glued to the word. That is a tokenization gap in all three, not a tagger difference; it is out of scope here.
 

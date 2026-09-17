@@ -16,13 +16,15 @@ function wordCount(lines: string[]): number {
 }
 
 // Repeat the source lines until the corpus reaches ~5,000 words.
-const repeated: string[] = [];
-while (wordCount(repeated) < TARGET_WORD_COUNT) {
-  repeated.push(...sourceLines);
+const sourceWordCount = wordCount(sourceLines);
+if (sourceWordCount === 0) {
+  throw new Error(`Fixture has no words: ${fixturePath}`);
 }
+const repeatCount = Math.ceil(TARGET_WORD_COUNT / sourceWordCount);
+const repeated: string[] = Array.from({ length: repeatCount }, () => sourceLines).flat();
 
 export const corpusLines: string[] = repeated;
-export const corpusWordCount: number = wordCount(repeated);
+export const corpusWordCount: number = sourceWordCount * repeatCount;
 
 export const viewportLines: string[] = repeated
   .filter((line) => line.trim().length > 0)

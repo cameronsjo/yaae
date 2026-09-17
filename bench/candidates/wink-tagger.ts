@@ -37,8 +37,12 @@ export class WinkTagger implements POSTagger {
       if (text.slice(start, end) !== value) {
         const found = text.indexOf(value, cursor);
         if (found < 0) {
-          // Token isn't recoverable in the source text at all; skip it
-          // rather than emit a wrong offset.
+          // Token isn't recoverable in the source text at all (wink
+          // normalized it): skip it rather than emit a wrong offset. The
+          // cursor still advances by the reconstructed length, the best
+          // estimate of where the source text resumes; the next token's
+          // slice check catches any drift and falls back to indexOf.
+          // Never observed on tested input (bench/candidates.test.ts).
           cursor = end;
           return;
         }

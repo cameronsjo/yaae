@@ -27,8 +27,9 @@ describe("parseConllu", () => {
     expect(sentence.surface).toBe("I don't know.");
     expect(sentence.tokens).toEqual([
       { form: "I", upos: "PRON", start: 0, end: 1 },
-      { form: "do", upos: "AUX", start: 2, end: 7 },
-      { form: "not", upos: "PART", start: 2, end: 7 },
+      // Sub-tokens of the `don't` MWT get consecutive sub-spans of its surface.
+      { form: "do", upos: "AUX", start: 2, end: 4 },
+      { form: "not", upos: "PART", start: 4, end: 7 },
       { form: "know", upos: "VERB", start: 8, end: 12 },
       { form: ".", upos: "PUNCT", start: 12, end: 13 },
     ]);
