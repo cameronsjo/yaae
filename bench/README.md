@@ -23,6 +23,17 @@ Each registered tagger in `bench/taggers.ts` runs two cases:
 
 ## Accuracy
 
-Task 5 adds `pnpm bench:accuracy`, which scores each candidate tagger
-against a POS-tagged treebank (fetched as part of that task's setup) instead
-of measuring speed.
+Scores each candidate tagger (`bench/taggers.ts`) against the UD_English-EWT
+test split (Universal Dependencies, CC BY-SA 4.0) instead of measuring speed.
+
+```bash
+bash scripts/fetch-ud-ewt.sh   # downloads bench/data/en_ewt-ud-test.conllu (pinned commit, gitignored)
+pnpm bench:accuracy
+```
+
+`bench/accuracy.test.ts` parses the CoNLL-U file (`bench/conllu.ts`), maps
+each gold UPOS tag to a yaae `POSCategory` (`bench/upos-map.ts`), and reports
+precision/recall/F1 per category plus macro-F1 (`bench/accuracy.ts`) for
+every candidate under both `auxIsVerb` variants. Without the data file the
+UD-EWT case is skipped (message: "run scripts/fetch-ud-ewt.sh first"); the
+parser and scorer unit tests still run.
