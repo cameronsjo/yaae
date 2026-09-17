@@ -2,7 +2,7 @@ import winkNLP from 'wink-nlp';
 import type { ItemToken } from 'wink-nlp';
 import model from 'wink-eng-lite-web-model';
 import type { POSTag, POSTagger } from '../../src/prose-highlight/tagger';
-import { categoryForUpos } from './upos-local';
+import { mapUpos } from '../upos-map';
 
 const nlp = winkNLP(model);
 const its = nlp.its;
@@ -48,7 +48,7 @@ export class WinkTagger implements POSTagger {
 
       cursor = end;
 
-      const pos = categoryForUpos(upos);
+      const pos = mapUpos(upos, { auxIsVerb: true });
       if (!pos) return;
 
       results.push({ text: value, pos, start, end });
