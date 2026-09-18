@@ -1,7 +1,7 @@
 import esbuild from "esbuild";
 import process from "process";
 import builtins from "builtin-modules";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 // Vite-compatible `?raw` imports: print CSS ships as raw strings injected via
@@ -55,6 +55,11 @@ const context = await esbuild.context({
   target: "ES2022",
   plugins: [rawImports],
   logLevel: "info",
+  // Production writes meta.json so scripts/check-bundle-inputs.sh can assert
+  // what actually entered the bundle. Grepping the minified main.js cannot:
+  // minification renames every symbol, so a grep returns a confident negative
+  // whether or not the bench harness shipped.
+  metafile: prod,
   sourcemap: prod ? false : "inline",
   treeShaking: true,
   minify: prod,
@@ -66,7 +71,8 @@ const context = await esbuild.context({
 });
 
 if (prod) {
-  await context.rebuild();
+  const result = await context.rebuild();
+  await writeFile("meta.json", JSON.stringify(result.metafile), "utf8");
   process.exit(0);
 } else {
   await context.watch();

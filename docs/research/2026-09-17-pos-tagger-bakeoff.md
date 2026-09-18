@@ -12,6 +12,21 @@ en-pos is rejected on its own merits, unchanged: it misses the accuracy bar (+4.
 
 The swap is its own plan: it adds a runtime dependency, needs a settings toggle, and needs mobile re-testing against yaae#32. This document is the evidence for it, not the execution.
 
+### Measured after the swap (2026-09-18)
+
+The swap shipped on `plan/wink-tagger-swap` (`docs/plans/2026-09-18-wink-tagger-swap.md`). Re-measured on the built plugin:
+
+| Claim | Predicted | Measured after swap |
+|---|---:|---:|
+| `main.js` raw bytes | 3.85 MB | **3,852,059** |
+| `main.js` gzip bytes | 1,082,647 | **1,083,478** |
+| Cold 60-line viewport, wink | 1.0 ms | **1.0067 ms min / 1.0998 ms mean** |
+| Cold 60-line viewport, compromise | 14.2 ms | 14.93 ms min / 16.65 ms mean |
+
+The size projection was right to within 831 gzip bytes (0.08%). The shipped tagger's viewport figure matches the candidate's, so moving `winkNLP(model)` behind a lazy getter costs nothing once the pipeline exists.
+
+`compromise` is absent from the bundle by construction, not by inspection: `scripts/check-bundle-inputs.sh` reads esbuild's metafile and fails on any input under `bench/` or from the `compromise` package. It was proven able to fail — a staged `bench/taggers` import in a `src/` file turned it red, and so did a bare `import nlp from "compromise"`, which shows the compromise rule fires on its own rather than only as a side effect of the bench rule.
+
 ### Where wink's weight actually is
 
 | Component | Raw | Gzip |
@@ -190,10 +205,20 @@ Considered and excluded before measuring: `retext-pos` and `pos-js` (ports of th
 
 ## Open questions for the swap plan
 
-- **Can wink load only the POS model?** Worth **626,537 raw / 176,217 gzip bytes**, a 17% cut to the model, measured by bundling a model object carrying only `core`, `sbd`, `pos`, and `featureFn`. Not reachable naively, though: `wink-eng-lite-web-model/dist/model.js` is one CommonJS module with static `require` calls for every sub-model, so a bundler cannot shake them; and `winkNLP()` rejects a model missing `.ner` (`theModel.ner is not a function`), while no-op stubs fail deeper on data shape (`Cannot read properties of undefined`). Reaching the saving needs a supported wink API or an upstream change, not a local trim. Budget it as an investigation with a known ceiling.
-- **Is the model lazy-loadable? — Startup is comparable, so lazy-loading is about mobile, not desktop.** The `pnpm bench` viewport figures measure a fresh tagger against an already-loaded model, since `winkNLP(model)` runs at module scope; they say nothing about startup. Measured separately on an M3 Air under Node, like for like on require-only: **wink 53–70 ms against compromise 66–67 ms** — comparable, not the clear win an earlier revision of this section claimed by comparing wink's require+init against compromise's require+first-tag. Desktop startup is therefore not a reason to lazy-load. Mobile is: `winkNLP(model)` at module scope parses the 3.6 MB model at every Obsidian launch, on every platform, and prose highlighting is gated off on mobile — so a phone pays that cost for a feature it cannot use. A lazy getter that builds the model on first `tag()` keeps the seam synchronous and removes it.
-- **Mobile.** Prose highlighting is disabled on mobile by a `Platform.isMobile` guard in `main.ts`. yaae#32, which the guard was added for, is **closed** — the guard now has no open tracker behind it, which is its own loose end. Mobile carries both the model's download weight and, unless the model is lazily constructed, its parse cost at every launch, for a feature it cannot use.
-- **Does wink's advantage survive line-at-a-time tagging?** The accuracy scorer feeds whole treebank sentences; the plugin feeds one editor line. A statistical tagger uses sentence context, a rule-based one mostly does not, so fragmentation should hurt wink more. Soft-wrapped prose makes a line a whole paragraph and the question moot, which is the house convention — but hard-wrapped notes exist. Re-score both taggers on hard-wrapped input before calling the accuracy gain banked.
+- **Can wink load only the POS model?** (tracked as yaae#47) Worth **626,537 raw / 176,217 gzip bytes**, a 17% cut to the model, measured by bundling a model object carrying only `core`, `sbd`, `pos`, and `featureFn`. Not reachable naively, though: `wink-eng-lite-web-model/dist/model.js` is one CommonJS module with static `require` calls for every sub-model, so a bundler cannot shake them; and `winkNLP()` rejects a model missing `.ner` (`theModel.ner is not a function`), while no-op stubs fail deeper on data shape (`Cannot read properties of undefined`). Reaching the saving needs a supported wink API or an upstream change, not a local trim. Budget it as an investigation with a known ceiling.
+- **Is the model lazy-loadable? — Yes, and it shipped. wink also starts faster than compromise, by about 2×.** The `pnpm bench` viewport figures measure a fresh tagger against an already-loaded model, so they say nothing about startup. Re-measured on 2026-09-18 with `scripts/measure-tagger-startup.sh`, which runs every phase in a fresh process under one harness (`tsx` 4.21 / Node 24) on an M3 Air, 5 runs each:
+
+  | Phase | wink | compromise |
+  |---|---:|---:|
+  | require only | **22–23 ms** | 105–112 ms |
+  | require + build pipeline | **54–56 ms** | — (no such step) |
+  | require + first tag | **55–56 ms** | 120–131 ms |
+
+  This corrects the "53–70 ms against 66–67 ms, comparable" figures in an earlier revision, whose method was not recorded. Under one recorded method wink is roughly half compromise's cost to reach a first tag. compromise loads its whole lexicon at require and gains little after; wink's cost is back-loaded into `winkNLP(model)`.
+
+  **The lazy getter defers about 33 ms of the 55, not all of it.** The middle row is what makes that visible: `winkNLP(model)` is the ~33 ms the shipped `WinkTagger` moves off plugin load, while the ~22 ms of `import` remains, because both imports are static and making them dynamic would force the `POSTagger` seam async — which the reading-view post-processor cannot accept. Mobile is where the deferral pays: prose highlighting is gated off there, so the pipeline is never built at all.
+- **Mobile.** Prose highlighting is disabled on mobile by a `Platform.isMobile` guard in `main.ts`. yaae#32, which the guard was added for, is **closed** — the guard now has no open tracker behind it, tracked as yaae#46. Mobile still carries the model's download weight; the lazy getter removed the per-launch parse cost. A real-device check on the rolling `beta` tag is tracked as yaae#45.
+- **Does wink's advantage survive line-at-a-time tagging? — On the fixture corpus, fragmentation costs nothing.** The accuracy scorer feeds whole treebank sentences; the plugin feeds one editor line. A statistical tagger uses sentence context, a rule-based one mostly does not, so fragmentation should hurt wink more. Checked during the swap: tagging the 29 fixture lines individually yields 200 tags, and tagging them joined into one string yields 200 — delta 0. That is a soft-wrapped corpus, so it does not settle hard-wrapped input; the house convention is no hard wrapping, and only 27.5% of EWT sentences exceed 72 columns.
 - **A viewport breach was not the trigger.** compromise sits at 14.2 ms mean, 15.9 ms p99 against a 16 ms budget, so the worker question (`implementation.md` § 9.4) stays closed either way; wink's 1.0 ms retires it outright.
 
 ## Reproduce
@@ -201,6 +226,8 @@ Considered and excluded before measuring: `retext-pos` and `pos-js` (ports of th
 ```bash
 pnpm install
 bash scripts/bundle-size.sh          # shipped main.js, raw and gzip
+bash scripts/check-bundle-inputs.sh  # assert no bench/ or compromise input
+bash scripts/measure-tagger-startup.sh  # startup, like for like
 pnpm bench                           # throughput and viewport latency
 bash scripts/fetch-ud-ewt.sh         # one-time treebank fetch to bench/data/
 pnpm bench:accuracy                  # per-category F1, both AUX variants

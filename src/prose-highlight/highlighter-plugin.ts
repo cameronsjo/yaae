@@ -9,7 +9,7 @@ import { RangeSetBuilder } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
 import type YaaePlugin from "../../main";
 import type { POSTag } from "./tagger";
-import { CompromiseTagger } from "./tagger";
+import { WinkTagger } from "./wink-tagger";
 import { WordListMatcher } from "./word-lists";
 import type { WordListMatch } from "./word-lists";
 import type { POSCategory } from "../types";
@@ -234,7 +234,7 @@ const POS_MARKS: Record<POSCategory, Decoration> = {
  * Closes over the Obsidian plugin instance for settings access.
  */
 export function createHighlighterExtension(plugin: YaaePlugin) {
-  const tagger = new CompromiseTagger();
+  const tagger = new WinkTagger();
   const listMatcher = new WordListMatcher();
 
   // Compile initial word lists
