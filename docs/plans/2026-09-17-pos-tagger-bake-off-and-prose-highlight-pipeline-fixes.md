@@ -6,9 +6,9 @@ harness: "claude-code 2.1.274"
 machine: "a6d66f7901a3"
 approved_session_id: "b9c6cba6-90e1-471d-a7b7-4ffe01e5b4f2"
 status: executing
-next: "Cameron reads docs/research/2026-09-17-pos-tagger-bakeoff.md; manual test-vault check; flip PR to ready"
+next: "Cameron: read docs/research/2026-09-17-pos-tagger-bakeoff.md, do the manual test-vault check, then flip PR #44 to ready"
 branch: plan/pos-tagger-bakeoff
-pr: pending
+pr: https://github.com/cameronsjo/yaae/pull/44
 updated: 2026-09-17
 date: 2026-09-17
 ---
@@ -254,10 +254,10 @@ The bake-off lives in `bench/` (vitest `bench` mode for throughput, ordinary vit
 - [x] Run `pnpm bench` and `pnpm bench:accuracy` on the M3 Air; collect bundle sizes from the Task 1 and Task 6 commit bodies
 - [x] Doc sections: shipped baseline (pre/post minify), throughput table, 60-line viewport latency (absolute ms and ratio to compromise), accuracy table (per-category F1 + macro-F1, both AUX variants, primary marked), bundle delta per candidate, **side-by-side sample**: 8 real paragraphs from Cameron's vault or the fixture rendered as `word/CATEGORY` per candidate with visible disagreements marked, survey sources (native route rejection, candidate maintenance status, licenses), decision
 - [x] Apply the decision rule, fixed here before the numbers exist. **Recommend a swap only if all hold** for the candidate: (1) primary-variant macro-F1 beats compromise (post-Task-2) by ≥ 5 points; (2) 60-line viewport latency is ≤ 16 ms absolute **and** ≤ 1.5 × compromise's; (3) the projected shipped gzip size (post-minify `main.js` − compromise's share + candidate's bundle) is ≤ the **pre-minify shipped baseline** from Task 1, so no user ever downloads a bigger plugin than today; (4) a release within the last 12 months. `en-pos` fails (4) by construction and can only win as a vendored fork, which the doc must say
-- [ ] Present the result to Cameron with the recommendation; the swap (runtime dependency, settings toggle, mobile re-test against yaae#32) is a separate plan
+- [x] Present the result to Cameron with the recommendation; the swap (runtime dependency, settings toggle, mobile re-test against yaae#32) is a separate plan
 - [x] Append `## Learnings`; set `next:`
-- [ ] run `cadence-forge:polish`; fold findings
-- [ ] Commit: `docs(research): POS tagger bake-off results`
+- [x] run `cadence-forge:polish`; fold findings
+- [x] Commit: `docs(research): POS tagger bake-off results`
 
 ---
 
@@ -276,6 +276,8 @@ The bake-off lives in `bench/` (vitest `bench` mode for throughput, ordinary vit
 - 2026-09-17 — The repo has no `CHANGELOG.md`; release-please generates it from conventional commits at release time. The "`[Unreleased]` entry" steps in Tasks 1–3 become "the user-visible line is the first line of the commit body". A hand-written changelog would collide with the generated one.
 - 2026-09-17 — "Existing tests stay green" was already false on `main` at branch time: 15 structural tests that regex-match `main.ts` source fail in `auto-toc`, `commands`, `main-lifecycle`, and `prose-highlight-debug` (`pnpm test` on `f44da8c`). Out of scope here; the gate for this plan is "no new failures". Filed as a loose end.
 - 2026-09-17 — Task 1's manual `test-vault/` load check and Task 3's manual editing check are deferred to the end of the plan and done once, by the driver.
+- 2026-09-18 — Task 7's "present the result to Cameron" step is the PR and the closing report, not an in-session presentation; the session ran unattended. The manual `test-vault/` check stays owed and is named in the PR.
+- 2026-09-18 — Both polish fan-out arms stalled on their first dispatch and again cost a retry; the docs arm's retry died on a Fable rate limit. Docs drift was applied inline by the driver instead, recorded honestly as `docs=ran` with the lost context isolation disclosed. Security kept its independent Opus pass.
 - 2026-09-17 — Driver ran as Fable 5.1 rather than Opus, under operator authorization ("implement the following plan" in the same session family that approved it).
 
 ## Learnings
@@ -286,3 +288,5 @@ The bake-off lives in `bench/` (vitest `bench` mode for throughput, ordinary vit
 - **Agent worktrees branch from `origin/main`, not the orchestrator's HEAD** (`worktree.baseRef: fresh`). Task 3 was built without Task 2's tagger in its tree and Tasks 5 and 6 had to fast-forward to the plan tip first. The merges were clean because every task owned disjoint files, but a plan that chains tasks through one file needs the fast-forward step in every brief.
 - **Parallel tasks that both "consume" a file one of them creates need an interim.** Task 6 carried a local UPOS table while Task 5 wrote the shared one; the fold was one commit (`004ed96`). Cheaper than serializing them.
 - **Sonnet's output filter can trip on writing literary prose.** The Task 4 agent died mid-fixture; a resume with "generate plain sentences" finished cleanly.
+- **A staged break has to run where the real thing runs.** The first attempt at proving the treebank checksum gate fails closed put the broken copy of the script in `/tmp`, so it resolved its repo root to `/` and died on `mkdir //bench` before ever reaching the checksum. That is a green-looking red: the test failed for the wrong reason and would have passed against a gate that did nothing. Re-run from the repo's own `scripts/` directory, it failed on the digest as intended.
+- **The accuracy scorer had a defect the accuracy numbers could not reveal.** Every sub-token of a contraction shared the whole contraction's span, so one predicted tag matched both `do` and `n't`. It moved wink-nlp by half a point and left compromise untouched, which is exactly why nothing looked wrong. 2.8% of UD-EWT test tokens are multiword sub-tokens.
