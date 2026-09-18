@@ -14,6 +14,13 @@ import { join } from "node:path";
 
 const MAIN_TS = readFileSync(join(__dirname, "..", "main.ts"), "utf-8");
 
+// These are structural tests: they match the source as text. That makes them
+// sensitive to formatting as well as behavior, and a quote-style reformat in
+// 31c2418 broke every assertion below for two weeks without any behavior
+// changing (#51). Every quoted literal in a pattern here is therefore written
+// ["']…["'], so a future formatter flipping quote style in either direction
+// cannot redden the suite again.
+
 // --- F1: theme propagation ------------------------------------------------
 
 describe("F1 — export.pdf.theme propagates to the print pipeline", () => {
@@ -30,7 +37,7 @@ describe("F1 — export.pdf.theme propagates to the print pipeline", () => {
     expect(stateTs).toMatch(/theme:\s*ThemeMode/);
     // Presence-gated on raw frontmatter: the schema's theme default must
     // not shadow the settings value (the placebo-slider bug class).
-    expect(stateTs).toMatch(/'theme' in rawPdf/);
+    expect(stateTs).toMatch(/["']theme["'] in rawPdf/);
   });
 });
 
@@ -39,7 +46,7 @@ describe("F1 — export.pdf.theme propagates to the print pipeline", () => {
 describe("F2 — validateOnSave toggle takes effect without reload", () => {
   it("does not gate the modify handler on startup setting value", () => {
     // The buggy form was: if (this.settings.document.validateOnSave) { registerEvent(...) }
-    // The fix gates *inside* the handler. So the registerEvent(vault.on('modify', ...))
+    // The fix gates *inside* the handler. So the registerEvent(vault.on("modify", ...))
     // should not be wrapped in an outer if (this.settings.document.validateOnSave).
     const validateBlock = MAIN_TS.match(
       /\/\/ Validate on save[\s\S]*?this\.registerEvent\([\s\S]*?\)\s*\)\s*;/,
@@ -53,7 +60,7 @@ describe("F2 — validateOnSave toggle takes effect without reload", () => {
 
   it("checks validateOnSave inside the modify handler at runtime", () => {
     expect(MAIN_TS).toMatch(
-      /this\.app\.vault\.on\(\s*'modify'[\s\S]*?if\s*\(\s*!this\.settings\.document\.validateOnSave\s*\)\s*return/,
+      /this\.app\.vault\.on\(\s*["']modify["'][\s\S]*?if\s*\(\s*!this\.settings\.document\.validateOnSave\s*\)\s*return/,
     );
   });
 });
@@ -119,7 +126,7 @@ describe("F5 — print state bootstraps from active file on startup", () => {
 
 describe("F6 — non-markdown active leaf preserves last markdown print state", () => {
   it("returns early without refreshing print state for non-md files", () => {
-    // After the startFile null/extension check, when extension !== 'md',
+    // After the startFile null/extension check, when extension is not "md",
     // we must NOT touch activeDoc or refresh — we just `return`.
     const fn = MAIN_TS.match(
       /async\s+updatePrintStateFromActiveFile\s*\(\s*\)\s*:\s*Promise<void>\s*\{[\s\S]*?\n\s{2}\}/,
@@ -128,7 +135,7 @@ describe("F6 — non-markdown active leaf preserves last markdown print state", 
     const body = fn![0];
 
     const nonMdBranch = body.match(
-      /if\s*\(\s*startFile\.extension\s*!==\s*'md'\s*\)\s*\{[\s\S]*?\}/,
+      /if\s*\(\s*startFile\.extension\s*!==\s*["']md["']\s*\)\s*\{[\s\S]*?\}/,
     );
     expect(nonMdBranch).not.toBeNull();
     const branchBody = nonMdBranch![0];
@@ -165,9 +172,9 @@ describe("F7 — vault.read call sites guard with TFile instanceof", () => {
     // cleanCssClassesFromFile takes a TFile parameter (typed at the seam);
     // both command entry points gate on extension/type before calling it.
     expect(MAIN_TS).toMatch(/cleanCssClassesFromFile\(file:\s*TFile\)/);
-    const cmd = MAIN_TS.match(/id:\s*'yaae-clean-css-classes'[\s\S]*?\}\)\s*;/);
+    const cmd = MAIN_TS.match(/id:\s*["']yaae-clean-css-classes["'][\s\S]*?\}\)\s*;/);
     expect(cmd).not.toBeNull();
-    expect(cmd![0]).toMatch(/!file\s*\|\|\s*file\.extension\s*!==\s*'md'/);
+    expect(cmd![0]).toMatch(/!file\s*\|\|\s*file\.extension\s*!==\s*["']md["']/);
   });
 });
 
@@ -227,7 +234,7 @@ describe("F8 — loadSettings resets non-array customClassifications to []", () 
 describe("F9 — cssclasses filter rejects non-string entries safely", () => {
   it("filter callback uses a typeof string guard", () => {
     expect(MAIN_TS).toMatch(
-      /typeof\s+c\s*===\s*'string'\s*&&\s*!c\.startsWith\(\s*'pdf-'\s*\)/,
+      /typeof\s+c\s*===\s*["']string["']\s*&&\s*!c\.startsWith\(\s*["']pdf-["']\s*\)/,
     );
   });
 
@@ -273,10 +280,10 @@ describe("F10 — settings tab nav buttons use plugin.registerDomEvent", () => {
     const cls = MAIN_TS.match(/class\s+YaaeSettingTab[\s\S]*$/);
     expect(cls).not.toBeNull();
     expect(cls![0]).toMatch(
-      /this\.plugin\.registerDomEvent\(\s*btn\s*,\s*'click'/,
+      /this\.plugin\.registerDomEvent\(\s*btn\s*,\s*["']click["']/,
     );
-    expect(cls![0]).not.toMatch(/this\.registerDomEvent\(\s*btn\s*,\s*'click'/);
-    expect(cls![0]).not.toMatch(/btn\.addEventListener\(\s*'click'/);
+    expect(cls![0]).not.toMatch(/this\.registerDomEvent\(\s*btn\s*,\s*["']click["']/);
+    expect(cls![0]).not.toMatch(/btn\.addEventListener\(\s*["']click["']/);
   });
 });
 
@@ -284,12 +291,12 @@ describe("F10 — settings tab nav buttons use plugin.registerDomEvent", () => {
 
 describe("F11 — yaae-generate-toc respects checking flag", () => {
   it("only invokes generateTocForCurrentFile when not checking", () => {
-    const cmdBlock = MAIN_TS.match(/id:\s*'yaae-generate-toc'[\s\S]*?\}\)\s*;/);
+    const cmdBlock = MAIN_TS.match(/id:\s*["']yaae-generate-toc["'][\s\S]*?\}\)\s*;/);
     expect(cmdBlock).not.toBeNull();
     expect(cmdBlock![0]).toMatch(
       /if\s*\(\s*!checking\s*\)\s*this\.generateTocForCurrentFile\(\)/,
     );
-    expect(cmdBlock![0]).toMatch(/!file\s*\|\|\s*file\.extension\s*!==\s*'md'/);
+    expect(cmdBlock![0]).toMatch(/!file\s*\|\|\s*file\.extension\s*!==\s*["']md["']/);
   });
 
   // Behavioral simulation of the command's check/exec phases.

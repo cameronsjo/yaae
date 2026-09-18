@@ -13,6 +13,30 @@ pnpm run test:watch      # Watch mode tests
 pnpm run test:coverage   # Coverage report
 ```
 
+```bash
+bash scripts/mutate-structural-tests.sh   # Prove the structural tests can fail
+```
+
+## Structural tests
+
+Several suites (`main-lifecycle`, `commands`, `auto-toc`, `prose-highlight-debug`)
+check wiring by matching `main.ts` and `highlighter-plugin.ts` **as text**, because
+those files pull in CM6 imports that need browser DOM globals. Two consequences
+worth knowing before editing them:
+
+- They are sensitive to formatting, not just behavior. A quote-style reformat in
+  `31c2418` reddened 15 of them at once while nothing broke, and CI stayed red for
+  two weeks (#51). Every quoted literal in a pattern is therefore written
+  `["']…["']` so a future formatter cannot repeat it.
+- A pattern of the form `/ANCHOR[\s\S]*?TARGET/` run against a whole file will
+  happily match a `TARGET` that lives somewhere else entirely. That is how the
+  reading-view mobile gate ended up unguarded: deleting it left the suite green.
+  Bound such assertions by position (`indexOf` from the anchor, asserted to fall
+  before a known-inside marker) rather than by a lazy scan.
+
+`scripts/mutate-structural-tests.sh` deletes each pinned behavior in turn and
+fails if the suite stays green. Run it after changing one of these tests.
+
 ## Project Structure
 
 ```
