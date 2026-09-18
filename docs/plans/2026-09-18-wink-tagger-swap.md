@@ -1,8 +1,8 @@
 ---
 status: complete
-next: "open the PR against plan/pos-tagger-bakeoff"
+next: "review PR #48; it stacks on #44 and merges after it"
 branch: plan/wink-tagger-swap
-pr: —
+pr: "https://github.com/cameronsjo/yaae/pull/48"
 updated: 2026-09-18
 date: 2026-09-18
 session_id: fc7b8834-c59b-48df-92c9-fa42d4a84729
