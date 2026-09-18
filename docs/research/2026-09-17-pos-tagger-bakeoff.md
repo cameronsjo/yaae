@@ -190,7 +190,7 @@ Considered and excluded before measuring: `retext-pos` and `pos-js` (ports of th
 
 ## Open questions for the swap plan
 
-- **Can wink load only the POS model?** Worth ~575 kB raw (the sentiment and entity models POS tagging never reads). Answer this before optimizing anything else.
+- **Can wink load only the POS model?** Worth **626,537 raw / 176,217 gzip bytes**, a 17% cut to the model, measured by bundling a model object carrying only `core`, `sbd`, `pos`, and `featureFn`. Not reachable naively, though: `wink-eng-lite-web-model/dist/model.js` is one CommonJS module with static `require` calls for every sub-model, so a bundler cannot shake them; and `winkNLP()` rejects a model missing `.ner` (`theModel.ner is not a function`), while no-op stubs fail deeper on data shape (`Cannot read properties of undefined`). Reaching the saving needs a supported wink API or an upstream change, not a local trim. Budget it as an investigation with a known ceiling.
 - **Is the model lazy-loadable?** Deferring `eng-core-web-model.json` until the first highlight would keep plugin startup near today's cost. Obsidian loads every enabled plugin's `main.js` at launch, so 3.85 MB of mostly-JSON is parsed on every app start whether or not the user highlights anything.
 - **Mobile.** Prose highlighting is currently disabled on mobile (yaae#32). Until that is resolved, mobile users would carry the model's weight for a feature they cannot use — which argues for lazy-loading, not against the swap.
 - **A viewport breach was not the trigger.** compromise sits at 14.2 ms mean, 15.9 ms p99 against a 16 ms budget, so the worker question (`implementation.md` § 9.4) stays closed either way; wink's 1.0 ms retires it outright.
