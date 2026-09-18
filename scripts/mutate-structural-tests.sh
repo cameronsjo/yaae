@@ -9,11 +9,28 @@
 # Every mutation is applied to a copy, run, then restored from that copy.
 # Never uses destructive git: a peer's uncommitted work is not ours to discard.
 #
+# Run this in a worktree, not a checkout shared with a live peer. Each mutation
+# leaves a deliberately broken main.ts on disk for the few seconds a vitest run
+# takes, and a peer's `git add -A` in that window would stage it.
+#
+# One more limit: perl -i replaces a symlinked source with a regular file, and
+# the restoring cp does not put the symlink back. None of the targets below is
+# a symlink today.
+#
 # Usage: bash scripts/mutate-structural-tests.sh
-# Exit: 0 every mutation was caught, 1 at least one survived.
+# Exit: 0 every mutation was caught, 1 a mutation survived or matched nothing.
 set -euo pipefail
 
-cd "$(git rev-parse --show-toplevel)" || exit 2
+# Resolve the repo from THIS SCRIPT's location, not the caller's cwd. Deriving
+# it from cwd means running the script from another checkout would mutate that
+# repo's main.ts instead of this one's. Symlinks are resolved first, since the
+# script may be invoked through one.
+script_path="${BASH_SOURCE[0]}"
+while [[ -L "$script_path" ]]; do
+  script_path="$(readlink "$script_path")"
+done
+script_dir="$(cd "$(dirname "$script_path")" && pwd -P)"
+cd "$(git -C "$script_dir" rev-parse --show-toplevel)" || exit 2
 
 backup_dir="$(mktemp -d -t yaae-mutate-XXXXXX)"
 
