@@ -1,6 +1,6 @@
 ---
-status: in-progress
-next: "Task 2 — metafile bundle check with a staged break"
+status: complete
+next: "open the PR against plan/pos-tagger-bakeoff"
 branch: plan/wink-tagger-swap
 pr: —
 updated: 2026-09-18
@@ -121,12 +121,12 @@ Dependency direction stays `bench/ → src/`, never the reverse — `esbuild` fo
 **Rationale:** the production build minifies, so grepping `main.js` for a `bench/` symbol returns a confident negative whether or not the harness shipped. It reads as exoneration and cannot go red.
 
 **Steps:**
-- [ ] Build with `--metafile` and assert **no key of `metafile.inputs` starts with `bench/`** and none is `compromise`. Stage the break to prove it fails: add a temporary `import { candidates } from '../../bench/taggers'` to a `src/` file, confirm the check goes RED, remove it, confirm GREEN. Restore with an explicit-path `git checkout`, never a broad reset
-- [ ] `bash scripts/bundle-size.sh` — record raw and gzip against the predicted 3.85 MB / 1,082,647 B. A material miss means the projection method was wrong; say so rather than adjusting the prediction
-- [ ] Re-measure startup **like for like** (require-only for both, or require+first-tag for both) against the corrected 53–70 ms vs 66–67 ms figures
-- [ ] `pnpm bench` — the shipped tagger's viewport number should match the candidate's
-- [ ] Update the research doc's decision section with measured-after-swap numbers
-- [ ] Commit: `test: assert the bundle excludes bench and compromise`
+- [x] Build with `--metafile` and assert **no key of `metafile.inputs` starts with `bench/`** and none is `compromise`. Stage the break to prove it fails: add a temporary `import { candidates } from '../../bench/taggers'` to a `src/` file, confirm the check goes RED, remove it, confirm GREEN. Restore with an explicit-path `git checkout`, never a broad reset
+- [x] `bash scripts/bundle-size.sh` — record raw and gzip against the predicted 3.85 MB / 1,082,647 B. A material miss means the projection method was wrong; say so rather than adjusting the prediction
+- [x] Re-measure startup **like for like** (require-only for both, or require+first-tag for both) against the corrected 53–70 ms vs 66–67 ms figures
+- [x] `pnpm bench` — the shipped tagger's viewport number should match the candidate's
+- [x] Update the research doc's decision section with measured-after-swap numbers
+- [x] Commit: `test: assert the bundle excludes bench and compromise`
 
 ---
 
@@ -138,12 +138,12 @@ Dependency direction stays `bench/ → src/`, never the reverse — `esbuild` fo
 **Dispatch:** Serial (after Task 2) · fresh Sonnet subagent
 
 **Steps:**
-- [ ] `implementation.md` § 5: wink-nlp is shipped, compromise is no longer the recommendation. Keep the comparison table and its measured-results pointer
-- [ ] `implementation.md` § 9.4: wink's 1.0 ms viewport retires the Web Worker question outright — say so
-- [ ] `CLAUDE.md`: record that `src/prose-highlight/` must never import from `bench/`, and why
-- [ ] `README.md` only if a user-visible claim changed — the five categories did not, so likely no edit
-- [ ] File three follow-up issues: (a) post-merge mobile beta check on the rolling `beta` tag; (b) the `Platform.isMobile` prose-highlight guard has no open tracker since #32 closed; (c) POS-only model subsetting, worth 176 kB gzip, blocked on upstream
-- [ ] Commit: `docs: wink-nlp is the shipped tagger`
+- [x] `implementation.md` § 5: wink-nlp is shipped, compromise is no longer the recommendation. Keep the comparison table and its measured-results pointer
+- [x] `implementation.md` § 9.4: wink's 1.0 ms viewport retires the Web Worker question outright — say so
+- [x] `CLAUDE.md`: record that `src/prose-highlight/` must never import from `bench/`, and why
+- [x] `README.md` only if a user-visible claim changed — the five categories did not, so likely no edit *(no edit; README names no tagger)*
+- [x] File three follow-up issues: (a) post-merge mobile beta check on the rolling `beta` tag — yaae#45; (b) the `Platform.isMobile` prose-highlight guard has no open tracker since #32 closed — yaae#46; (c) POS-only model subsetting, worth 176 kB gzip, blocked on upstream — yaae#47
+- [x] Commit: `docs: wink-nlp is the shipped tagger`
 
 ---
 
@@ -165,8 +165,15 @@ Dependency direction stays `bench/ → src/`, never the reverse — `esbuild` fo
 - **`compromise` re-pinned to 14.14.5 after an accidental bump.** `pnpm remove` + `pnpm add -D` re-resolved it to 14.17.0. The research doc's compromise numbers were measured on 14.14.5, so a bump in the same PR would have changed the comparison baseline.
 - **Two `bench/` mentions in `src/` comments were reworded.** The plan's `grep -rn "bench/" src/ main.ts` verification is a literal string check; prose mentions would have failed it for no real reason. The metafile check in Task 2 is the real guard.
 - **No CHANGELOG entry.** The repo has no `CHANGELOG.md`; release-please generates release notes from the conventional-commit prefixes.
+- **The staged break was run twice, not once.** The plan's single break (`import { candidates } from '../../bench/taggers'`) turns the check red on both rules at once, because bench pulls compromise in transitively — so it cannot show the compromise rule fires on its own. A second break, a bare `import nlp from "compromise"`, isolates it. Both were restored from a `cp` copy taken before the edit, per the no-destructive-git rule.
+- **The check refuses a metafile with under 10 inputs.** Not in the plan. An empty or truncated metafile would otherwise satisfy every rule while proving nothing — the same failure mode the plan's own rationale warns about for grep.
+- **`scripts/measure-tagger-startup.sh` is committed.** The plan said re-measure, not build a tool. The earlier figures were wrong partly because the method was not recorded, so the fix is a script that records it.
+- **The startup figures changed materially, not just in precision.** The doc claimed wink 53–70 ms against compromise 66–67 ms, "comparable". Measured like for like in fresh processes under one harness: require-only wink 23–27 ms against 108–113 ms; require+first-tag wink 57–61 ms against 122–126 ms. wink is roughly twice as fast to a first tag. Reported rather than quietly overwritten, since the earlier method is unknown.
 
 ## Learnings
 
 - Fragmentation is a non-issue: tagging the 29 fixture lines individually yields the same 200 tags as tagging them joined into one string. Delta 0.
 - wink leaves the pronoun `He` and the possessive `his` untagged in `He ran to his house`, which is the exact case the old five-query compromise tagger got wrong. The accuracy win shows up in the pinned fixture, not just in the EWT score.
+- The size projection was accurate to 831 gzip bytes (0.08%): predicted 1,082,647, measured 1,083,478.
+- `pnpm remove` followed by `pnpm add` re-resolves a package rather than preserving the lockfile version. It bumped `compromise` 14.14.5 → 14.17.0 silently, which would have changed the version the research doc's compromise numbers were measured on. Move a package between `package.json` sections by editing the file, or re-pin explicitly afterwards.
+- The plan's baseline-capture grep (`grep -E '^\s+FAIL'`) matches nothing against vitest 4, which marks failures with an ANSI-wrapped `×`. A step that silently captures an empty baseline makes every later comparison vacuous — the failure mode the plan warns about elsewhere, reached through the tooling instead of the assertion.
