@@ -112,17 +112,40 @@ describe("#32 wiring in main.ts", () => {
   });
 
   it("registers the copy-debug and mobile-override commands", () => {
-    expect(MAIN_TS).toMatch(/id:\s*'copy-prose-highlight-debug'/);
-    expect(MAIN_TS).toMatch(/id:\s*'toggle-prose-highlight-mobile-override'/);
+    expect(MAIN_TS).toMatch(/id:\s*["']copy-prose-highlight-debug["']/);
+    expect(MAIN_TS).toMatch(/id:\s*["']toggle-prose-highlight-mobile-override["']/);
   });
 
   it("reading-view processor is always registered with a runtime gate", () => {
-    expect(MAIN_TS).toMatch(
-      /registerMarkdownPostProcessor\(\(el,\s*ctx\)\s*=>\s*\{[\s\S]*?proseHighlightBlockedOnMobile\(\)/,
+    // Bounded by position, not by a lazy [\s\S]*? scan. The old form let the
+    // gate match ANY later proseHighlightBlockedOnMobile() in main.ts — there
+    // are four — so deleting the one inside this callback left the test green.
+    // Verified: removing the gate now reddens this test (#51).
+    const regIdx = MAIN_TS.indexOf(
+      "this.registerMarkdownPostProcessor((el, ctx)",
     );
-    expect(MAIN_TS).toMatch(
-      /recordProseHighlightError\(err,\s*'reading-view'\)/,
+    expect(regIdx, "post-processor registration not found").toBeGreaterThan(-1);
+
+    // This error-recording call is inside the callback, so it bounds the end
+    // of the region the gate must appear in.
+    const recordIdx = MAIN_TS.search(
+      /recordProseHighlightError\(err,\s*["']reading-view["']\)/,
     );
+    expect(recordIdx, "reading-view error recording not found").toBeGreaterThan(
+      regIdx,
+    );
+
+    // The gate must sit between the two — i.e. inside this callback, and
+    // before the try/catch that runs the processor.
+    const gateIdx = MAIN_TS.indexOf(
+      "this.proseHighlightBlockedOnMobile()",
+      regIdx,
+    );
+    expect(gateIdx, "no mobile gate after the registration").toBeGreaterThan(
+      regIdx,
+    );
+    expect(gateIdx, "mobile gate is not inside the processor callback").
+      toBeLessThan(recordIdx);
   });
 });
 
@@ -134,10 +157,10 @@ describe("#32 error capture in highlighter-plugin.ts", () => {
 
   it("constructor and update are wrapped with error recording", () => {
     expect(PLUGIN_TS).toMatch(
-      /constructor\(view: EditorView\)\s*\{[\s\S]*?catch\s*\(err\)\s*\{[\s\S]*?recordProseHighlightError\(err,\s*'decoration-build'\)/,
+      /constructor\(view: EditorView\)\s*\{[\s\S]*?catch\s*\(err\)\s*\{[\s\S]*?recordProseHighlightError\(err,\s*["']decoration-build["']\)/,
     );
     expect(PLUGIN_TS).toMatch(
-      /update\(update: ViewUpdate\)\s*\{[\s\S]*?catch\s*\(err\)\s*\{[\s\S]*?recordProseHighlightError\(err,\s*'update'\)/,
+      /update\(update: ViewUpdate\)\s*\{[\s\S]*?catch\s*\(err\)\s*\{[\s\S]*?recordProseHighlightError\(err,\s*["']update["']\)/,
     );
   });
 
