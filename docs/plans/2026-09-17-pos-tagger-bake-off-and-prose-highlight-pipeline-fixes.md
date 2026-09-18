@@ -6,7 +6,7 @@ harness: "claude-code 2.1.274"
 machine: "a6d66f7901a3"
 approved_session_id: "b9c6cba6-90e1-471d-a7b7-4ffe01e5b4f2"
 status: executing
-next: "Cameron: read docs/research/2026-09-17-pos-tagger-bakeoff.md, do the manual test-vault check, then flip PR #44 to ready"
+next: "Cameron: manual test-vault check, then flip PR #44 to ready. Decision is swap to wink-nlp (size rule withdrawn 2026-09-18) — the swap needs its own plan, starting with whether wink can load the POS model alone."
 branch: plan/pos-tagger-bakeoff
 pr: https://github.com/cameronsjo/yaae/pull/44
 updated: 2026-09-17
@@ -282,7 +282,9 @@ The bake-off lives in `bench/` (vitest `bench` mode for throughput, ordinary vit
 
 ## Learnings
 
-- **Decision: keep compromise.** wink-nlp passes accuracy (+11.7 macro-F1), latency (1.0 ms vs 14.2 ms viewport), and maintenance, but its gzip bundle (1,026,648 B alone; 1,082,647 B projected shipped) is four times the 260,626 B ceiling. en-pos fails size, maintenance, and misses the 5-point accuracy bar (+4.2). Full numbers: `docs/research/2026-09-17-pos-tagger-bakeoff.md`.
+- **Decision: swap to wink-nlp.** It passes accuracy (+11.7 macro-F1), latency (1.0 ms vs 14.2 ms viewport), and maintenance. It failed only the plan's size ceiling, withdrawn 2026-09-18: across 19 installed Obsidian plugins, five exceed 1.3 MB raw and the largest, `outfit-planner`, is 5.2 MB raw / 1.18 MB gzip — larger than yaae-with-wink would be. en-pos stays rejected on its own merits. Full numbers: `docs/research/2026-09-17-pos-tagger-bakeoff.md`.
+- **The size ceiling was the plan's weakest decision, and it was load-bearing.** "No user downloads a bigger plugin than today" sounds principled and measures nothing real — it anchors on yaae's own past weight rather than on what a plugin can cost. One `du` over a set of installed plugins would have refuted it before the bake-off ran. Fix the anchor before fixing the rule: a size budget needs a comparison set.
+- **Almost all of wink's weight is one data file.** Its tagger code is 13 kB gzip against compromise's 140 kB, so the swap makes the *code* smaller; `eng-core-web-model.json` (2.97 MB raw) is the whole cost, plus sentiment and entity models POS tagging never reads (~575 kB raw). That makes the swap plan's first question "can we load only the POS model?", not "can we afford wink?".
 - **compromise's viewport is 14.2 ms mean, 15.9 ms p99 on the M3 Air.** Under the 16 ms budget, but with no margin on a slower machine. The worker question stays closed; a breach would reopen it, and the wink numbers say the wink route beats the worker route if that day comes.
 - **The plan's compromise shape note was wrong.** `doc.json({ offset: true })` in compromise 14.14.5 does carry a per-term `offset`; Task 2 used it directly and kept an `indexOf` fallback that never fires on tested input.
 - **Agent worktrees branch from `origin/main`, not the orchestrator's HEAD** (`worktree.baseRef: fresh`). Task 3 was built without Task 2's tagger in its tree and Tasks 5 and 6 had to fast-forward to the plan tip first. The merges were clean because every task owned disjoint files, but a plan that chains tasks through one file needs the fast-forward step in every brief.

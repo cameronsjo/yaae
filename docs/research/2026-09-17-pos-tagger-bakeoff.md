@@ -4,9 +4,25 @@ Date: 2026-09-17. Machine: MacBook Air M3 (`sjomba`). Plan: `docs/plans/2026-09-
 
 ## Decision
 
-**Keep compromise. No swap.** wink-nlp is more accurate and much faster, but its bundle is roughly four times the size ceiling the decision rule fixed before the numbers existed. en-pos fails on size and on maintenance. The pipeline fixes that shipped with this bake-off (minified build, single-pass tagging with the pronoun defect fixed, content-keyed cache) stand on their own.
+**Swap to wink-nlp.** It wins accuracy by 11.7 macro-F1 points and runs a cold 60-line viewport 14× faster, at a cost of about 887 kB gzip added to the plugin download.
 
-If the size ceiling is ever revisited, wink-nlp is the candidate: 87.8% macro-F1 against compromise's 76.1%, and a 60-line viewport in about 1 ms against 14 ms.
+The decision rule below failed wink-nlp on size alone, capping the shipped bundle at yaae's own pre-minify weight. That rule was withdrawn on 2026-09-18, and a measurement of 19 installed Obsidian plugins says the withdrawal is right. Five ship a `main.js` over 1.3 MB raw, and the largest, `outfit-planner`, is **5.2 MB raw / 1.18 MB gzip — bigger on both axes than yaae-with-wink would be** (3.85 MB raw / 1.08 MB gzip). A ceiling that forbids what a quarter of the sample already does was measuring the wrong thing.
+
+en-pos is rejected on its own merits, unchanged: it misses the accuracy bar (+4.2 against a +5 requirement), is the largest of the three, and was last published in 2017.
+
+The swap is its own plan: it adds a runtime dependency, needs a settings toggle, and needs mobile re-testing against yaae#32. This document is the evidence for it, not the execution.
+
+### Where wink's weight actually is
+
+| Component | Raw | Gzip |
+|---|---:|---:|
+| wink-nlp core (code) | **37,478** | **13,111** |
+| wink-eng-lite-web-model (data) | 3,617,791 | 1,013,823 |
+| compromise, for comparison (code) | 359,795 | 139,814 |
+
+*Lower is better.*
+
+Swapping the *code* makes yaae smaller: wink's tagger is 13 kB gzip against compromise's 140 kB. All of the added weight is one data file, `eng-core-web-model.json` at 2.97 MB raw. Two more models ride along that POS tagging never reads — `eng-sa-model.json` (sentiment, 404 kB raw) and `eng-ner-model.json` (entities, 172 kB raw). Whether wink can be configured to load only the POS model is the first question the swap plan should answer; it is worth roughly 575 kB raw before any other optimization.
 
 ## Decision rule (fixed in the plan before measurement)
 
@@ -21,8 +37,10 @@ Recommend a swap only if all four hold for the candidate:
 |---|---|---|
 | 1. Accuracy +5 F1 | PASS (+11.7) | FAIL (+4.2) |
 | 2. Viewport latency | PASS (1.0 ms, 0.07×) | PASS (3.2 ms, 0.22×) |
-| 3. Size ceiling 260,626 B gzip | FAIL (1,082,647 B) | FAIL (1,482,863 B) |
+| 3. Size ceiling 260,626 B gzip | FAIL (1,082,647 B) — **rule withdrawn** | FAIL (1,482,863 B) |
 | 4. Release in last 12 months | PASS (2025-06-30) | FAIL (2017-04-09) |
+
+Rule 3 was withdrawn on 2026-09-18, after the numbers were in. Fixing rules in advance is what keeps a bake-off honest, so the withdrawal is recorded here rather than edited away: the rule was a guess at what "too big" means, and the plugin measurement above shows the guess was wrong by a wide margin. Rules 1, 2, and 4 stand as written, and wink-nlp passes all three.
 
 ## Shipped baseline: bundle size
 
@@ -170,11 +188,12 @@ Treebank: UD_English-EWT test split, CC BY-SA 4.0, fetched by script and never c
 
 Considered and excluded before measuring: `retext-pos` and `pos-js` (ports of the older FastTag/Brill lexicon tagger, no published accuracy figure), `natural` and `nlp.js` (broader NLP toolkits whose POS support is the same Brill-style tagger or absent), and Transformers.js/ONNX models (tens of MB and asynchronous, wrong shape for keystroke highlighting).
 
-## What would change the decision
+## Open questions for the swap plan
 
-- **A different size ceiling.** wink-nlp passes every other rule with room to spare. Lazy-loading the 1 MB model on first use, or shipping it as a separate download, would put the question back on the table; both are a design change, not a swap.
-- **A smaller wink model.** `wink-eng-lite-web-model` is the smallest model winkjs publishes today.
-- **A viewport breach.** If the compromise viewport crosses 16 ms on a slower machine, the choice is between the worker route and the wink route, and this doc's numbers say wink.
+- **Can wink load only the POS model?** Worth ~575 kB raw (the sentiment and entity models POS tagging never reads). Answer this before optimizing anything else.
+- **Is the model lazy-loadable?** Deferring `eng-core-web-model.json` until the first highlight would keep plugin startup near today's cost. Obsidian loads every enabled plugin's `main.js` at launch, so 3.85 MB of mostly-JSON is parsed on every app start whether or not the user highlights anything.
+- **Mobile.** Prose highlighting is currently disabled on mobile (yaae#32). Until that is resolved, mobile users would carry the model's weight for a feature they cannot use — which argues for lazy-loading, not against the swap.
+- **A viewport breach was not the trigger.** compromise sits at 14.2 ms mean, 15.9 ms p99 against a 16 ms budget, so the worker question (`implementation.md` § 9.4) stays closed either way; wink's 1.0 ms retires it outright.
 
 ## Reproduce
 
