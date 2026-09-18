@@ -27,10 +27,14 @@ if [ -z "$meta" ]; then
     exit 2
   }
   rm -f meta.json
-  if ! pnpm run build > /tmp/yaae-build.log 2>&1; then
-    echo "FAIL: production build failed — see /tmp/yaae-build.log" >&2
+  # mktemp, not a fixed /tmp name: a predictable path on a shared machine can
+  # be pre-planted as a symlink, which this redirect would follow and truncate.
+  build_log="$(mktemp -t yaae-build-XXXXXX)"
+  if ! pnpm run build > "$build_log" 2>&1; then
+    echo "FAIL: production build failed — see $build_log" >&2
     exit 2
   fi
+  rm -f "$build_log"
   meta="meta.json"
 fi
 
@@ -55,7 +59,9 @@ forbidden=$(jq -r '
 
 if [ -n "$forbidden" ]; then
   echo "FAIL: forbidden inputs in the production bundle:"
-  printf '  %s\n' $forbidden
+  # Quoted and line-oriented: these paths come from the metafile, and an
+  # unquoted expansion would word-split and glob-expand them against the cwd.
+  printf '%s\n' "$forbidden" | sed 's/^/  /'
   exit 1
 fi
 

@@ -17,8 +17,12 @@ cd "$(git rev-parse --show-toplevel)" || {
   exit 2
 }
 
-out="$(mktemp -t yaae-vitest-XXXXXX).json"
-trap 'rm -f "$out"' EXIT
+# A temp DIR, not "$(mktemp ...).json". Appending a suffix means the file
+# mktemp atomically created is not the one used, so the original leaks every
+# run and the path actually written is created without O_EXCL.
+tmpdir="$(mktemp -d -t yaae-vitest-XXXXXX)"
+trap 'rm -rf "$tmpdir" || true' EXIT
+out="$tmpdir/report.json"
 
 pnpm exec vitest run --reporter=json --outputFile="$out" > /dev/null 2>&1
 rc=$?
