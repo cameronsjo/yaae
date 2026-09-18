@@ -11,11 +11,18 @@ let instance: WinkInstance | null = null;
 /**
  * Builds the wink pipeline on first use and reuses it after.
  *
- * `winkNLP(model)` parses a 3.6 MB model. At module scope that cost lands at
- * every Obsidian launch on every platform, including mobile, where prose
- * highlighting is gated off and no tag is ever requested. Deferring it to the
- * first `tag()` call keeps the `POSTagger` seam synchronous and costs nothing
- * once the pipeline exists.
+ * Measured on an M3 Air under Node 24 (`scripts/measure-tagger-startup.sh`),
+ * reaching a first tag costs ~55 ms and splits three ways: ~22 ms for the two
+ * imports, ~33 ms for `winkNLP(model)`, and ~1 ms to tag.
+ *
+ * This getter defers the ~33 ms. The ~22 ms of imports is NOT deferred — both
+ * `import` statements above are static, so they still run when Obsidian loads
+ * the plugin. Making those dynamic would force the seam async, and the
+ * reading-view post-processor cannot await.
+ *
+ * Deferring the larger share still matters most on mobile, where prose
+ * highlighting is gated off and no tag is ever requested, so the pipeline is
+ * never built at all.
  */
 function getNlp(): WinkInstance {
   instance ??= winkNLP(model);
@@ -55,12 +62,14 @@ export class WinkTagger implements POSTagger {
         const found = text.indexOf(value, cursor);
         if (found < 0) {
           // Token isn't recoverable in the source text at all (wink
-          // normalized it): skip it rather than emit a wrong offset. The
-          // cursor still advances by the reconstructed length, the best
-          // estimate of where the source text resumes; the next token's
-          // slice check catches any drift and falls back to indexOf.
-          // Never observed on tested input (the candidates bench suite).
-          cursor = end;
+          // normalized it): skip it rather than emit a wrong offset, and
+          // leave the cursor where it is. Advancing it by the reconstructed
+          // length would be a guess, and a guess that overshoots strands
+          // every later token — their real positions would sit behind the
+          // cursor, so `indexOf(value, cursor)` would miss them too and the
+          // rest of the line would silently lose highlighting. The cursor
+          // still points at a position proven correct by the previous token,
+          // so the next `indexOf` searches forward from known-good ground.
           return;
         }
         start = found;

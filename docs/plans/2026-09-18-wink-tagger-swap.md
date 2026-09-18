@@ -170,6 +170,22 @@ Dependency direction stays `bench/ → src/`, never the reverse — `esbuild` fo
 - **`scripts/measure-tagger-startup.sh` is committed.** The plan said re-measure, not build a tool. The earlier figures were wrong partly because the method was not recorded, so the fix is a script that records it.
 - **The startup figures changed materially, not just in precision.** The doc claimed wink 53–70 ms against compromise 66–67 ms, "comparable". Measured like for like in fresh processes under one harness: require-only wink 23–27 ms against 108–113 ms; require+first-tag wink 57–61 ms against 122–126 ms. wink is roughly twice as fast to a first tag. Reported rather than quietly overwritten, since the earlier method is unknown.
 
+## Polish findings (2026-09-18)
+
+Six finder angles over the branch's net diff against `plan/pos-tagger-bakeoff`. Nine findings survived; all nine fixed.
+
+1. **The lazy getter's own comment overclaimed.** It implied the getter removes the whole model cost. Measured split: ~22 ms of static `import` still runs at plugin load, ~33 ms of `winkNLP(model)` is deferred. The fix is the correct claim, in the comment and the research doc — the deferral is real and worth keeping, just smaller than written.
+2. **`scripts/check-bundle-inputs.sh` was wired to nothing.** A script nobody runs cannot catch a regression. Now `pnpm run check:bundle`, and a CI step in `ci.yml` after the build.
+3. **The "reuses one pipeline" test passed without the pipeline being reused.** Comparing two instances' output proves nothing — a tagger rebuilding per call returns the same tags. Replaced with a timing assertion. Proven red by removing `instance ??=`: 2024 ms against a 200 ms threshold.
+4. **No test covered the offset fallback.** Added curly-quote, ligature, and non-breaking-space lines, the realistic triggers for a token whose reconstructed slice disagrees with the source.
+5. **`scripts/failing-test-names.sh` printed `NOT_A_VITEST_REPORT` as a test name and exited 0.** A reporter shape change would have shown up as one new "failing test" instead of a broken harness. Now exits 2 on a missing, empty, or wrong-shaped report.
+6. **`measure-tagger-startup.sh` exited 0 when a phase produced no measurement at all**, and dropped individual failed runs silently. Now exits 2, and warns when a sample is short.
+7. **Its `tsx || node` fallback could measure two libraries under two runtimes** — the exact uneven comparison the script exists to prevent. One runner is now resolved once, named in the output, and fatal if absent.
+8. **`check-bundle-inputs.sh` could read a stale `meta.json`** from an arbitrary cwd and report PASS for a tree it never built. Now runs from the repo root and deletes the metafile before rebuilding.
+9. **Nothing tested the two-construction-site trap** the plan named CRITICAL. Added a structural test over both files. Proven red by repointing `reading-view.ts` alone back to `CompromiseTagger` — which is exactly the half-done swap the plan warned about.
+
+Declined: a full reading-view/live-preview integration parity test (needs a real Obsidian editor and DOM; finding 9's structural check covers the specific regression at hand), and folding the two construction sites into one shared factory (the duplication predates this diff and covers the word-list matcher too).
+
 ## Learnings
 
 - Fragmentation is a non-issue: tagging the 29 fixture lines individually yields the same 200 tags as tagging them joined into one string. Delta 0.

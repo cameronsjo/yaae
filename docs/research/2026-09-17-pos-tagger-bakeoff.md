@@ -210,14 +210,13 @@ Considered and excluded before measuring: `retext-pos` and `pos-js` (ports of th
 
   | Phase | wink | compromise |
   |---|---:|---:|
-  | require only | **23–27 ms** | 108–113 ms |
-  | require + first tag | **57–61 ms** | 122–126 ms |
+  | require only | **22–23 ms** | 105–112 ms |
+  | require + build pipeline | **54–56 ms** | — (no such step) |
+  | require + first tag | **55–56 ms** | 120–131 ms |
 
-  (First run of each phase is a warm-up outlier — 55 ms and 187 ms — and is excluded.)
+  This corrects the "53–70 ms against 66–67 ms, comparable" figures in an earlier revision, whose method was not recorded. Under one recorded method wink is roughly half compromise's cost to reach a first tag. compromise loads its whole lexicon at require and gains little after; wink's cost is back-loaded into `winkNLP(model)`.
 
-  This corrects the "53–70 ms against 66–67 ms, comparable" figures in an earlier revision, whose method was not recorded. Under one recorded method wink is about half compromise's cost to reach a first tag. The two phases also separate cleanly: wink's ~34 ms require→first-tag gap *is* the model parse, while compromise loads its whole lexicon at require and gains little after.
-
-  The shipped `WinkTagger` builds the pipeline on first `tag()` rather than at module scope, so that ~34 ms lands on first use instead of every Obsidian launch. Mobile is the reason that matters: prose highlighting is gated off there by a `Platform.isMobile` guard, so a phone would otherwise parse a 3.6 MB model at every launch for a feature it cannot use.
+  **The lazy getter defers about 33 ms of the 55, not all of it.** The middle row is what makes that visible: `winkNLP(model)` is the ~33 ms the shipped `WinkTagger` moves off plugin load, while the ~22 ms of `import` remains, because both imports are static and making them dynamic would force the `POSTagger` seam async — which the reading-view post-processor cannot accept. Mobile is where the deferral pays: prose highlighting is gated off there, so the pipeline is never built at all.
 - **Mobile.** Prose highlighting is disabled on mobile by a `Platform.isMobile` guard in `main.ts`. yaae#32, which the guard was added for, is **closed** — the guard now has no open tracker behind it, tracked as yaae#46. Mobile still carries the model's download weight; the lazy getter removed the per-launch parse cost. A real-device check on the rolling `beta` tag is tracked as yaae#45.
 - **Does wink's advantage survive line-at-a-time tagging? — On the fixture corpus, fragmentation costs nothing.** The accuracy scorer feeds whole treebank sentences; the plugin feeds one editor line. A statistical tagger uses sentence context, a rule-based one mostly does not, so fragmentation should hurt wink more. Checked during the swap: tagging the 29 fixture lines individually yields 200 tags, and tagging them joined into one string yields 200 — delta 0. That is a soft-wrapped corpus, so it does not settle hard-wrapped input; the house convention is no hard wrapping, and only 27.5% of EWT sentences exceed 72 columns.
 - **A viewport breach was not the trigger.** compromise sits at 14.2 ms mean, 15.9 ms p99 against a 16 ms budget, so the worker question (`implementation.md` § 9.4) stays closed either way; wink's 1.0 ms retires it outright.

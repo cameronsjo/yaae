@@ -19,6 +19,14 @@ set -uo pipefail
 meta="${1:-}"
 
 if [ -z "$meta" ]; then
+  # Always build, and always from the repo root. A bare relative "meta.json"
+  # resolved against an arbitrary cwd is how a stale metafile from an earlier
+  # build gets read as a PASS for the current tree.
+  cd "$(git rev-parse --show-toplevel)" || {
+    echo "FAIL: not inside a git repository" >&2
+    exit 2
+  }
+  rm -f meta.json
   if ! pnpm run build > /tmp/yaae-build.log 2>&1; then
     echo "FAIL: production build failed — see /tmp/yaae-build.log" >&2
     exit 2
