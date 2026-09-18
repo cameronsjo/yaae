@@ -1,11 +1,26 @@
 import winkNLP from 'wink-nlp';
 import type { ItemToken } from 'wink-nlp';
 import model from 'wink-eng-lite-web-model';
-import type { POSTag, POSTagger } from '../../src/prose-highlight/tagger';
-import { mapUpos } from '../upos-map';
+import type { POSTag, POSTagger } from './tagger';
+import { mapUpos } from './upos-map';
 
-const nlp = winkNLP(model);
-const its = nlp.its;
+type WinkInstance = ReturnType<typeof winkNLP>;
+
+let instance: WinkInstance | null = null;
+
+/**
+ * Builds the wink pipeline on first use and reuses it after.
+ *
+ * `winkNLP(model)` parses a 3.6 MB model. At module scope that cost lands at
+ * every Obsidian launch on every platform, including mobile, where prose
+ * highlighting is gated off and no tag is ever requested. Deferring it to the
+ * first `tag()` call keeps the `POSTagger` seam synchronous and costs nothing
+ * once the pipeline exists.
+ */
+function getNlp(): WinkInstance {
+  instance ??= winkNLP(model);
+  return instance;
+}
 
 /**
  * POS tagger backed by wink-nlp (default pipeline, `wink-eng-lite-web-model`).
@@ -22,6 +37,8 @@ export class WinkTagger implements POSTagger {
   tag(text: string): POSTag[] {
     if (!text.trim()) return [];
 
+    const nlp = getNlp();
+    const its = nlp.its;
     const doc = nlp.readDoc(text);
     const results: POSTag[] = [];
     let cursor = 0;
@@ -42,7 +59,7 @@ export class WinkTagger implements POSTagger {
           // cursor still advances by the reconstructed length, the best
           // estimate of where the source text resumes; the next token's
           // slice check catches any drift and falls back to indexOf.
-          // Never observed on tested input (bench/candidates.test.ts).
+          // Never observed on tested input (the candidates bench suite).
           cursor = end;
           return;
         }
