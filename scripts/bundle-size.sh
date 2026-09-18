@@ -25,7 +25,8 @@ else
 fi
 
 raw_bytes=$(wc -c < "$target")
-gzip_bytes=$(gzip -c "$target" | wc -c)
+# `--` so a path beginning with `-` is an operand, not a gzip flag.
+gzip_bytes=$(gzip -c -- "$target" | wc -c)
 
 echo "raw bytes:  ${raw_bytes// /}"
 echo "gzip bytes: ${gzip_bytes// /}"
