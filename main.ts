@@ -184,6 +184,20 @@ export default class YaaePlugin extends Plugin {
       ),
     ]);
 
+    // A Compartment's `.of()` content is its INITIAL value, captured here at
+    // load. `reconfigure*()` only dispatches to editors that already exist, so
+    // an editor created later starts from this captured value and ignores any
+    // setting changed since: toggle guttered headings off, open another note,
+    // and the gutter is back (#53). Re-applying current settings when a file
+    // opens closes that gap. Both helpers iterate all leaves and set the
+    // current value, so this is idempotent.
+    this.registerEvent(
+      this.app.workspace.on("file-open", () => {
+        this.reconfigureFocus();
+        this.reconfigureGutteredHeadings();
+      }),
+    );
+
     // --- Commands ---
 
     this.addCommand({
