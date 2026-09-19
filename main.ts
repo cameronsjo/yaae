@@ -50,35 +50,11 @@ const focusCompartment = new Compartment();
 const gutteredHeadingsCompartment = new Compartment();
 
 /**
- * Cached compartment contents, one stable object per distinct setting value.
- *
- * Identity is the point. `reconfigure` is dispatched on every file open to
- * catch editors created after a settings change, and a fresh
- * `gutteredHeadingsExtension()` each time would be a different object, so the
- * reconfigure would always look like a change: CM6 would tear down and rebuild
- * the extension in every open leaf on every file switch. Reusing one instance
- * per value lets the helpers below compare against the compartment's current
- * content and skip the dispatch when nothing differs.
+ * The "feature off" compartment content. One shared empty array, so that two
+ * editors with the feature disabled compare equal by identity — see the
+ * content caches on the plugin class.
  */
 const EMPTY_EXTENSION: Extension = [];
-let gutteredHeadingsExtensionCache: Extension | null = null;
-const focusExtensionCache = new Map<FocusMode, Extension>();
-
-function gutteredHeadingsContent(enabled: boolean): Extension {
-  if (!enabled) return EMPTY_EXTENSION;
-  gutteredHeadingsExtensionCache ??= gutteredHeadingsExtension();
-  return gutteredHeadingsExtensionCache;
-}
-
-function focusContent(mode: FocusMode): Extension {
-  if (mode === "off") return EMPTY_EXTENSION;
-  let cached = focusExtensionCache.get(mode);
-  if (!cached) {
-    cached = focusExtension(mode);
-    focusExtensionCache.set(mode, cached);
-  }
-  return cached;
-}
 // TODO(#24): typewriter scroll disabled pending fix
 // const typewriterCompartment = new Compartment();
 
@@ -205,9 +181,9 @@ export default class YaaePlugin extends Plugin {
 
     // CM6 features: register via Compartment
     this.registerEditorExtension([
-      focusCompartment.of(focusContent(this.settings.focusMode)),
+      focusCompartment.of(this.focusContent(this.settings.focusMode)),
       gutteredHeadingsCompartment.of(
-        gutteredHeadingsContent(this.settings.gutteredHeadings),
+        this.gutteredHeadingsContent(this.settings.gutteredHeadings),
       ),
     ]);
 
@@ -220,8 +196,18 @@ export default class YaaePlugin extends Plugin {
     // current value, so this is idempotent.
     this.registerEvent(
       this.app.workspace.on("file-open", () => {
-        this.reconfigureFocus();
-        this.reconfigureGutteredHeadings();
+        // Fail open. This now sits in the path every file open takes, so a
+        // throw here would cost the user the file, not just the setting.
+        // Losing a gutter is a far smaller failure than not opening a note.
+        try {
+          this.reconfigureFocus();
+          this.reconfigureGutteredHeadings();
+        } catch (err) {
+          console.error(
+            "[yaae] Failed to reapply editor settings on file open. The note still opens; focus mode or guttered headings may show a stale state until the next toggle.",
+            err,
+          );
+        }
       }),
     );
 
@@ -679,8 +665,40 @@ export default class YaaePlugin extends Plugin {
     );
   }
 
+  /**
+   * Cached compartment contents, one stable object per distinct setting value.
+   *
+   * Identity is the point. `reconfigure` runs on every file open to catch
+   * editors created after a settings change, and a fresh extension object each
+   * time would always look like a change — CM6 would tear down and rebuild the
+   * extension in every open leaf on every file switch. Reusing one instance per
+   * value lets the helpers below skip leaves whose content already matches.
+   *
+   * Instance fields, not module scope: both factories are pure today, but one
+   * that later closed over the plugin, `app`, or settings would hand a reloaded
+   * plugin the previous instance's closure with no error to notice.
+   */
+  private gutteredHeadingsContentCache: Extension | null = null;
+  private readonly focusContentCache = new Map<FocusMode, Extension>();
+
+  private gutteredHeadingsContent(enabled: boolean): Extension {
+    if (!enabled) return EMPTY_EXTENSION;
+    this.gutteredHeadingsContentCache ??= gutteredHeadingsExtension();
+    return this.gutteredHeadingsContentCache;
+  }
+
+  private focusContent(mode: FocusMode): Extension {
+    if (mode === "off") return EMPTY_EXTENSION;
+    let cached = this.focusContentCache.get(mode);
+    if (!cached) {
+      cached = focusExtension(mode);
+      this.focusContentCache.set(mode, cached);
+    }
+    return cached;
+  }
+
   reconfigureFocus() {
-    const desired = focusContent(this.settings.focusMode);
+    const desired = this.focusContent(this.settings.focusMode);
     this.app.workspace.iterateAllLeaves((leaf) => {
       if (leaf.view instanceof MarkdownView) {
         const cm = (leaf.view.editor as any).cm;
@@ -694,7 +712,7 @@ export default class YaaePlugin extends Plugin {
   }
 
   reconfigureGutteredHeadings() {
-    const desired = gutteredHeadingsContent(this.settings.gutteredHeadings);
+    const desired = this.gutteredHeadingsContent(this.settings.gutteredHeadings);
     this.app.workspace.iterateAllLeaves((leaf) => {
       if (leaf.view instanceof MarkdownView) {
         const cm = (leaf.view.editor as any).cm;
