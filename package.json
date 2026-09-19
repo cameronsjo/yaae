@@ -33,11 +33,11 @@
     "@wdio/mocha-framework": "^9.27.0",
     "@wdio/spec-reporter": "^9.27.0",
     "builtin-modules": "^4.0.0",
-    "esbuild": "^0.27.2",
+    "esbuild": "^0.28.1",
     "mocha": "^11.7.5",
     "obsidian": "^1.7.2",
     "typescript": "^5.7.2",
-    "vitest": "^4.0.16",
+    "vitest": "^4.1.0",
     "wdio-obsidian-reporter": "^2.4.0",
     "wdio-obsidian-service": "^2.4.0"
   },
