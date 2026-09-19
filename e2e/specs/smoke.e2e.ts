@@ -129,6 +129,13 @@ describe("YAAE plugin smoke tests", () => {
       await setGutteredHeadings(true);
     });
 
+    // Restore explicitly rather than relying on each test to leave the setting
+    // tidy. Two of the tests below happen to self-heal today; a third added
+    // without that discipline would leak `false` into whatever runs next.
+    after(async () => {
+      await setGutteredHeadings(true);
+    });
+
     async function gutterCount(): Promise<number> {
       return browser.execute(() => {
         return document.querySelectorAll(".cm-gutter.yaae-heading-gutter")
@@ -260,8 +267,19 @@ describe("YAAE plugin smoke tests", () => {
           leaf.setViewState(state);
         }
       });
-      // Wait for the element rather than pausing a fixed 1000 ms: the view
-      // switch and the post-processor render are both async.
+      // Force a re-render. The banner is injected by a markdown
+      // post-processor, which runs when the preview renders — so if the
+      // preview was already rendered (a cached render from an earlier run of
+      // this vault, or a render that raced the setting being enabled), the
+      // processor does not run again and the banner never appears. Re-rendering
+      // makes the assertion depend on the processor, not on render timing.
+      await browser.executeObsidian(({ app }) => {
+        const view = (app.workspace.activeLeaf as any)?.view;
+        view?.previewMode?.rerender?.(true);
+      });
+
+      // Wait for the element rather than pausing a fixed 1000 ms: the
+      // re-render is async.
       await browser.waitUntil(
         async () =>
           browser.execute(
