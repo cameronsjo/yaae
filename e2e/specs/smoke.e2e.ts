@@ -42,6 +42,46 @@ async function executeCommand(commandId: string): Promise<void> {
   await browser.pause(300);
 }
 
+/**
+ * Force `gutteredHeadings` to a known value and apply it to open editors.
+ *
+ * Needed because an earlier spec runs the toggle command, so this describe
+ * cannot assume the shipped default still holds. Tests that inherit state from
+ * whichever spec ran before them fail for reasons that have nothing to do with
+ * what they name (#53).
+ */
+async function setGutteredHeadings(enabled: boolean): Promise<void> {
+  await browser.executeObsidian(
+    async ({ app }, { id, enabled }) => {
+      const plugin = (app as any).plugins.plugins[id];
+      if (!plugin) throw new Error(`plugin ${id} not loaded`);
+      plugin.settings.gutteredHeadings = enabled;
+      plugin.reconfigureGutteredHeadings();
+      await plugin.saveSettings();
+    },
+    { id: PLUGIN_ID, enabled },
+  );
+  await browser.pause(200);
+}
+
+/**
+ * Toggle the classification banner setting and persist it, so the reading-view
+ * post-processor picks it up. The processor reads settings at render time, so
+ * no reload is needed.
+ */
+async function setBannerSetting(enabled: boolean): Promise<void> {
+  await browser.executeObsidian(
+    async ({ app }, { id, enabled }) => {
+      const plugin = (app as any).plugins.plugins[id];
+      if (!plugin) throw new Error(`plugin ${id} not loaded`);
+      plugin.settings.document.showClassificationBanner = enabled;
+      await plugin.saveSettings();
+    },
+    { id: PLUGIN_ID, enabled },
+  );
+  await browser.pause(200);
+}
+
 // --- Tests ---
 
 describe("YAAE plugin smoke tests", () => {
@@ -84,6 +124,16 @@ describe("YAAE plugin smoke tests", () => {
         "heading-test.md",
         "---\ntitle: Heading Test\n---\n\n# Heading 1\n\nBody text.\n\n## Heading 2\n\nMore text.\n\n### Heading 3\n",
       );
+      // Start from a known ON state. An earlier spec runs the toggle command,
+      // so the shipped default cannot be assumed here.
+      await setGutteredHeadings(true);
+    });
+
+    // Restore explicitly rather than relying on each test to leave the setting
+    // tidy. Two of the tests below happen to self-heal today; a third added
+    // without that discipline would leak `false` into whatever runs next.
+    after(async () => {
+      await setGutteredHeadings(true);
     });
 
     async function gutterCount(): Promise<number> {
@@ -99,17 +149,46 @@ describe("YAAE plugin smoke tests", () => {
       });
     }
 
+    // Wait for the count to reach a value rather than pausing a fixed 200 ms.
+    // The toggle dispatches a CM6 compartment reconfigure, and the DOM catches
+    // up a beat later; on a loaded machine 200 ms was not enough, which is why
+    // this spec failed on main (#53). The toggle itself was never broken.
+    async function waitForGutterCount(want: number): Promise<void> {
+      await browser.waitUntil(async () => (await gutterCount()) === want, {
+        timeout: 5000,
+        interval: 100,
+        timeoutMsg: `gutter count never reached ${want} (last: ${await gutterCount()})`,
+      });
+    }
+
     it("toggle adds and removes the heading gutter element", async () => {
       const before = await gutterCount();
+      // The gutter ships on by default, so there is something to remove.
+      expect(before).toBeGreaterThan(0);
 
       await executeCommand("toggle-guttered-headings");
-      await browser.pause(200);
-      const afterFirst = await gutterCount();
-      expect(afterFirst).not.toBe(before);
+      await waitForGutterCount(0);
 
       await executeCommand("toggle-guttered-headings");
-      await browser.pause(200);
-      expect(await gutterCount()).toBe(before);
+      await waitForGutterCount(before);
+    });
+
+    // A Compartment's `.of()` content is captured at plugin load, and
+    // reconfigure only reaches editors that already exist — so before #53 a
+    // note opened after the toggle started from the load-time value and showed
+    // the gutter again despite the setting being off.
+    it("keeps the gutter off for a note opened after toggling off", async () => {
+      await setGutteredHeadings(true);
+      await executeCommand("toggle-guttered-headings");
+      await waitForGutterCount(0);
+
+      await createAndOpenNote(
+        "heading-test-2.md",
+        "---\ntitle: Second\n---\n\n# Another Heading\n\nBody.\n\n## And Another\n",
+      );
+      await waitForGutterCount(0);
+
+      await setGutteredHeadings(true);
     });
 
     it("renders heading markers in the gutter for #, ##, ### lines", async () => {
@@ -162,7 +241,18 @@ describe("YAAE plugin smoke tests", () => {
   });
 
   describe("classification banner", () => {
-    it("shows banner in reading view for classified document", async () => {
+    // showClassificationBanner ships OFF (src/document/settings.ts). This spec
+    // asserted the banner rendered without ever opting in, so it failed on main
+    // for the whole time it existed (#53) — the banner was behaving correctly.
+    before(async () => {
+      await setBannerSetting(true);
+    });
+
+    after(async () => {
+      await setBannerSetting(false);
+    });
+
+    it("shows banner in reading view when the setting is opted into", async () => {
       await createAndOpenNote(
         "classified.md",
         "---\ntitle: Secret Doc\nclassification: confidential\n---\n\n# Confidential Content\n\nThis is classified.\n",
@@ -177,14 +267,32 @@ describe("YAAE plugin smoke tests", () => {
           leaf.setViewState(state);
         }
       });
-      await browser.pause(1000);
-
-      const bannerExists = await browser.execute(() => {
-        return (
-          document.querySelectorAll(".yaae-classification-banner").length > 0
-        );
+      // Force a re-render. The banner is injected by a markdown
+      // post-processor, which runs when the preview renders — so if the
+      // preview was already rendered (a cached render from an earlier run of
+      // this vault, or a render that raced the setting being enabled), the
+      // processor does not run again and the banner never appears. Re-rendering
+      // makes the assertion depend on the processor, not on render timing.
+      await browser.executeObsidian(({ app }) => {
+        const view = (app.workspace.activeLeaf as any)?.view;
+        view?.previewMode?.rerender?.(true);
       });
-      expect(bannerExists).toBe(true);
+
+      // Wait for the element rather than pausing a fixed 1000 ms: the
+      // re-render is async.
+      await browser.waitUntil(
+        async () =>
+          browser.execute(
+            () =>
+              document.querySelectorAll(".yaae-classification-banner").length >
+              0,
+          ),
+        {
+          timeout: 5000,
+          interval: 100,
+          timeoutMsg: "classification banner never rendered in reading view",
+        },
+      );
     });
   });
 
