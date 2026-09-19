@@ -7,8 +7,7 @@
     font-size: var(--yaae-print-sig-font-size, 10pt);
     white-space: pre-line;
     line-height: 2.8;
-    content:
-      "Prepared by:  ______________________________    Date:  ________________\A"
+    content: "Prepared by:  ______________________________    Date:  ________________\A"
       "Reviewed by:  ______________________________    Date:  ________________\A"
       "Approved by:  ______________________________    Date:  ________________";
   }

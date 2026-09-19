@@ -10,35 +10,77 @@ settings:
     level: 1
     collapsed: true
   -
-    id: yaae-pos-adjective-color
-    title: Adjective color
+    id: yaae-prose-light-heading
+    title: Light theme colors
+    type: heading
+    level: 2
+    collapsed: false
+  -
+    id: yaae-pos-adjective-color-light
+    title: Adjective color (light)
     type: variable-color
     format: hex
     default: '#b97a0a'
   -
-    id: yaae-pos-noun-color
-    title: Noun color
+    id: yaae-pos-noun-color-light
+    title: Noun color (light)
     type: variable-color
     format: hex
     default: '#ce4924'
   -
-    id: yaae-pos-adverb-color
-    title: Adverb color
+    id: yaae-pos-adverb-color-light
+    title: Adverb color (light)
     type: variable-color
     format: hex
     default: '#c333a7'
   -
-    id: yaae-pos-verb-color
-    title: Verb color
+    id: yaae-pos-verb-color-light
+    title: Verb color (light)
     type: variable-color
     format: hex
-    default: '#177eB8'
+    default: '#177eb8'
   -
-    id: yaae-pos-conjunction-color
-    title: Conjunction color
+    id: yaae-pos-conjunction-color-light
+    title: Conjunction color (light)
     type: variable-color
     format: hex
     default: '#01934e'
+  -
+    id: yaae-prose-dark-heading
+    title: Dark theme colors
+    type: heading
+    level: 2
+    collapsed: false
+  -
+    id: yaae-pos-adjective-color-dark
+    title: Adjective color (dark)
+    type: variable-color
+    format: hex
+    default: '#f0b150'
+  -
+    id: yaae-pos-noun-color-dark
+    title: Noun color (dark)
+    type: variable-color
+    format: hex
+    default: '#e87a5f'
+  -
+    id: yaae-pos-adverb-color-dark
+    title: Adverb color (dark)
+    type: variable-color
+    format: hex
+    default: '#e07cc8'
+  -
+    id: yaae-pos-verb-color-dark
+    title: Verb color (dark)
+    type: variable-color
+    format: hex
+    default: '#5cb0e8'
+  -
+    id: yaae-pos-conjunction-color-dark
+    title: Conjunction color (dark)
+    type: variable-color
+    format: hex
+    default: '#4cc887'
   -
     id: yaae-syntax-heading
     title: Syntax Dimming
@@ -70,12 +112,17 @@ settings:
     level: 1
     collapsed: true
   -
-    id: yaae-dimmed-color
-    title: Dimmed text color
-    description: Color applied to unfocused text (defaults to --text-faint)
+    id: yaae-dimmed-color-light
+    title: Dimmed text color (light)
+    description: Color applied to unfocused text in light theme (defaults to --text-faint)
     type: variable-color
     format: hex
-    default: '#'
+  -
+    id: yaae-dimmed-color-dark
+    title: Dimmed text color (dark)
+    description: Color applied to unfocused text in dark theme (defaults to --text-faint)
+    type: variable-color
+    format: hex
   -
     id: yaae-dimmed-transition
     title: Fade transition
@@ -95,6 +142,18 @@ settings:
     type: variable-text
     default: 4.5rem
     format: px
+  -
+    id: yaae-gutter-width-mobile
+    title: Gutter width (mobile)
+    description: Width reserved for heading markers on phones and tablets
+    type: variable-text
+    default: 1.75rem
+  -
+    id: yaae-gutter-marker-font-size-mobile
+    title: Marker size (mobile)
+    description: Font size of the # markers in the narrow mobile gutter
+    type: variable-text
+    default: 0.7em
   -
     id: yaae-print-heading
     title: PDF Print Styles
@@ -158,24 +217,6 @@ settings:
     level: 2
     collapsed: true
   -
-    id: yaae-print-page-number-bottom
-    title: Bottom offset
-    type: variable-number-slider
-    default: 12
-    min: 0
-    max: 40
-    step: 2
-    format: px
-  -
-    id: yaae-print-page-number-right
-    title: Right offset
-    type: variable-number-slider
-    default: 16
-    min: 0
-    max: 40
-    step: 2
-    format: px
-  -
     id: yaae-print-page-number-font-size
     title: Font size
     type: variable-text
@@ -186,6 +227,23 @@ settings:
     type: variable-color
     format: hex
     default: '#888888'
+  -
+    id: yaae-print-signature-heading
+    title: Signature Block
+    type: heading
+    level: 2
+    collapsed: true
+  -
+    id: yaae-print-sig-margin-top
+    title: Top margin
+    description: Space above the signature block
+    type: variable-text
+    default: 3em
+  -
+    id: yaae-print-sig-font-size
+    title: Font size
+    type: variable-text
+    default: 10pt
   -
     id: yaae-print-tables-heading
     title: Tables
@@ -240,6 +298,25 @@ settings:
     type: variable-color
     format: hex
     default: '#888888'
+  -
+    id: yaae-print-light-heading
+    title: Light Theme
+    type: heading
+    level: 2
+    collapsed: true
+  -
+    id: yaae-print-light-bg
+    title: Background color
+    description: Page background for the default (light) export — keep white for a plain B&W distribution PDF
+    type: variable-color
+    format: hex
+    default: '#ffffff'
+  -
+    id: yaae-print-light-text
+    title: Text color
+    type: variable-color
+    format: hex
+    default: '#000000'
   -
     id: yaae-print-dark-heading
     title: Dark Theme
@@ -329,19 +406,25 @@ settings:
    ========================================================================== */
 
 body {
-  /* Prose highlighting — default iA Writer palette */
-  --yaae-pos-adjective-color: #b97a0a;
-  --yaae-pos-noun-color: #ce4924;
-  --yaae-pos-adverb-color: #c333a7;
-  --yaae-pos-verb-color: #177eB8;
-  --yaae-pos-conjunction-color: #01934e;
+  /* Prose highlighting — public variables consumed by feature CSS.
+     Light/dark variants below are the override knobs for Style Settings,
+     theme authors, and snippet authors. The unsuffixed names below are
+     resolved layers — override `--yaae-pos-*-color-{light,dark}` instead. */
+  --yaae-pos-adjective-color: var(--yaae-pos-adjective-color-light, #b97a0a);
+  --yaae-pos-noun-color: var(--yaae-pos-noun-color-light, #ce4924);
+  --yaae-pos-adverb-color: var(--yaae-pos-adverb-color-light, #c333a7);
+  --yaae-pos-verb-color: var(--yaae-pos-verb-color-light, #177eb8);
+  --yaae-pos-conjunction-color: var(
+    --yaae-pos-conjunction-color-light,
+    #01934e
+  );
 
   /* Syntax dimming */
   --yaae-syntax-dimming-opacity: 0.3;
   --yaae-syntax-dimming-active-opacity: 0.7;
 
-  /* Focus mode */
-  --yaae-dimmed-color: var(--text-faint);
+  /* Focus mode — layered, defaults fall through to Obsidian's --text-faint */
+  --yaae-dimmed-color: var(--yaae-dimmed-color-light, var(--text-faint));
   --yaae-dimmed-transition: 0.15s;
 
   /* Guttered headings — rem so the gutter doesn't scale with heading font sizes */
@@ -359,10 +442,12 @@ body {
   --yaae-print-link-url-color: #666;
 
   /* PDF Print — Page Numbers */
-  --yaae-print-page-number-bottom: 12px;
-  --yaae-print-page-number-right: 16px;
   --yaae-print-page-number-font-size: 9px;
   --yaae-print-page-number-color: #888;
+
+  /* PDF Print — Signature Block */
+  --yaae-print-sig-margin-top: 3em;
+  --yaae-print-sig-font-size: 10pt;
 
   /* PDF Print — Tables */
   --yaae-print-table-font-size: 0.85em;
@@ -376,6 +461,10 @@ body {
   /* PDF Print — Header / Footer */
   --yaae-print-header-footer-font-size: 9px;
   --yaae-print-header-footer-color: #888;
+
+  /* PDF Print — Light / Default Theme (plain B&W distribution) */
+  --yaae-print-light-bg: #fff;
+  --yaae-print-light-text: #000;
 
   /* PDF Print — Dark Theme */
   --yaae-print-dark-bg: #1e1e1e;
@@ -394,15 +483,57 @@ body {
   --yaae-print-orphans: 3;
 }
 
+/* Dark-theme overrides for editor-side colors. Theme authors can override
+   any --yaae-pos-*-color-dark or --yaae-dimmed-color-dark to recolor for
+   their dark theme without fighting plugin specificity. */
+body.theme-dark {
+  --yaae-pos-adjective-color: var(--yaae-pos-adjective-color-dark, #f0b150);
+  --yaae-pos-noun-color: var(--yaae-pos-noun-color-dark, #e87a5f);
+  --yaae-pos-adverb-color: var(--yaae-pos-adverb-color-dark, #e07cc8);
+  --yaae-pos-verb-color: var(--yaae-pos-verb-color-dark, #5cb0e8);
+  --yaae-pos-conjunction-color: var(--yaae-pos-conjunction-color-dark, #4cc887);
+  --yaae-dimmed-color: var(--yaae-dimmed-color-dark, var(--text-faint));
+}
+
 /* ==========================================================================
    Prose Highlighting — POS category and custom list class rules
    ========================================================================== */
 
-.yaae-pos-adjective { color: var(--yaae-pos-adjective-color); }
-.yaae-pos-noun { color: var(--yaae-pos-noun-color); }
-.yaae-pos-adverb { color: var(--yaae-pos-adverb-color); }
-.yaae-pos-verb { color: var(--yaae-pos-verb-color); }
-.yaae-pos-conjunction { color: var(--yaae-pos-conjunction-color); }
+.yaae-pos-adjective {
+  color: var(--yaae-pos-adjective-color);
+}
+.yaae-pos-noun {
+  color: var(--yaae-pos-noun-color);
+}
+.yaae-pos-adverb {
+  color: var(--yaae-pos-adverb-color);
+}
+.yaae-pos-verb {
+  color: var(--yaae-pos-verb-color);
+}
+.yaae-pos-conjunction {
+  color: var(--yaae-pos-conjunction-color);
+}
+
+/* ==========================================================================
+   Classification Banner — reading view
+   Banner element carries `--yaae-banner-{color,bg}` and optional `-dark`
+   variants as inline custom properties. The rules below switch which pair
+   is used based on the active theme. Theme/snippet authors can override
+   these on `.yaae-classification-banner` directly.
+   ========================================================================== */
+
+.yaae-classification-banner {
+  background: var(--yaae-banner-bg);
+  color: var(--yaae-banner-color);
+  border: 1px solid var(--yaae-banner-color);
+}
+
+body.theme-dark .yaae-classification-banner {
+  background: var(--yaae-banner-bg-dark, var(--yaae-banner-bg));
+  color: var(--yaae-banner-color-dark, var(--yaae-banner-color));
+  border-color: var(--yaae-banner-color-dark, var(--yaae-banner-color));
+}
 
 /* ===== Print / PDF Export Suppression =====
  * Hide all prose highlighting decorations when printing or exporting to PDF.
@@ -420,7 +551,8 @@ body {
     box-sizing: border-box;
   }
 
-  pre, code {
+  pre,
+  code {
     white-space: pre-wrap;
     overflow-wrap: break-word;
   }
@@ -435,12 +567,61 @@ body {
     max-width: 100%;
     height: auto;
   }
-
 }
 
 .print [class*="yaae-pos-"],
 .print [class*="yaae-list-"] {
   color: inherit !important;
+}
+
+/* ===== PDF / Print Body Theming =====
+ * Default export is a plain B&W distribution PDF. The active Obsidian theme's
+ * (often dark) surfaces otherwise leak into export: themes ship no @media print
+ * reset and Obsidian forces print-color-adjust: exact, so the dark page prints.
+ * We own the body surface here, keyed to `export.pdf.theme` via the cssclass
+ * bridge (deriveCssClasses):
+ *     (no class)      → light / B&W   (the default)
+ *     .pdf-theme-dark → dark surface  (deliberate dark export)
+ *     .pdf-theme-auto → follows the OS scheme
+ * `background-color` (not the `background` shorthand) is used so the watermark
+ * `background-image` survives. Text is forced on descendants too, so a dark
+ * theme's light/italic text (e.g. a white --italic-color) can't vanish on a
+ * white page. The @page classification banners (PageChromeManager) are margin
+ * boxes and keep their own colors.
+ */
+@media print {
+  .print,
+  .print .markdown-preview-view {
+    background-color: var(--yaae-print-light-bg, #fff) !important;
+    color: var(--yaae-print-light-text, #000) !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .print .markdown-preview-view * {
+    color: var(--yaae-print-light-text, #000) !important;
+  }
+
+  /* Dark export — restore a dark surface (reuses the Dark Theme tunables). */
+  .print .markdown-preview-view.pdf-theme-dark {
+    background-color: var(--yaae-print-dark-bg, #1e1e1e) !important;
+  }
+  .print .markdown-preview-view.pdf-theme-dark,
+  .print .markdown-preview-view.pdf-theme-dark * {
+    color: var(--yaae-print-dark-text, #d4d4d4) !important;
+  }
+
+  /* Auto export — follow the OS scheme. NESTED (not `and`-combined) media:
+   * `@media print and (prefers-color-scheme: dark)` is silently dropped by
+   * Chromium's print engine, so the dark override must be nested to apply. */
+  @media (prefers-color-scheme: dark) {
+    .print .markdown-preview-view.pdf-theme-auto {
+      background-color: var(--yaae-print-dark-bg, #1e1e1e) !important;
+    }
+    .print .markdown-preview-view.pdf-theme-auto,
+    .print .markdown-preview-view.pdf-theme-auto * {
+      color: var(--yaae-print-dark-text, #d4d4d4) !important;
+    }
+  }
 }
 
 /* ==========================================================================
@@ -460,27 +641,39 @@ body.yaae-syntax-dimming .cm-active .cm-formatting {
 
 /* ==========================================================================
    Guttered Headings
-   Push # heading markers into the left gutter so heading text aligns
-   with body text. Padding is on .cm-content (not .cm-line) so the
-   gutter space lives inside the content container — negative margins
-   pull headers into that padding without being clipped by overflow.
-   Scoped to body.yaae-guttered-headings, Source Mode only.
-   Live Preview hides # markers when the cursor is elsewhere,
-   leaving an empty gutter — so we exclude .is-live-preview.
+   Render #, ##, ### markers in a real CM6 gutter element that lives
+   outside .cm-content. Theme-agnostic: themes that border .cm-content
+   can't reach the gutter. Wired via gutteredHeadingsExtension() in
+   src/cm6/guttered-headings.ts.
    ========================================================================== */
 
-body.yaae-guttered-headings .markdown-source-view:not(.is-live-preview) .cm-content {
-  padding-left: var(--yaae-gutter-width) !important;
+.cm-gutter.yaae-heading-gutter {
+  width: var(--yaae-gutter-width);
 }
 
-body.yaae-guttered-headings .markdown-source-view:not(.is-live-preview) .cm-content .cm-line .cm-formatting-header {
+.yaae-heading-gutter-marker {
   display: inline-block;
-  width: var(--yaae-gutter-width);
-  margin-left: calc(-1 * var(--yaae-gutter-width));
+  width: 100%;
   text-align: right;
   padding-right: 0.5rem;
   box-sizing: border-box;
+  color: var(--text-faint);
+  font-family: var(--font-monospace);
   white-space: nowrap;
+}
+
+/* Mobile: 4.5rem eats a big slice of a narrow viewport (#33). Layered knob —
+   set --yaae-gutter-width-mobile via Style Settings to resize. Obsidian sets
+   body.is-mobile on phones and tablets. */
+body.is-mobile {
+  --yaae-gutter-width: var(--yaae-gutter-width-mobile, 1.75rem);
+}
+
+body.is-mobile .yaae-heading-gutter-marker {
+  /* H4-H6 markers are 4-6 monospace glyphs; shrink them so deep headings
+     stay legible inside the narrow mobile gutter instead of clipping. */
+  font-size: var(--yaae-gutter-marker-font-size-mobile, 0.7em);
+  padding-right: 0.25rem;
 }
 
 /* ==========================================================================
@@ -528,7 +721,9 @@ body.yaae-guttered-headings .markdown-source-view:not(.is-live-preview) .cm-cont
   font-weight: 500;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
-  transition: color 0.15s ease, border-color 0.15s ease;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .yaae-settings-tab:hover {
@@ -579,4 +774,25 @@ body.yaae-guttered-headings .markdown-source-view:not(.is-live-preview) .cm-cont
 
 .yaae-section-content.is-expanded {
   display: block;
+}
+
+/* ==========================================================================
+   Settings Panel — Custom Word Lists
+   ========================================================================== */
+
+.yaae-word-list-entry {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.yaae-list-color {
+  margin-left: 8px;
+  cursor: pointer;
+}
+
+.yaae-words-textarea {
+  width: 100%;
+  min-height: 80px;
 }

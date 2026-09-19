@@ -4,19 +4,30 @@
 
   /* Prevent orphaned headings — a heading at the bottom of a page with
      content on the next page looks broken in formal documents */
-  h1, h2, h3, h4 {
+  h1,
+  h2,
+  h3,
+  h4 {
     page-break-after: avoid;
     break-after: avoid;
   }
 
   /* Adjacent sibling selector ensures the first element after a heading
      stays on the same page — both rules work together to prevent splits */
-  h1 + *, h2 + *, h3 + *, h4 + * {
+  h1 + *,
+  h2 + *,
+  h3 + *,
+  h4 + * {
     break-before: avoid;
   }
 
   /* Prevent breaking inside block elements — figure keeps image+caption together */
-  pre, blockquote, table, img, figure, .callout {
+  pre,
+  blockquote,
+  table,
+  img,
+  figure,
+  .callout {
     break-inside: avoid;
   }
 
@@ -45,7 +56,8 @@
 
   /* pre-wrap preserves whitespace but allows wrapping at container edge;
      overflow-wrap: break-word breaks long tokens only when necessary */
-  pre, code {
+  pre,
+  code {
     white-space: pre-wrap;
     overflow-wrap: break-word;
   }
@@ -88,15 +100,32 @@
     line-height: var(--print-line-height);
   }
 
-  h1 { font-size: var(--print-h1-size); }
-  h2 { font-size: var(--print-h2-size); }
-  h3 { font-size: var(--print-h3-size); }
-  h4 { font-size: var(--print-h4-size); }
-  h5 { font-size: var(--print-h5-size); }
-  h6 { font-size: var(--print-h6-size); }
+  h1 {
+    font-size: var(--print-h1-size);
+  }
+  h2 {
+    font-size: var(--print-h2-size);
+  }
+  h3 {
+    font-size: var(--print-h3-size);
+  }
+  h4 {
+    font-size: var(--print-h4-size);
+  }
+  h5 {
+    font-size: var(--print-h5-size);
+  }
+  h6 {
+    font-size: var(--print-h6-size);
+  }
 
   /* Heading proximity — 3:1 ratio so headings visually associate with content below */
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     margin-top: 1.5em;
     margin-bottom: 0.5em;
   }

@@ -5,6 +5,12 @@ packages/*/dist/
 # Dependencies
 node_modules/
 
+# pnpm-lock.yaml is the only lockfile. An npm or yarn lockfile committed
+# alongside it drifts silently — nothing installs from it, so nothing catches
+# it going stale, and it ends up misreporting what the plugin ships (#49).
+package-lock.json
+yarn.lock
+
 # IDE
 .idea/
 *.iml
@@ -55,3 +61,10 @@ test-vault/.obsidian/plugins/yaae/data.json
 
 # Test vault PDFs (generated during smoke testing)
 test-vault/*.pdf
+
+# Beads runtime artifacts (issue tracker internals)
+.beads/backup/
+.beads/embeddeddolt/
+
+# Cadence outro continuation breadcrumbs (session-local)
+.claude/intros/

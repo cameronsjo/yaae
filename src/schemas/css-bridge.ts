@@ -1,3 +1,4 @@
+import { sanitizeCssId } from '../document/css-sanitize';
 import type { DocFrontmatter } from './schema';
 
 type LinksMode = 'expand' | 'styled' | 'plain' | 'stripped' | 'defanged';
@@ -29,14 +30,20 @@ export function resolveLinksMode(pdf: DocFrontmatter['export']['pdf']): LinksMod
 export function deriveCssClasses(frontmatter: DocFrontmatter): string[] {
   const classes: string[] = [];
 
-  // Classification
+  // Classification — sanitize before interpolation so a stray space or
+  // injection character in custom classification IDs can't break out of
+  // the class name and into a selector. classList.add() throws on values
+  // containing whitespace, so an unsanitized push would explode loudly
+  // when these classes are eventually applied.
   if (frontmatter.classification) {
-    classes.push(`pdf-${frontmatter.classification}`);
+    const id = sanitizeCssId(frontmatter.classification);
+    if (id) classes.push(`pdf-${id}`);
   }
 
-  // Status
+  // Status — same sanitization rules as classification
   if (frontmatter.status) {
-    classes.push(`pdf-${frontmatter.status}`);
+    const id = sanitizeCssId(frontmatter.status);
+    if (id) classes.push(`pdf-${id}`);
   }
 
   // Watermark

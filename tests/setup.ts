@@ -1,12 +1,18 @@
 /**
  * Test setup file - mocks browser globals not available in Node.js
  */
-import { vi } from 'vitest';
+import { vi } from "vitest";
 
 // Mock document for DOM operations
 const mockDocument = {
-  createElement: vi.fn((tag: string) => ({
-    style: {},
+  // @codemirror/view reads `document.documentElement.style` at module load for
+  // browser feature detection; an incomplete mock throws before any test runs.
+  documentElement: { style: {} },
+  createElement: vi.fn((_tag: string) => ({
+    style: {
+      cssText: "",
+      setProperty: vi.fn(),
+    },
     classList: { add: vi.fn(), remove: vi.fn() },
     setAttribute: vi.fn(),
     appendChild: vi.fn(),
@@ -17,14 +23,17 @@ const mockDocument = {
   body: {
     appendChild: vi.fn(),
     removeChild: vi.fn(),
+    style: {
+      setProperty: vi.fn(),
+    },
   },
 };
 
-if (typeof document === 'undefined') {
+if (typeof document === "undefined") {
   (globalThis as unknown as Record<string, unknown>).document = mockDocument;
 }
 
 // Mock window
-if (typeof window === 'undefined') {
+if (typeof window === "undefined") {
   (globalThis as unknown as Record<string, unknown>).window = globalThis;
 }

@@ -13,6 +13,9 @@ import type { CustomClassification } from '../src/schemas';
 const wrap = (yaml: string, body = '') =>
   `---\n${yaml}\n---\n${body}`;
 
+/** Matches strings safe for use as CSS class names (no whitespace, no selector chars). */
+const SAFE_CSS_FRAGMENT_RE = /^[a-zA-Z0-9_-]+$/;
+
 // ---------------------------------------------------------------------------
 // extractFrontmatter
 // ---------------------------------------------------------------------------
@@ -589,6 +592,32 @@ describe('deriveCssClasses', () => {
     expect(classes).toContain('pdf-font-sans');
   });
 
+  // F4: data.json can be tampered directly to bypass Zod, so deriveCssClasses
+  // must sanitize before interpolating into class strings. Otherwise
+  // classList.add() will throw on whitespace-bearing class names.
+  it('skips classification class when value contains injection characters', () => {
+    const tampered = {
+      classification: 'internal extra-class',
+      status: 'draft',
+      export: { pdf: {} },
+    } as any;
+    const classes = deriveCssClasses(tampered);
+    // No `pdf-internal extra-class` token (would explode on classList.add)
+    expect(classes.every((c) => !c.includes(' '))).toBe(true);
+    expect(classes.find((c) => c.startsWith('pdf-internal'))).toBeUndefined();
+  });
+
+  it('skips status class when value contains injection characters', () => {
+    const tampered = {
+      classification: 'internal',
+      status: 'draft } * { display: none',
+      export: { pdf: {} },
+    } as any;
+    const classes = deriveCssClasses(tampered);
+    expect(classes.every((c) => SAFE_CSS_FRAGMENT_RE.test(c))).toBe(true);
+    expect(classes.find((c) => c.startsWith('pdf-draft '))).toBeUndefined();
+  });
+
   it('includes watermark class when set', () => {
     const yaml = `title: Test
 created: 2024-01-01
@@ -1077,6 +1106,103 @@ describe('getClassificationMeta', () => {
     expect(meta!.label).toBe('UNCLASSIFIED');
     expect(meta!.color).toBe('#333333');
   });
+
+  // F3: whitespace mismatch — raw frontmatter `"  internal  "` resolves
+  // to `internal` in PageChromeManager (Zod-trimmed) but used to fail
+  // strict equality here, leaving the banner blank while the PDF rendered
+  // with classification. Both call sites must converge on the trimmed ID.
+  it('trims whitespace before lookup so "  internal  " resolves to internal meta', () => {
+    const meta = getClassificationMeta('  internal  ', []);
+    expect(meta).not.toBeNull();
+    expect(meta!.label).toBe(CLASSIFICATION_TAXONOMY.internal.label);
+    expect(meta!.color).toBe(CLASSIFICATION_TAXONOMY.internal.color);
+  });
+
+  it('trims whitespace before custom-classification lookup', () => {
+    const customs: CustomClassification[] = [
+      { id: 'sensitive', label: 'SENSITIVE', color: '#b8860b', background: '#fff8e7' },
+    ];
+    const meta = getClassificationMeta('\tsensitive\n', customs);
+    expect(meta).not.toBeNull();
+    expect(meta!.label).toBe('SENSITIVE');
+  });
+
+  it('returns null for whitespace-only level string', () => {
+    expect(getClassificationMeta('   ')).toBeNull();
+    expect(getClassificationMeta('\t\n')).toBeNull();
+  });
+
+  // Round-2: trim BOTH the lookup level AND the stored custom ID. A user can
+  // (via direct data.json edit, or paste-with-spaces in a future settings UI)
+  // end up with `id: ' sensitive '` in their custom list. Without trimming
+  // the stored id, a frontmatter `classification: sensitive` would miss the
+  // match and silently leave the document unclassified.
+  it('trims whitespace from stored custom ID before matching', () => {
+    const customs: CustomClassification[] = [
+      { id: '  sensitive  ', label: 'SENSITIVE', color: '#b8860b', background: '#fff8e7' },
+    ];
+    const meta = getClassificationMeta('sensitive', customs);
+    expect(meta).not.toBeNull();
+    expect(meta!.label).toBe('SENSITIVE');
+    // Returned level must be the canonical (trimmed) form so downstream
+    // class derivation (e.g. `pdf-${level}`) is stable.
+    expect(meta!.level).toBe('sensitive');
+  });
+
+  it('matches when both lookup level and stored ID have surrounding whitespace', () => {
+    const customs: CustomClassification[] = [
+      { id: ' top-secret ', label: 'TOP SECRET', color: '#800000', background: '#fee' },
+    ];
+    const meta = getClassificationMeta('\ttop-secret\n', customs);
+    expect(meta).not.toBeNull();
+    expect(meta!.level).toBe('top-secret');
+  });
+
+  it('ignores custom entries whose ID is whitespace-only', () => {
+    // A custom row in mid-edit with id=' ' must not shadow built-ins or
+    // resolve as a wildcard — getClassificationMeta returns null for the
+    // whitespace input above, so this confirms the negative case for a
+    // non-empty lookup against a malformed custom row.
+    const customs: CustomClassification[] = [
+      { id: '   ', label: 'BLANK', color: '#000', background: '#fff' },
+      { id: 'real', label: 'REAL', color: '#111', background: '#eee' },
+    ];
+    expect(getClassificationMeta('real', customs)?.label).toBe('REAL');
+    // The blank-ID entry must not collide with non-empty lookups
+    expect(getClassificationMeta('blank', customs)).toBeNull();
+  });
+
+  it('preserves dark-theme overrides on custom classifications', () => {
+    // Round-2: ClassificationMeta gained colorDark/backgroundDark; the
+    // lookup must propagate them so PageChromeManager + banner CSS can
+    // select dark variants.
+    const customs: CustomClassification[] = [
+      {
+        id: 'topsec',
+        label: 'TOP SECRET',
+        color: '#660000',
+        background: '#fff0f0',
+        colorDark: '#ff8888',
+        backgroundDark: '#330000',
+      },
+    ];
+    const meta = getClassificationMeta('topsec', customs);
+    expect(meta).not.toBeNull();
+    expect(meta!.colorDark).toBe('#ff8888');
+    expect(meta!.backgroundDark).toBe('#330000');
+  });
+
+  it('leaves dark fields undefined when custom classification omits them', () => {
+    // Inheritance contract — undefined here signals "fall back to light
+    // values" downstream (PageChromeManager uses `colorDark ?? color`).
+    const customs: CustomClassification[] = [
+      { id: 'plain', label: 'PLAIN', color: '#000', background: '#fff' },
+    ];
+    const meta = getClassificationMeta('plain', customs);
+    expect(meta).not.toBeNull();
+    expect(meta!.colorDark).toBeUndefined();
+    expect(meta!.backgroundDark).toBeUndefined();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -1107,5 +1233,30 @@ describe('getAllClassificationIds', () => {
     const ids = getAllClassificationIds(customs);
     const publicCount = ids.filter((id) => id === 'public').length;
     expect(publicCount).toBe(1);
+  });
+
+  // F6: empty/whitespace IDs would surface as a blank option in the
+  // Default Classification dropdown; selecting it sets defaultClassification
+  // to "" and silently disables the banner.
+  it('excludes empty custom IDs', () => {
+    const customs: CustomClassification[] = [
+      { id: '', label: 'BLANK', color: '#333', background: '#eee' },
+      { id: 'foo', label: 'FOO', color: '#333', background: '#eee' },
+    ];
+    const ids = getAllClassificationIds(customs);
+    expect(ids).not.toContain('');
+    expect(ids).toContain('foo');
+  });
+
+  it('excludes whitespace-only custom IDs', () => {
+    const customs: CustomClassification[] = [
+      { id: '   ', label: 'BLANK', color: '#333', background: '#eee' },
+      { id: '\t', label: 'TAB', color: '#333', background: '#eee' },
+      { id: 'foo', label: 'FOO', color: '#333', background: '#eee' },
+    ];
+    const ids = getAllClassificationIds(customs);
+    expect(ids).not.toContain('   ');
+    expect(ids).not.toContain('\t');
+    expect(ids).toContain('foo');
   });
 });

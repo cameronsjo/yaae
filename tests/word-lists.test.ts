@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { WordListMatcher, sanitizeListName } from '../src/prose-highlight/word-lists';
+import {
+  WordListMatcher,
+  buildUniqueClassSuffixes,
+  sanitizeListName,
+} from '../src/prose-highlight/word-lists';
 import type { CustomWordList } from '../src/types';
 
 function makeList(overrides: Partial<CustomWordList> = {}): CustomWordList {
@@ -152,5 +156,122 @@ describe('WordListMatcher', () => {
     const matches = matcher.match('their theme');
     // "the" should not match inside "their" or "theme"
     expect(matches.length).toBe(0);
+  });
+
+  // --- F6: collision-safe class names ---
+
+  it('gives colliding list names distinct CSS classes', () => {
+    // "My List" and "my-list" both sanitize to "my-list"; without dedup
+    // they would share a class and POSStyleManager would emit two color
+    // rules for the same selector, with only the last winning.
+    const matcher = new WordListMatcher();
+    matcher.compile([
+      makeList({ name: 'My List', words: ['alpha'], color: '#aaa' }),
+      makeList({ name: 'my-list', words: ['beta'], color: '#bbb' }),
+    ]);
+
+    const matches = matcher.match('alpha and beta');
+    expect(matches.length).toBe(2);
+    const classes = matches.map((m) => m.cssClass).sort();
+    expect(classes).toEqual(
+      ['yaae-list-my-list', 'yaae-list-my-list-2'].sort(),
+    );
+    // Classes must be distinct so each list gets its own color rule.
+    expect(new Set(classes).size).toBe(2);
+  });
+});
+
+describe('buildUniqueClassSuffixes', () => {
+  it('returns the sanitized names when there are no collisions', () => {
+    expect(buildUniqueClassSuffixes(['Cloud', 'Languages', 'Tools'])).toEqual([
+      'cloud',
+      'languages',
+      'tools',
+    ]);
+  });
+
+  it('appends a numeric suffix to collisions', () => {
+    expect(
+      buildUniqueClassSuffixes(['My List', 'my-list', 'MY LIST']),
+    ).toEqual(['my-list', 'my-list-2', 'my-list-3']);
+  });
+
+  it('returns empty string for names that sanitize to empty', () => {
+    expect(buildUniqueClassSuffixes(['', '!!!', 'real'])).toEqual([
+      '',
+      '',
+      'real',
+    ]);
+  });
+
+  it('skips collision counter past existing suffixed names', () => {
+    // If a user already named a list "my-list-2", a later "My List" should
+    // not collide with it. Resolving uses the next available counter.
+    expect(
+      buildUniqueClassSuffixes(['My List', 'my-list-2', 'my-list']),
+    ).toEqual(['my-list', 'my-list-2', 'my-list-3']);
+  });
+
+  // --- Round-2 edge cases (per /polish branch review) ---
+
+  it('returns empty array for empty input', () => {
+    expect(buildUniqueClassSuffixes([])).toEqual([]);
+  });
+
+  it('preserves index order when all names sanitize to empty', () => {
+    // When every name collapses to '', no collisions are tracked but every
+    // slot stays present so caller's `suffixes[i]` mapping holds.
+    expect(buildUniqueClassSuffixes(['', '   ', '!!!', '###'])).toEqual([
+      '',
+      '',
+      '',
+      '',
+    ]);
+  });
+
+  it('treats leading/trailing whitespace in names as a collision', () => {
+    // sanitizeListName trims edge non-alnum runs, so '  Cloud  ' and 'Cloud'
+    // sanitize identically. Without dedup, both lists would share a class.
+    expect(
+      buildUniqueClassSuffixes(['  Cloud  ', 'Cloud']),
+    ).toEqual(['cloud', 'cloud-2']);
+  });
+
+  it('does not let an empty entry break collision counter for later names', () => {
+    // An empty slot in the middle must not consume a numeric suffix slot
+    // for downstream colliding names.
+    expect(
+      buildUniqueClassSuffixes(['Tools', '', 'TOOLS']),
+    ).toEqual(['tools', '', 'tools-2']);
+  });
+
+  it('keeps three-way mixed-casing collision deterministic', () => {
+    // First wins; later collisions get the next free numeric suffix in input
+    // order — important so the rendered settings list matches the CSS rule
+    // table.
+    const result = buildUniqueClassSuffixes([
+      'Acronyms',
+      'ACRONYMS',
+      'acronyms',
+      'AcRoNyMs',
+    ]);
+    expect(result).toEqual([
+      'acronyms',
+      'acronyms-2',
+      'acronyms-3',
+      'acronyms-4',
+    ]);
+    // All four classes must be unique so each list gets its own color rule.
+    expect(new Set(result).size).toBe(4);
+  });
+
+  it('handles a name that already ends in -2 and collides with base', () => {
+    // 'My List 2' sanitizes to 'my-list-2' (no special-cased counter
+    // semantics in sanitizeListName). When 'my-list' arrives later it
+    // takes the base, then 'My List' would normally claim 'my-list-2'
+    // but that's taken — so it gets 'my-list-3'.
+    expect(
+      buildUniqueClassSuffixes(['My List 2', 'my-list', 'My List']),
+    ).toEqual(['my-list-2', 'my-list', 'my-list-3']);
   });
 });

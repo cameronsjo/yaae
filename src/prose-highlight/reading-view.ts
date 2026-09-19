@@ -1,58 +1,88 @@
-import type { MarkdownPostProcessorContext } from 'obsidian';
-import type YaaePlugin from '../../main';
-import { CompromiseTagger } from './tagger';
-import { WordListMatcher } from './word-lists';
-import type { POSTag } from './tagger';
-import type { WordListMatch } from './word-lists';
-import type { POSCategory } from '../types';
+import type { MarkdownPostProcessorContext } from "obsidian";
+import type YaaePlugin from "../../main";
+import { CompromiseTagger } from "./tagger";
+import { WordListMatcher } from "./word-lists";
+import type { POSTag } from "./tagger";
+import type { WordListMatch } from "./word-lists";
+import type { CustomWordList, POSCategory } from "../types";
 
 /** Elements whose text content should not be processed */
-const SKIP_SELECTORS = 'code, pre, .frontmatter, .metadata-container, th, .math, .MathJax';
+const SKIP_SELECTORS =
+  "code, pre, .frontmatter, .metadata-container, th, .math, .MathJax";
+
+/** Heading elements — skipped unless "highlight inside headings" is on (#40). */
+const HEADING_SELECTORS = "h1, h2, h3, h4, h5, h6";
+
+/**
+ * The `closest()` selector for elements whose text is left unhighlighted.
+ * Always excludes code/frontmatter/etc.; adds headings unless the user opted
+ * into highlighting inside them.
+ */
+export function buildSkipSelectors(highlightInsideHeadings: boolean): string {
+  return highlightInsideHeadings
+    ? SKIP_SELECTORS
+    : `${SKIP_SELECTORS}, ${HEADING_SELECTORS}`;
+}
 
 /** POS category → CSS class */
 const POS_CLASS: Record<POSCategory, string> = {
-  adjective: 'yaae-pos-adjective',
-  noun: 'yaae-pos-noun',
-  adverb: 'yaae-pos-adverb',
-  verb: 'yaae-pos-verb',
-  conjunction: 'yaae-pos-conjunction',
+  adjective: "yaae-pos-adjective",
+  noun: "yaae-pos-noun",
+  adverb: "yaae-pos-adverb",
+  verb: "yaae-pos-verb",
+  conjunction: "yaae-pos-conjunction",
 };
 
 /**
  * Creates a MarkdownPostProcessor that highlights prose in Reading View.
  * Uses TreeWalker to find text nodes, runs POS tagger + word list matcher,
  * then wraps matched words in <span> elements with CSS classes.
+ *
+ * The tagger and matcher are constructed once and reused across blocks.
+ * Word-list regexes are only recompiled when the underlying settings array
+ * reference changes — a 40-block document with 5 lists × 50 words used to
+ * trigger 200 regex compiles per render; now it triggers one (or zero on a
+ * settings-stable run).
  */
 export function createReadingViewPostProcessor(plugin: YaaePlugin) {
   const tagger = new CompromiseTagger();
   const listMatcher = new WordListMatcher();
+  let compiledFor: CustomWordList[] | null = null;
+
+  function ensureCompiled(lists: CustomWordList[]): void {
+    if (compiledFor === lists) return;
+    listMatcher.compile(lists);
+    compiledFor = lists;
+  }
 
   return (el: HTMLElement, _ctx: MarkdownPostProcessorContext) => {
     const settings = plugin.settings.proseHighlight;
     if (!settings.enabled || !settings.readingViewEnabled) return;
 
-    // Recompile word lists (cheap if unchanged, safe if settings changed)
-    listMatcher.compile(settings.customWordLists);
+    // Recompile only when the settings array reference changes. Tests and
+    // production both rely on Obsidian replacing the array on save.
+    ensureCompiled(settings.customWordLists);
 
-    // Collect text nodes, skipping code/pre/frontmatter
-    const textNodes: Text[] = [];
-    const walker = document.createTreeWalker(
-      el,
-      NodeFilter.SHOW_TEXT,
-      {
-        acceptNode(node: Text): number {
-          // Skip if inside an excluded element
-          if (node.parentElement?.closest(SKIP_SELECTORS)) {
-            return NodeFilter.FILTER_REJECT;
-          }
-          // Skip whitespace-only nodes
-          if (!node.textContent?.trim()) {
-            return NodeFilter.FILTER_SKIP;
-          }
-          return NodeFilter.FILTER_ACCEPT;
-        },
-      },
+    // Skip headings by default — heading text is chrome, not prose (#40).
+    const skipSelectors = buildSkipSelectors(
+      settings.highlightInsideHeadings ?? false,
     );
+
+    // Collect text nodes, skipping code/pre/frontmatter (and headings)
+    const textNodes: Text[] = [];
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
+      acceptNode(node: Text): number {
+        // Skip if inside an excluded element
+        if (node.parentElement?.closest(skipSelectors)) {
+          return NodeFilter.FILTER_REJECT;
+        }
+        // Skip whitespace-only nodes
+        if (!node.textContent?.trim()) {
+          return NodeFilter.FILTER_SKIP;
+        }
+        return NodeFilter.FILTER_ACCEPT;
+      },
+    });
 
     while (walker.nextNode()) {
       textNodes.push(walker.currentNode as Text);
@@ -60,7 +90,7 @@ export function createReadingViewPostProcessor(plugin: YaaePlugin) {
 
     // Process each text node
     for (const textNode of textNodes) {
-      const text = textNode.textContent || '';
+      const text = textNode.textContent || "";
       if (!text.trim()) continue;
 
       // Get POS tags and word list matches
@@ -84,7 +114,7 @@ export function createReadingViewPostProcessor(plugin: YaaePlugin) {
         }
 
         // The highlighted span
-        const spanEl = document.createElement('span');
+        const spanEl = document.createElement("span");
         spanEl.className = span.cssClass;
         spanEl.textContent = text.slice(span.start, span.end);
         fragment.appendChild(spanEl);
@@ -94,9 +124,7 @@ export function createReadingViewPostProcessor(plugin: YaaePlugin) {
 
       // Remaining text after last span
       if (lastEnd < text.length) {
-        fragment.appendChild(
-          document.createTextNode(text.slice(lastEnd)),
-        );
+        fragment.appendChild(document.createTextNode(text.slice(lastEnd)));
       }
 
       textNode.parentNode?.replaceChild(fragment, textNode);
@@ -104,7 +132,7 @@ export function createReadingViewPostProcessor(plugin: YaaePlugin) {
   };
 }
 
-interface HighlightSpan {
+export interface HighlightSpan {
   start: number;
   end: number;
   cssClass: string;
@@ -113,8 +141,13 @@ interface HighlightSpan {
 /**
  * Merge POS tags and word list matches into non-overlapping spans.
  * Word list matches take precedence over POS tags.
+ *
+ * Overlap is checked per-character, not just at the tag's start. A list
+ * match like "oo" inside the POS tag "good" must suppress the tag even
+ * though the tag's start position is outside the list match — otherwise
+ * both spans get emitted and the resulting DOM fragment is corrupt.
  */
-function buildSpans(
+export function buildSpans(
   posTags: POSTag[],
   listMatches: WordListMatch[],
   settings: { categories: Record<POSCategory, { enabled: boolean }> },
@@ -128,10 +161,19 @@ function buildSpans(
     for (let i = m.start; i < m.end; i++) covered.add(i);
   }
 
-  // Add POS tags that don't overlap with list matches
+  // Add POS tags that don't overlap with list matches.
   for (const tag of posTags) {
     if (!settings.categories[tag.pos]?.enabled) continue;
-    if (covered.has(tag.start)) continue;
+
+    let overlaps = false;
+    for (let p = tag.start; p < tag.end; p++) {
+      if (covered.has(p)) {
+        overlaps = true;
+        break;
+      }
+    }
+    if (overlaps) continue;
+
     spans.push({
       start: tag.start,
       end: tag.end,

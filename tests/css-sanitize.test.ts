@@ -1,159 +1,211 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   escapeCssString,
   sanitizeColor,
   clampNumber,
   sanitizeFontFamily,
   sanitizeCssId,
-} from '../src/document/css-sanitize';
+} from "../src/document/css-sanitize";
 
-describe('escapeCssString', () => {
-  it('escapes double quotes', () => {
+describe("escapeCssString", () => {
+  it("escapes double quotes", () => {
     expect(escapeCssString('Version "1.0"')).toBe('Version \\"1.0\\"');
   });
 
-  it('escapes backslashes', () => {
-    expect(escapeCssString('path\\to\\file')).toBe('path\\\\to\\\\file');
+  it("escapes backslashes", () => {
+    expect(escapeCssString("path\\to\\file")).toBe("path\\\\to\\\\file");
   });
 
-  it('escapes newlines to CSS \\a sequence', () => {
-    expect(escapeCssString('line1\nline2')).toBe('line1\\a line2');
+  it("escapes newlines to CSS \\a sequence", () => {
+    expect(escapeCssString("line1\nline2")).toBe("line1\\a line2");
   });
 
-  it('strips carriage returns', () => {
-    expect(escapeCssString('line1\r\nline2')).toBe('line1\\a line2');
+  it("strips carriage returns", () => {
+    expect(escapeCssString("line1\r\nline2")).toBe("line1\\a line2");
   });
 
-  it('handles combined injection attempt', () => {
-    const injection = 'Acme Corp\n  }\n  * { display: none !important; }\n  .x {';
+  it("handles combined injection attempt", () => {
+    const injection =
+      "Acme Corp\n  }\n  * { display: none !important; }\n  .x {";
     const escaped = escapeCssString(injection);
-    expect(escaped).not.toContain('\n');
-    expect(escaped).toContain('\\a ');
+    expect(escaped).not.toContain("\n");
+    expect(escaped).toContain("\\a ");
   });
 
-  it('passes through safe strings unchanged', () => {
-    expect(escapeCssString('Hello World')).toBe('Hello World');
-  });
-});
-
-describe('sanitizeColor', () => {
-  it('accepts 3-digit hex', () => {
-    expect(sanitizeColor('#f00', '#000')).toBe('#f00');
-  });
-
-  it('accepts 4-digit hex (with alpha)', () => {
-    expect(sanitizeColor('#f00a', '#000')).toBe('#f00a');
-  });
-
-  it('accepts 6-digit hex', () => {
-    expect(sanitizeColor('#c41e1e', '#000')).toBe('#c41e1e');
-  });
-
-  it('accepts 8-digit hex (with alpha)', () => {
-    expect(sanitizeColor('#c41e1eff', '#000')).toBe('#c41e1eff');
-  });
-
-  it('rejects named colors', () => {
-    expect(sanitizeColor('red', '#000')).toBe('#000');
-  });
-
-  it('rejects rgb() values', () => {
-    expect(sanitizeColor('rgb(255,0,0)', '#000')).toBe('#000');
-  });
-
-  it('rejects injection via semicolon', () => {
-    expect(sanitizeColor('red; content: "pwned"; color', '#000')).toBe('#000');
-  });
-
-  it('rejects empty string', () => {
-    expect(sanitizeColor('', '#000')).toBe('#000');
+  it("passes through safe strings unchanged", () => {
+    expect(escapeCssString("Hello World")).toBe("Hello World");
   });
 });
 
-describe('clampNumber', () => {
-  it('passes through in-range numbers', () => {
+describe("sanitizeColor", () => {
+  it("accepts 3-digit hex", () => {
+    expect(sanitizeColor("#f00", "#000")).toBe("#f00");
+  });
+
+  it("accepts 4-digit hex (with alpha)", () => {
+    expect(sanitizeColor("#f00a", "#000")).toBe("#f00a");
+  });
+
+  it("accepts 6-digit hex", () => {
+    expect(sanitizeColor("#c41e1e", "#000")).toBe("#c41e1e");
+  });
+
+  it("accepts 8-digit hex (with alpha)", () => {
+    expect(sanitizeColor("#c41e1eff", "#000")).toBe("#c41e1eff");
+  });
+
+  it("rejects named colors", () => {
+    expect(sanitizeColor("red", "#000")).toBe("#000");
+  });
+
+  it("rejects rgb() values", () => {
+    expect(sanitizeColor("rgb(255,0,0)", "#000")).toBe("#000");
+  });
+
+  it("rejects injection via semicolon", () => {
+    expect(sanitizeColor('red; content: "pwned"; color', "#000")).toBe("#000");
+  });
+
+  it("rejects empty string", () => {
+    expect(sanitizeColor("", "#000")).toBe("#000");
+  });
+
+  // F5: silent fallback used to disguise corrupt classification colors as
+  // black-on-white, visually similar to the PUBLIC banner. Warn on
+  // rejection so misclassification doesn't ship to PDF unnoticed.
+  describe("warns on invalid input (F5)", () => {
+    let warnSpy: ReturnType<typeof vi.spyOn>;
+    beforeEach(() => {
+      warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    });
+    afterEach(() => {
+      warnSpy.mockRestore();
+    });
+
+    it("warns when input is not a hex color", () => {
+      sanitizeColor("rgb(255,0,0)", "#000");
+      expect(warnSpy).toHaveBeenCalledOnce();
+      expect(warnSpy.mock.calls[0][0]).toContain("[yaae]");
+      expect(warnSpy.mock.calls[0][1]).toBe("rgb(255,0,0)");
+    });
+
+    it("warns on injection attempt", () => {
+      sanitizeColor('red; content: "pwned"; color', "#000");
+      expect(warnSpy).toHaveBeenCalledOnce();
+    });
+
+    it("warns on empty string", () => {
+      sanitizeColor("", "#000");
+      expect(warnSpy).toHaveBeenCalledOnce();
+    });
+
+    it("does not warn on valid hex color", () => {
+      sanitizeColor("#c41e1e", "#000");
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+  });
+});
+
+describe("clampNumber", () => {
+  it("passes through in-range numbers", () => {
     expect(clampNumber(11, 6, 72, 11)).toBe(11);
   });
 
-  it('clamps below minimum', () => {
+  it("clamps below minimum", () => {
     expect(clampNumber(2, 6, 72, 11)).toBe(6);
   });
 
-  it('clamps above maximum', () => {
+  it("clamps above maximum", () => {
     expect(clampNumber(100, 6, 72, 11)).toBe(72);
   });
 
-  it('coerces string to number', () => {
-    expect(clampNumber('14', 6, 72, 11)).toBe(14);
+  it("coerces string to number", () => {
+    expect(clampNumber("14", 6, 72, 11)).toBe(14);
   });
 
-  it('returns fallback for NaN', () => {
+  it("returns fallback for NaN", () => {
     expect(clampNumber(NaN, 6, 72, 11)).toBe(11);
   });
 
-  it('returns fallback for non-numeric string', () => {
-    expect(clampNumber('not-a-number', 6, 72, 11)).toBe(11);
+  it("returns fallback for non-numeric string", () => {
+    expect(clampNumber("not-a-number", 6, 72, 11)).toBe(11);
   });
 
-  it('returns fallback for Infinity', () => {
+  it("returns fallback for Infinity", () => {
     expect(clampNumber(Infinity, 6, 72, 11)).toBe(11);
   });
 
-  it('returns fallback for undefined', () => {
+  it("returns fallback for undefined", () => {
     expect(clampNumber(undefined, 6, 72, 11)).toBe(11);
   });
 });
 
-describe('sanitizeFontFamily', () => {
-  it('wraps a simple font name in quotes', () => {
-    expect(sanitizeFontFamily('Inter')).toBe('"Inter"');
+describe("sanitizeFontFamily", () => {
+  it("wraps a simple font name in quotes", () => {
+    expect(sanitizeFontFamily("Inter")).toBe('"Inter"');
   });
 
-  it('wraps a comma-separated list in quotes', () => {
-    expect(sanitizeFontFamily('Inter, sans-serif')).toBe('"Inter, sans-serif"');
+  it("wraps a comma-separated list in quotes", () => {
+    expect(sanitizeFontFamily("Inter, sans-serif")).toBe('"Inter, sans-serif"');
   });
 
-  it('escapes internal double quotes', () => {
-    expect(sanitizeFontFamily('My "Custom" Font')).toBe('"My \\"Custom\\" Font"');
+  it("escapes internal double quotes", () => {
+    expect(sanitizeFontFamily('My "Custom" Font')).toBe(
+      '"My \\"Custom\\" Font"',
+    );
   });
 
-  it('escapes backslashes', () => {
-    expect(sanitizeFontFamily('path\\font')).toBe('"path\\\\font"');
+  it("escapes backslashes", () => {
+    expect(sanitizeFontFamily("path\\font")).toBe('"path\\\\font"');
   });
 
-  it('neutralizes CSS injection via semicolons', () => {
-    const result = sanitizeFontFamily('Arial; } * { color: red } .x {');
+  it("neutralizes CSS injection via semicolons", () => {
+    const result = sanitizeFontFamily("Arial; } * { color: red } .x {");
     expect(result).toBe('"Arial; } * { color: red } .x {"');
     // The quotes prevent the semicolons/braces from being parsed as CSS
   });
+
+  it("escapes newlines so the value cannot terminate the CSS string", () => {
+    // A raw newline would end the string token and let the payload break out
+    // of the declaration — the classification-banner-strip vector.
+    const result = sanitizeFontFamily(
+      "Arial\n} body::before { display: none } .x {",
+    );
+    expect(result).not.toContain("\n");
+    expect(result).toContain("\\a ");
+  });
+
+  it("drops carriage returns and form feeds", () => {
+    expect(sanitizeFontFamily("Arial\r\f")).toBe('"Arial"');
+  });
 });
 
-describe('sanitizeCssId', () => {
-  it('accepts alphanumeric with hyphens', () => {
-    expect(sanitizeCssId('my-class-123')).toBe('my-class-123');
+describe("sanitizeCssId", () => {
+  it("accepts alphanumeric with hyphens", () => {
+    expect(sanitizeCssId("my-class-123")).toBe("my-class-123");
   });
 
-  it('accepts underscores', () => {
-    expect(sanitizeCssId('my_class')).toBe('my_class');
+  it("accepts underscores", () => {
+    expect(sanitizeCssId("my_class")).toBe("my_class");
   });
 
-  it('rejects spaces', () => {
-    expect(sanitizeCssId('has space')).toBeNull();
+  it("rejects spaces", () => {
+    expect(sanitizeCssId("has space")).toBeNull();
   });
 
-  it('rejects dots', () => {
-    expect(sanitizeCssId('has.dot')).toBeNull();
+  it("rejects dots", () => {
+    expect(sanitizeCssId("has.dot")).toBeNull();
   });
 
-  it('rejects CSS selector injection', () => {
-    expect(sanitizeCssId('evil } * { display:none')).toBeNull();
+  it("rejects CSS selector injection", () => {
+    expect(sanitizeCssId("evil } * { display:none")).toBeNull();
   });
 
-  it('rejects empty string', () => {
-    expect(sanitizeCssId('')).toBeNull();
+  it("rejects empty string", () => {
+    expect(sanitizeCssId("")).toBeNull();
   });
 
-  it('rejects slashes', () => {
-    expect(sanitizeCssId('path/to')).toBeNull();
+  it("rejects slashes", () => {
+    expect(sanitizeCssId("path/to")).toBeNull();
   });
 });
