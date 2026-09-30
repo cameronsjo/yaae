@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+* **ci:** releases are stable again: release-please no longer cuts prereleases, and the manual `Promote to Stable` workflow is removed; the per-push BRAT `beta` release stays
+* **ci:** the release PR is opened with the Forge Bellows App token so CI runs on it, and a nightly `ship.yml` gate verifies and merges it; `versions.json` now changes inside the release PR instead of by a post-release push to `main`; build and publish run in separate jobs; every action in the release workflows is pinned by SHA
+
 ## [0.1.1](https://github.com/cameronsjo/yaae/compare/0.1.0...0.1.1) (2026-09-19)
 
 

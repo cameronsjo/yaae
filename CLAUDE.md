@@ -91,5 +91,5 @@ Frontmatter-driven document management integrated into the plugin:
 
 ## Release Flow
 
-1. **Beta**: Add `[beta]` to commit message → BRAT prerelease
-2. **Stable**: Merge Release Please PR → GitHub release with assets
+1. **Beta**: every push to `main` rebuilds the `beta` prerelease (`beta-release.yml`) → BRAT beta channel
+2. **Stable**: the nightly `ship.yml` gate verifies and merges the Release Please PR (cadence-ecosystem ADR-0044) → stable GitHub release with assets. `gh workflow run ship.yml` ships now; the gate still applies
