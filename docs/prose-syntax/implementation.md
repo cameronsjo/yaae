@@ -219,6 +219,12 @@ nl-syntax-highlighting.
 
 ### Comparison
 
+Vendor-reported figures, gathered during the original survey. The first three
+rows were measured head-to-head on 2026-09-17; where the two disagree, the
+measured numbers in `docs/research/2026-09-17-pos-tagger-bakeoff.md` win. The
+en-pos bundle estimate below was badly wrong: its word-list dependencies make
+it the largest of the three, at 1.4 MB gzip.
+
 | Library | Approach | Accuracy | Bundle (gzip) | Speed | Languages | Maintained |
 |---------|----------|----------|--------------|-------|-----------|------------|
 | **compromise** | Rule-based | "Good enough" | ~75-80 kB | ~1 MB/sec text | EN + community FR/DE/ES/IT/PT | Yes (active) |
@@ -226,6 +232,11 @@ nl-syntax-highlighting.
 | **en-pos** | Brill TBL | 96.4% Penn | ~50 kB est. | Fast | EN only | No (2017) |
 | **natural** | Brill TBL | ~90-93% | Very large | Moderate | EN + some | Yes |
 | **pos-js** | HMM | 87.8% | Small | Fast | EN | Minimal |
+
+Measured on UD English EWT (macro-F1 across yaae's five categories, auxiliaries
+counted as verbs): compromise 76.1%, wink-nlp 87.8%, en-pos 80.3%. The vendor
+accuracy claims above are all-tagset figures on different treebanks and are not
+comparable with these.
 
 ### compromise (Recommended for MVP)
 
@@ -450,32 +461,26 @@ buildDecorations(view: EditorView): DecorationSet {
 
 ### 9.2 Line-Level Caching
 
-Cache POS results per line. On single-character typing, only retag the changed line:
+Cache POS results by line **content**, not line number. Tags are a pure function
+of the line's text, so an edit that shifts line numbers — Enter, paste, undo —
+leaves every unchanged line a cache hit, and no invalidation is needed:
 
 ```ts
 update(update: ViewUpdate) {
-  if (update.docChanged) {
-    if (update.startState.doc.lines === update.state.doc.lines) {
-      // Same line count — check for single-char insert
-      let singleChar = true;
-      let changedLine = 0;
-      update.changes.iterChangedRanges((fromA, toA, fromB, toB) => {
-        if (!((fromA === toA) && (toB === fromB + 1))) singleChar = false;
-        changedLine = update.view.state.doc.lineAt(toB).number;
-      });
-      if (singleChar) {
-        this.cache[changedLine] = tagLine(update.view, changedLine);
-      } else {
-        this.rebuildAll(update.view);
-      }
-    } else {
-      this.rebuildAll(update.view); // lines added/removed
-    }
-  } else if (update.viewportChanged) {
-    this.rebuildAll(update.view); // scrolled
+  const treeChanged =
+    syntaxTree(update.startState) !== syntaxTree(update.state);
+  if (update.docChanged || treeChanged || update.viewportChanged) {
+    // Only lines whose text changed are misses; the cache is never cleared.
+    this.decorations = this.buildDecorationSet(update.view);
   }
 }
 ```
+
+Keying by number instead forces a full clear on every structural edit, and bakes
+exclusion state (which depends on the async markdown parse) into the cached
+value. Exclusion is applied when decorations are emitted, so a parse-progress
+update re-emits without retagging. Shipped as `LineTagCache` (LRU by access,
+capacity 4096) in `src/prose-highlight/highlighter-plugin.ts`.
 
 ### 9.3 Debouncing
 
@@ -491,8 +496,11 @@ private scheduleUpdate(view: EditorView) {
 }
 ```
 
-For compromise (~1ms per paragraph), debouncing may be unnecessary. For wink-nlp or
-IPC backends, it's essential.
+Measured 2026-09-17 on an M3 Air (`pnpm bench`): compromise tags a cold 60-line
+viewport in 14.2 ms mean, 15.9 ms p99 — under the 16 ms frame budget, with no
+margin. Debouncing is unnecessary today because the content-keyed cache makes a
+keystroke a one-line miss, not a viewport retag. Full numbers and the candidate
+comparison: `docs/research/2026-09-17-pos-tagger-bakeoff.md`.
 
 ### 9.4 Web Workers
 
