@@ -1,23 +1,7 @@
-import type { POSCategory } from "../src/types";
-
 /**
- * Maps a Universal Dependencies POS tag (UPOS) to a yaae POS category.
- * Returns null for UPOS tags yaae does not highlight (DET, PRON, NUM, etc.).
+ * The UPOS → POSCategory mapping now lives in `src/`, because the shipped
+ * wink tagger uses it. `bench/accuracy.ts` scores against the same mapping,
+ * so it re-exports rather than keeping a second copy: two copies could drift
+ * and silently shift every accuracy number.
  */
-const UPOS_TO_CATEGORY: Record<string, POSCategory> = {
-  ADJ: "adjective",
-  NOUN: "noun",
-  PROPN: "noun",
-  ADV: "adverb",
-  VERB: "verb",
-  CCONJ: "conjunction",
-  SCONJ: "conjunction",
-};
-
-export function mapUpos(
-  upos: string,
-  opts: { auxIsVerb: boolean },
-): POSCategory | null {
-  if (opts.auxIsVerb && upos === "AUX") return "verb";
-  return UPOS_TO_CATEGORY[upos] ?? null;
-}
+export { mapUpos } from "../src/prose-highlight/upos-map";

@@ -217,6 +217,16 @@ nl-syntax-highlighting.
 
 ## 5. NLP: JavaScript Libraries
 
+**yaae ships wink-nlp.** It replaced compromise on 2026-09-18
+(`docs/plans/2026-09-18-wink-tagger-swap.md`) after the head-to-head bake-off,
+on accuracy (+11.7 macro-F1), viewport latency (1.0 ms against 14.2 ms), and
+startup (57–61 ms to a first tag against 122–126 ms). The cost is one 2.97 MB
+model file. `CompromiseTagger` still exists as a bench-only candidate in
+`bench/candidates/`; nothing in `src/` imports it.
+
+The subsections below keep the pre-swap survey, because the comparison is what
+justifies the choice. Read "Recommended for MVP" as historical.
+
 ### Comparison
 
 Vendor-reported figures, gathered during the original survey. The first three
@@ -238,7 +248,7 @@ counted as verbs): compromise 76.1%, wink-nlp 87.8%, en-pos 80.3%. The vendor
 accuracy claims above are all-tagset figures on different treebanks and are not
 comparable with these.
 
-### compromise (Recommended for MVP)
+### compromise (the original MVP choice; no longer shipped)
 
 [github.com/spencermountain/compromise](https://github.com/spencermountain/compromise)
 
@@ -260,7 +270,7 @@ doc.conjunctions().out("offset");
 **Pros:** Zero-config, small bundle, fast enough for main thread, works on mobile.
 **Cons:** Rule-based accuracy can miss edge cases, English-centric.
 
-### wink-nlp (Accuracy Upgrade)
+### wink-nlp (shipped)
 
 [github.com/winkjs/wink-nlp](https://github.com/winkjs/wink-nlp)
 
@@ -280,6 +290,14 @@ doc.tokens().each((t) => {
 
 **Pros:** High accuracy, Universal POS tagset, TypeScript support.
 **Cons:** 1 MB model bundled into main.js (or loaded async), English only.
+
+yaae's `src/prose-highlight/wink-tagger.ts` differs from the snippet above in
+one way that matters: `winkNLP(model)` runs behind a lazy getter on first
+`tag()`, not at module scope. At module scope it parses the 3.6 MB model at
+every Obsidian launch on every platform, including mobile, where prose
+highlighting is gated off and no tag is ever requested. The getter keeps the
+`POSTagger` seam synchronous, so the reading-view post-processor — which cannot
+await — is unaffected.
 
 ---
 
@@ -504,6 +522,13 @@ comparison: `docs/research/2026-09-17-pos-tagger-bakeoff.md`.
 
 ### 9.4 Web Workers
 
+**Closed. wink-nlp retires this question outright.** The shipped tagger tags a
+cold 60-line viewport in 1.0 ms mean against a 16 ms frame budget — a 16× margin,
+where compromise had almost none at 14.2 ms mean and 15.9 ms p99. A Worker would
+add Blob-URL plumbing and a message round-trip to save a millisecond, on a
+platform where Workers run 6–10× slower than Node anyway. The rest of this
+section is kept for the record, not as a proposal.
+
 Obsidian's environment does not natively support `new Worker()`. The workaround is
 `esbuild-plugin-inline-worker` to bundle worker code as a Blob URL.
 
@@ -521,7 +546,7 @@ self.onmessage = (event) => {
 
 **Caveat:** Web Workers in Obsidian run ~6-10x slower than standalone Node.js for
 CPU-intensive work ([forum discussion](https://forum.obsidian.md/t/how-to-speed-up-cpu-intensive-tasks-in-an-obsidian-plugin-workers-not-supported/103392)).
-For compromise (~1ms per viewport), a Worker is likely unnecessary overhead.
+For a tagger already under the frame budget, a Worker is unnecessary overhead.
 
 Reference: [obsidian-web-worker-example](https://github.com/RyotaUshio/obsidian-web-worker-example)
 

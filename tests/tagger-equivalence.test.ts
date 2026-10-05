@@ -1,14 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import nlp from 'compromise';
 import { proseSampleLines } from './fixtures/prose-sample';
-import { CompromiseTagger } from '../src/prose-highlight/tagger';
+import { CompromiseTagger } from '../bench/candidates/compromise-tagger';
 import type { POSTag } from '../src/prose-highlight/tagger';
 import type { POSCategory } from '../src/types';
 
 /**
  * Test-only reference implementation: the original five-query CompromiseTagger
  * (one `match()`/`not()` pass per POS category), copied verbatim from
- * `src/prose-highlight/tagger.ts` before the single-pass rewrite. Kept here
+ * the compromise tagger before the single-pass rewrite. Kept here
  * so the rewrite can be checked against the old behavior line by line.
  */
 interface CompromiseOffset {

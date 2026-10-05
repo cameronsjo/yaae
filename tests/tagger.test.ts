@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { proseSampleLines, expectTagContract } from './fixtures/prose-sample';
-import { CompromiseTagger, categoryForTags } from '../src/prose-highlight/tagger';
+import { categoryForTags } from '../src/prose-highlight/tagger';
+import { CompromiseTagger } from '../bench/candidates/compromise-tagger';
 
 describe('CompromiseTagger', () => {
   const tagger = new CompromiseTagger();
