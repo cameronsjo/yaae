@@ -6,7 +6,9 @@ Run with:
 pnpm bench
 ```
 
-This runs `vitest bench` once (no watch) over `bench/**/*.bench.ts`.
+This runs `vitest bench --run --reporter=verbose` once (no watch) over `bench/**/*.bench.ts`.
+
+The harness uses the Vitest 5 test-context `bench` fixture; historical results below were measured with Vitest 4.
 
 ## Cases
 

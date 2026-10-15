@@ -81,6 +81,62 @@ describe("scoreCandidate", () => {
 
     expect(scores.macroF1).toBeCloseTo((2 / 3 + 2 / 3) / 5);
   });
+
+  it("does not reuse one prediction across contraction subtokens", () => {
+    const sentence = {
+      surface: "don't",
+      tokens: [
+        { form: "do", upos: "AUX", start: 0, end: 2 },
+        { form: "not", upos: "PART", start: 2, end: 5 },
+      ],
+    };
+
+    // A tagger may return one tag for the surface contraction. It can align
+    // with only the first overlapping gold subtoken, not both of them.
+    const fakeTags: POSTag[] = [
+      { text: "don't", pos: "verb", start: 0, end: 5 },
+    ];
+    const fakeTagger: POSTagger = { tag: () => fakeTags };
+
+    const scores = scoreCandidate(fakeTagger, [sentence], { auxIsVerb: true });
+
+    expect(scores.categories.verb).toMatchObject({
+      truePositives: 1,
+      falsePositives: 0,
+      falseNegatives: 0,
+      precision: 1,
+      recall: 1,
+      f1: 1,
+    });
+  });
+
+  it("counts extra non-overlapping predictions as false positives", () => {
+    const sentence = {
+      surface: "can't",
+      tokens: [
+        { form: "can't", upos: "NOUN", start: 0, end: 5 },
+      ],
+    };
+
+    // Both tags satisfy the POSTagger contract: they are lossless, sorted,
+    // and non-overlapping, but together over-segment one gold token.
+    const fakeTags: POSTag[] = [
+      { text: "can", pos: "noun", start: 0, end: 3 },
+      { text: "'t", pos: "noun", start: 3, end: 5 },
+    ];
+    const fakeTagger: POSTagger = { tag: () => fakeTags };
+
+    const scores = scoreCandidate(fakeTagger, [sentence], { auxIsVerb: true });
+
+    expect(scores.categories.noun).toMatchObject({
+      truePositives: 1,
+      falsePositives: 1,
+      falseNegatives: 0,
+      precision: 0.5,
+      recall: 1,
+      f1: 2 / 3,
+    });
+  });
 });
 
 const DATA_PATH = path.resolve(__dirname, "data/en_ewt-ud-test.conllu");
@@ -101,5 +157,5 @@ describe.skipIf(!hasData)("UD-EWT accuracy (run scripts/fetch-ud-ewt.sh first)",
         expect(scores.macroF1).toBeGreaterThanOrEqual(0);
       }
     }
-  });
+  }, 60_000);
 });

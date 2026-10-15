@@ -1,9 +1,9 @@
 ---
 status: complete
-next: "review PR #48; it stacks on #44 and merges after it"
+next: "#48 merged into #44 on 2026-10-05; finish combined #44 under docs/plans/2026-10-15-finish-pr44.md."
 branch: plan/wink-tagger-swap
 pr: "https://github.com/cameronsjo/yaae/pull/48"
-updated: 2026-09-18
+updated: 2026-10-15
 date: 2026-09-18
 session_id: fc7b8834-c59b-48df-92c9-fa42d4a84729
 approved_session_id: fc7b8834-c59b-48df-92c9-fa42d4a84729
@@ -13,6 +13,10 @@ machine: a6d66f7901a3
 ---
 
 # Swap the prose-highlight POS tagger to wink-nlp
+
+## Current delivery state (2026-10-15)
+
+PR #48 merged into `plan/pos-tagger-bakeoff`, not main. Its implementation is part of combined PR #44. There is no tagger settings toggle: both views use wink, and the existing mobile guard stays. The historical 15-failure allowance below is retired by main's structural-test fixes; current delivery requires a green full suite. The original implementation tasks remain recorded below, while `2026-10-15-finish-pr44.md` tracks final validation and acceptance.
 
 ## Context
 

@@ -31,9 +31,11 @@ function emptyCounts(): Record<POSCategory, { tp: number; fp: number; fn: number
 }
 
 /**
- * Scores a tagger against a gold-annotated corpus. Alignment: for each gold
- * token, the predicted category is whichever predicted tag's span overlaps
- * the gold token's span (or null if no predicted tag overlaps it).
+ * Scores a tagger against a gold-annotated corpus. Alignment is one-to-one:
+ * gold tokens are visited in source order and claim the first unclaimed
+ * predicted tag whose span overlaps them (or null if none overlaps). A
+ * prediction spanning a contraction can therefore align to one subtoken only;
+ * any prediction left unclaimed after the gold pass is a false positive.
  */
 export function scoreCandidate(
   tagger: POSTagger,
@@ -44,12 +46,18 @@ export function scoreCandidate(
 
   for (const sentence of sentences) {
     const predicted = tagger.tag(sentence.surface);
+    const claimedPredictions = new Set<number>();
 
     for (const token of sentence.tokens) {
       const goldCategory = mapUpos(token.upos, opts);
-      const predictedTag = predicted.find(
-        (tag) => tag.start < token.end && tag.end > token.start,
+      const predictedIndex = predicted.findIndex(
+        (tag, index) =>
+          !claimedPredictions.has(index) &&
+          tag.start < token.end &&
+          tag.end > token.start,
       );
+      if (predictedIndex >= 0) claimedPredictions.add(predictedIndex);
+      const predictedTag = predictedIndex >= 0 ? predicted[predictedIndex] : undefined;
       const predictedCategory = predictedTag?.pos ?? null;
 
       if (goldCategory !== null && predictedCategory === goldCategory) {
@@ -58,6 +66,10 @@ export function scoreCandidate(
         if (goldCategory !== null) counts[goldCategory].fn++;
         if (predictedCategory !== null) counts[predictedCategory].fp++;
       }
+    }
+
+    for (const [index, tag] of predicted.entries()) {
+      if (!claimedPredictions.has(index)) counts[tag.pos].fp++;
     }
   }
 

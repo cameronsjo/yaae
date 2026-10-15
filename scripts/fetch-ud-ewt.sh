@@ -19,17 +19,25 @@ OUT_FILE="${DATA_DIR}/en_ewt-ud-test.conllu"
 
 mkdir -p "${DATA_DIR}"
 
+verify_corpus() {
+  local file="$1"
+  if ! echo "${SHA256}  ${file}" | shasum -a 256 -c --status; then
+    echo "checksum mismatch for ${file}" >&2
+    echo "expected ${SHA256}, got $(shasum -a 256 < "${file}" | cut -d' ' -f1)" >&2
+    return 1
+  fi
+}
+
 if [[ -f "${OUT_FILE}" ]]; then
+  # A cached file is measurement input too. Refuse stale/corrupted data rather
+  # than silently scoring it, and retain it so the caller can inspect it.
+  verify_corpus "${OUT_FILE}"
   echo "already present: ${OUT_FILE}"
 else
   TMP_FILE="$(mktemp "${DATA_DIR}/.en_ewt-ud-test.XXXXXX")"
   trap 'rm -f "${TMP_FILE}"' EXIT
   curl -fsSL "${URL}" -o "${TMP_FILE}"
-  if ! echo "${SHA256}  ${TMP_FILE}" | shasum -a 256 -c --status; then
-    echo "checksum mismatch for ${URL}" >&2
-    echo "expected ${SHA256}, got $(shasum -a 256 < "${TMP_FILE}" | cut -d' ' -f1)" >&2
-    exit 1
-  fi
+  verify_corpus "${TMP_FILE}"
   mv "${TMP_FILE}" "${OUT_FILE}"
 fi
 

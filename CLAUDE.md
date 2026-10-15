@@ -68,7 +68,7 @@ fails if the suite stays green. Run it after changing one of these tests.
 │   │   └── print-css/               # PDF export CSS (bundled as text, runtime-injected)
 │   ├── prose-highlight/             # iA Writer-style prose highlighting
 │   │   ├── tagger.ts                # POSTagger seam — no NLP library import
-│   │   ├── wink-tagger.ts           # The shipped tagger (lazy model load)
+│   │   ├── wink-tagger.ts           # The shipped tagger (lazy pipeline construction)
 │   │   └── upos-map.ts              # UPOS → POSCategory; bench re-exports it
 │   └── cm6/                         # CodeMirror 6 extensions
 ├── templates/                       # Document templates

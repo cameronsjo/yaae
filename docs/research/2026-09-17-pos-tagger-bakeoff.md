@@ -2,19 +2,31 @@
 
 Date: 2026-09-17. Machine: MacBook Air M3 (`sjomba`). Plan: `docs/plans/2026-09-17-pos-tagger-bake-off-and-prose-highlight-pipeline-fixes.md`.
 
+## Scorer correction and delivery state (2026-10-15)
+
+The original scorer independently reused the first overlapping prediction for each gold token. Giving contraction subtokens consecutive spans did **not** prevent one whole-contraction prediction from matching both. A new synthetic `don't` regression failed before the fix (verb precision 0.5 rather than 1.0), passed after it, and failed again when the old behavior was staged back in.
+
+Alignment is now explicitly one-to-one in source order: each gold token claims the first unclaimed overlapping prediction. A whole-contraction prediction is assigned to its first overlapping gold subtoken; later subtokens remain unmatched. Every prediction left unmatched is counted as a false positive, including over-segmentation within a gold token. A second synthetic `can't` regression caught the previously dropped extra predictions before this correction. This is a scoring convention for different tokenizations, not a claim of linguistic equivalence. Tables below were recalculated on the pinned 2,077-sentence split using the corrected scorer: primary macros are compromise 76.4%, wink 87.8%, en-pos 80.3%, superseding 76.1%, 87.8%, 80.3%. Wink still leads by 11.4 points, while en-pos still misses the five-point improvement bar. Historical timing and size measurements retain their dates and are not recomputed accuracy evidence.
+
+## Revalidation on the combined branch (2026-10-15)
+
+`pnpm bench` now uses the Vitest 5 test-context fixture and runs once with a verbose reporter. Current-artifact means on this machine: compromise 176.57 ms throughput / 19.56 ms viewport, wink 15.30 / 2.13 ms, en-pos 31.56 / 4.20 ms. Wink remains under the 16 ms viewport budget. These are new-run observations under the current workload, not replacements for the dated 2026-09 timing experiment below. An earlier run concurrent with the Obsidian harness was substantially noisier and is not used for performance claims.
+
+`bash scripts/bundle-size.sh main.js` after the restored production build reports 3,852,832 raw / 1,083,748 gzip bytes. The build-input check passes with 183 inputs, and independent actual imports from the benchmark harness and compromise each make it fail. The treebank fetch script now verifies cached data as well as new downloads; corrupt cached inputs are rejected without deleting them.
+
 ## Decision
 
-**Swap to wink-nlp.** It wins accuracy by 11.7 macro-F1 points and runs a cold 60-line viewport 14× faster, at a cost of about 887 kB gzip added to the plugin download.
+**Swap to wink-nlp.** It wins accuracy by 11.4 macro-F1 points and runs a cold 60-line viewport 14× faster, at a cost of about 887 kB gzip added to the plugin download.
 
 The decision rule below failed wink-nlp on size alone, capping the shipped bundle at yaae's own pre-minify weight. That rule was withdrawn on 2026-09-18, and a measurement of 19 installed Obsidian plugins says the withdrawal is right. Five ship a `main.js` over 1.3 MB raw, and the largest, `outfit-planner`, is **5.2 MB raw / 1.18 MB gzip — bigger on both axes than yaae-with-wink would be** (3.85 MB raw / 1.08 MB gzip). A ceiling that forbids what a quarter of the sample already does was measuring the wrong thing.
 
-en-pos is rejected on its own merits, unchanged: it misses the accuracy bar (+4.2 against a +5 requirement), is the largest of the three, and was last published in 2017.
+en-pos is rejected on its own merits, unchanged: it misses the accuracy bar (+3.9 against a +5 requirement), is the largest of the three, and was last published in 2017.
 
-The swap is its own plan: it adds a runtime dependency, needs a settings toggle, and needs mobile re-testing against yaae#32. This document is the evidence for it, not the execution.
+The swap was implemented by PR #48 and merged into #44's branch on 2026-10-05. Combined #44 includes wink as the runtime tagger in both views, without a tagger selection setting. It is pending delivery to main; mobile acceptance remains #45 and the existing guard remains in place (#46).
 
 ### Measured after the swap (2026-09-18)
 
-The swap shipped on `plan/wink-tagger-swap` (`docs/plans/2026-09-18-wink-tagger-swap.md`). Re-measured on the built plugin:
+The swap was implemented on `plan/wink-tagger-swap` (`docs/plans/2026-09-18-wink-tagger-swap.md`). Re-measured on the built plugin:
 
 | Claim | Predicted | Measured after swap |
 |---|---:|---:|
@@ -50,7 +62,7 @@ Recommend a swap only if all four hold for the candidate:
 
 | Rule | wink-nlp | en-pos |
 |---|---|---|
-| 1. Accuracy +5 F1 | PASS (+11.7) | FAIL (+4.2) |
+| 1. Accuracy +5 F1 | PASS (+11.4) | FAIL (+3.9) |
 | 2. Viewport latency | PASS (1.0 ms, 0.07×) | PASS (3.2 ms, 0.22×) |
 | 3. Size ceiling 260,626 B gzip | FAIL (1,082,647 B) — **rule withdrawn** | FAIL (1,482,863 B) |
 | 4. Release in last 12 months | PASS (2025-06-30) | FAIL (2017-04-09) |
@@ -95,25 +107,25 @@ Each candidate bundled alone (`esbuild --bundle --minify --format=cjs`, one entr
 
 ## Accuracy against UD English EWT
 
-`pnpm bench:accuracy` after `scripts/fetch-ud-ewt.sh`. Test split of UD_English-EWT at commit `4a4d77f`, 2,077 sentences. A gold token counts as predicted category X when a predicted span overlaps it and carries X. Precision also counts false positives on tokens whose gold category is none of the five. Sub-tokens of a multiword token (`don't` is gold `do` + `n't`) get consecutive sub-spans of the contraction, so one predicted tag over the whole contraction is scored against one sub-token, not both.
+`pnpm bench:accuracy --disableConsoleIntercept` after `scripts/fetch-ud-ewt.sh`. Test split of UD_English-EWT at commit `4a4d77f`, 2,077 sentences. A gold token counts as predicted category X when a predicted span overlaps it and carries X. Precision also counts false positives on tokens whose gold category is none of the five. Subtokens of a multiword token (`don't` is gold `do` + `n't`) get consecutive sub-spans. The scorer also consumes each prediction once; both steps are needed to avoid reusing a whole-contraction prediction.
 
 Primary variant (`auxIsVerb: true`, auxiliaries count as verbs, matching iA Writer):
 
 | Category F1 | compromise | wink-nlp | en-pos |
 |---|---:|---:|---:|
-| adjective | 74.8% | **78.1%** | 69.8% |
-| noun | 87.3% | **91.3%** | 88.3% |
-| adverb | 64.9% | **85.1%** | 76.0% |
-| verb | 88.1% | **94.0%** | 89.8% |
-| conjunction | 65.2% | **90.8%** | 77.4% |
-| **Macro-F1** | 76.1% | **87.8%** | 80.3% |
+| adjective | 74.8% | **78.1%** | 70.0% |
+| noun | 87.9% | **91.1%** | 88.6% |
+| adverb | 65.0% | **85.2%** | 76.0% |
+| verb | 89.3% | **93.9%** | 89.8% |
+| conjunction | 65.2% | **90.8%** | 77.3% |
+| **Macro-F1** | 76.4% | **87.8%** | 80.3% |
 
 Secondary variant (`auxIsVerb: false`), for context:
 
 | Category F1 | compromise | wink-nlp | en-pos |
 |---|---:|---:|---:|
-| verb | 68.9% | 71.7% | **72.2%** |
-| **Macro-F1** | 72.2% | **83.4%** | 76.7% |
+| verb | 70.0% | 71.7% | **72.3%** |
+| **Macro-F1** | 72.6% | **83.4%** | 76.8% |
 
 *Higher is better. Only the verb row changes between variants; every tagger colors auxiliaries as verbs, so the secondary variant mostly measures how many auxiliaries the treebank contains.*
 
@@ -121,9 +133,9 @@ Per-category precision and recall for the primary variant:
 
 | Candidate | adjective P/R | noun P/R | adverb P/R | verb P/R | conjunction P/R |
 |---|---|---|---|---|---|
-| compromise | 80.1 / 70.1 | 84.5 / 90.3 | 81.4 / 54.0 | 85.4 / 91.1 | 55.9 / 78.2 |
-| wink-nlp | 89.1 / 69.5 | 88.3 / 94.5 | 89.1 / 81.5 | 93.7 / 94.2 | 97.3 / 85.0 |
-| en-pos | 63.4 / 77.7 | 86.3 / 90.4 | 78.9 / 73.3 | 92.2 / 87.5 | 99.9 / 63.1 |
+| compromise | 80.3 / 70.0 | 86.3 / 89.6 | 81.9 / 53.9 | 87.6 / 91.0 | 56.0 / 78.1 |
+| wink-nlp | 89.3 / 69.5 | 88.1 / 94.3 | 89.2 / 81.5 | 93.8 / 94.1 | 97.3 / 85.0 |
+| en-pos | 63.6 / 77.7 | 87.0 / 90.3 | 78.9 / 73.3 | 92.4 / 87.4 | 99.7 / 63.1 |
 
 Where compromise loses: adverb recall (54%) and conjunction precision (56%). It misses about half the adverbs and over-tags conjunctions, mostly `to` and sentence-initial `So`, as the sample below shows.
 
@@ -177,7 +189,7 @@ Felt read: compromise's visible misses are `to` colored as a conjunction (twice)
 
 Markdown-wrapped words (`*very*`, `**White`, `_what`) get no category from any tagger because the marker is glued to the word. That is a tokenization gap in all three, not a tagger difference; it is out of scope here.
 
-## What shipped alongside the bake-off
+## What is implemented alongside the bake-off
 
 - Minified production bundle: 260,626 → 195,813 gzip bytes (`4349320`).
 - Single-pass `CompromiseTagger` with `categoryForTags()`; pronouns and possessives are no longer highlighted as nouns (`610ca4b`). `He ran to his house` now yields one noun, `house`.
@@ -206,7 +218,7 @@ Considered and excluded before measuring: `retext-pos` and `pos-js` (ports of th
 ## Open questions for the swap plan
 
 - **Can wink load only the POS model?** (tracked as yaae#47) Worth **626,537 raw / 176,217 gzip bytes**, a 17% cut to the model, measured by bundling a model object carrying only `core`, `sbd`, `pos`, and `featureFn`. Not reachable naively, though: `wink-eng-lite-web-model/dist/model.js` is one CommonJS module with static `require` calls for every sub-model, so a bundler cannot shake them; and `winkNLP()` rejects a model missing `.ner` (`theModel.ner is not a function`), while no-op stubs fail deeper on data shape (`Cannot read properties of undefined`). Reaching the saving needs a supported wink API or an upstream change, not a local trim. Budget it as an investigation with a known ceiling.
-- **Is the model lazy-loadable? — Yes, and it shipped. wink also starts faster than compromise, by about 2×.** The `pnpm bench` viewport figures measure a fresh tagger against an already-loaded model, so they say nothing about startup. Re-measured on 2026-09-18 with `scripts/measure-tagger-startup.sh`, which runs every phase in a fresh process under one harness (`tsx` 4.21 / Node 24) on an M3 Air, 5 runs each:
+- **Is the model lazy-loadable? — Yes, and it is implemented. wink also starts faster than compromise, by about 2×.** The `pnpm bench` viewport figures measure a fresh tagger against an already-loaded model, so they say nothing about startup. Re-measured on 2026-09-18 with `scripts/measure-tagger-startup.sh`, which runs every phase in a fresh process under one harness (`tsx` 4.21 / Node 24) on an M3 Air, 5 runs each:
 
   | Phase | wink | compromise |
   |---|---:|---:|
@@ -217,7 +229,7 @@ Considered and excluded before measuring: `retext-pos` and `pos-js` (ports of th
   This corrects the "53–70 ms against 66–67 ms, comparable" figures in an earlier revision, whose method was not recorded. Under one recorded method wink is roughly half compromise's cost to reach a first tag. compromise loads its whole lexicon at require and gains little after; wink's cost is back-loaded into `winkNLP(model)`.
 
   **The lazy getter defers about 33 ms of the 55, not all of it.** The middle row is what makes that visible: `winkNLP(model)` is the ~33 ms the shipped `WinkTagger` moves off plugin load, while the ~22 ms of `import` remains, because both imports are static and making them dynamic would force the `POSTagger` seam async — which the reading-view post-processor cannot accept. Mobile is where the deferral pays: prose highlighting is gated off there, so the pipeline is never built at all.
-- **Mobile.** Prose highlighting is disabled on mobile by a `Platform.isMobile` guard in `main.ts`. yaae#32, which the guard was added for, is **closed** — the guard now has no open tracker behind it, tracked as yaae#46. Mobile still carries the model's download weight; the lazy getter removed the per-launch parse cost. A real-device check on the rolling `beta` tag is tracked as yaae#45.
+- **Mobile.** Prose highlighting is disabled on mobile by a `Platform.isMobile` guard in `main.ts`. yaae#32, which the guard was added for, is **closed** — the guard now has no open tracker behind it, tracked as yaae#46. Mobile still carries the model's download weight; the lazy getter defers pipeline construction (about 33 ms in the historical run); static import cost remains. A real-device check on the rolling `beta` tag is tracked as yaae#45.
 - **Does wink's advantage survive line-at-a-time tagging? — On the fixture corpus, fragmentation costs nothing.** The accuracy scorer feeds whole treebank sentences; the plugin feeds one editor line. A statistical tagger uses sentence context, a rule-based one mostly does not, so fragmentation should hurt wink more. Checked during the swap: tagging the 29 fixture lines individually yields 200 tags, and tagging them joined into one string yields 200 — delta 0. That is a soft-wrapped corpus, so it does not settle hard-wrapped input; the house convention is no hard wrapping, and only 27.5% of EWT sentences exceed 72 columns.
 - **A viewport breach was not the trigger.** compromise sits at 14.2 ms mean, 15.9 ms p99 against a 16 ms budget, so the worker question (`implementation.md` § 9.4) stays closed either way; wink's 1.0 ms retires it outright.
 

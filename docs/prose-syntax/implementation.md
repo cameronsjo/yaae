@@ -217,9 +217,9 @@ nl-syntax-highlighting.
 
 ## 5. NLP: JavaScript Libraries
 
-**yaae ships wink-nlp.** It replaced compromise on 2026-09-18
+**Combined PR #44 implements wink-nlp.** The swap was implemented on 2026-09-18
 (`docs/plans/2026-09-18-wink-tagger-swap.md`) after the head-to-head bake-off,
-on accuracy (+11.7 macro-F1), viewport latency (1.0 ms against 14.2 ms), and
+on accuracy (+11.4 macro-F1 with the corrected 2026-10-15 scorer), viewport latency (1.0 ms against 14.2 ms), and
 startup (57–61 ms to a first tag against 122–126 ms). The cost is one 2.97 MB
 model file. `CompromiseTagger` still exists as a bench-only candidate in
 `bench/candidates/`; nothing in `src/` imports it.
@@ -244,7 +244,7 @@ it the largest of the three, at 1.4 MB gzip.
 | **pos-js** | HMM | 87.8% | Small | Fast | EN | Minimal |
 
 Measured on UD English EWT (macro-F1 across yaae's five categories, auxiliaries
-counted as verbs): compromise 76.1%, wink-nlp 87.8%, en-pos 80.3%. The vendor
+counted as verbs): compromise 76.4%, wink-nlp 87.8%, en-pos 80.3%. The vendor
 accuracy claims above are all-tagset figures on different treebanks and are not
 comparable with these.
 
@@ -293,7 +293,7 @@ doc.tokens().each((t) => {
 
 yaae's `src/prose-highlight/wink-tagger.ts` differs from the snippet above in
 one way that matters: `winkNLP(model)` runs behind a lazy getter on first
-`tag()`, not at module scope. At module scope it parses the 3.6 MB model at
+`tag()`, not at module scope. At module scope it constructs the wink pipeline at
 every Obsidian launch on every platform, including mobile, where prose
 highlighting is gated off and no tag is ever requested. The getter keeps the
 `POSTagger` seam synchronous, so the reading-view post-processor — which cannot

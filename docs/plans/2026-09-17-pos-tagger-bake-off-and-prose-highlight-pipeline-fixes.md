@@ -6,14 +6,18 @@ harness: "claude-code 2.1.274"
 machine: "a6d66f7901a3"
 approved_session_id: "b9c6cba6-90e1-471d-a7b7-4ffe01e5b4f2"
 status: executing
-next: "Cameron: manual test-vault check, then flip PR #44 to ready. Decision is swap to wink-nlp (size rule withdrawn 2026-09-18) — the swap needs its own plan, starting with whether wink can load the POS model alone."
+next: "Finish combined PR #44 under docs/plans/2026-10-15-finish-pr44.md; #48 is already merged into this branch."
 branch: plan/pos-tagger-bakeoff
 pr: https://github.com/cameronsjo/yaae/pull/44
-updated: 2026-09-17
+updated: 2026-10-15
 date: 2026-09-17
 ---
 
 # POS tagger bake-off and prose-highlight pipeline fixes
+
+## Current delivery scope (2026-10-15)
+
+Cameron approved finishing #44 as one combined PR, including #48's wink runtime swap, which merged into this branch rather than main. The original task list below records the bake-off stage; its no-runtime-dependency constraint and follow-up-swap language describe that historical stage. The current implementation uses wink in both views, with no tagger selection setting. Main's structural/smoke fixes are included; the full suite must pass. Desktop manual acceptance and phone follow-up #45 are distinct from automated checks. See `2026-10-15-finish-pr44.md` for current delivery gates.
 
 ## Context
 

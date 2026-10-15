@@ -1,4 +1,4 @@
-import { bench, describe } from "vitest";
+import { test, describe } from "vitest";
 import { candidates } from "./taggers";
 import { corpusLines, corpusWordCount, viewportLines } from "./corpus";
 
@@ -7,18 +7,22 @@ import { corpusLines, corpusWordCount, viewportLines } from "./corpus";
 
 for (const [name, createTagger] of Object.entries(candidates)) {
   describe(`tagger: ${name}`, () => {
-    bench(`throughput — tag ${corpusWordCount} words (~5k word corpus)`, () => {
-      const tagger = createTagger();
-      for (const line of corpusLines) {
-        tagger.tag(line);
-      }
+    test(`throughput — tag ${corpusWordCount} words (~5k word corpus)`, async ({ bench }) => {
+      await bench("tag lines", () => {
+        const tagger = createTagger();
+        for (const line of corpusLines) {
+          tagger.tag(line);
+        }
+      }).run();
     });
 
-    bench(`viewport — cold tag ${viewportLines.length} lines`, () => {
-      const tagger = createTagger();
-      for (const line of viewportLines) {
-        tagger.tag(line);
-      }
+    test(`viewport — cold tag ${viewportLines.length} lines`, async ({ bench }) => {
+      await bench("tag lines", () => {
+        const tagger = createTagger();
+        for (const line of viewportLines) {
+          tagger.tag(line);
+        }
+      }).run();
     });
   });
 }
