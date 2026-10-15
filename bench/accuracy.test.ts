@@ -6,6 +6,12 @@ import { scoreCandidate, formatScoresTable } from "./accuracy";
 import { candidates } from "./taggers";
 import type { POSTagger, POSTag } from "../src/prose-highlight/tagger";
 
+// Required tracked fixture: readFileSync must throw if checkout/packaging loses it.
+// Full UD-EWT is optional local research data; this fixture is the CI gate.
+const fixtureSentences = parseConllu(
+  readFileSync(path.resolve(__dirname, "fixtures/scorer.conllu"), "utf-8"),
+);
+
 describe("parseConllu", () => {
   it("reconstructs surface text and aligns multiword tokens to their span", () => {
     const conllu = [
@@ -83,13 +89,9 @@ describe("scoreCandidate", () => {
   });
 
   it("does not reuse one prediction across contraction subtokens", () => {
-    const sentence = {
-      surface: "don't",
-      tokens: [
-        { form: "do", upos: "AUX", start: 0, end: 2 },
-        { form: "not", upos: "PART", start: 2, end: 5 },
-      ],
-    };
+    const sentence = fixtureSentences[0];
+    expect(sentence.surface).toBe("don't");
+    expect(sentence.tokens).toHaveLength(2);
 
     // A tagger may return one tag for the surface contraction. It can align
     // with only the first overlapping gold subtoken, not both of them.
@@ -142,20 +144,46 @@ describe("scoreCandidate", () => {
 const DATA_PATH = path.resolve(__dirname, "data/en_ewt-ud-test.conllu");
 const hasData = existsSync(DATA_PATH);
 
-describe.skipIf(!hasData)("UD-EWT accuracy (run scripts/fetch-ud-ewt.sh first)", () => {
-  const sentences = hasData ? parseConllu(readFileSync(DATA_PATH, "utf-8")) : [];
+if (hasData) {
+  describe("UD-EWT accuracy (optional full corpus)", () => {
+    const sentences = parseConllu(readFileSync(DATA_PATH, "utf-8"));
 
-  it(`scores UD-EWT (run scripts/fetch-ud-ewt.sh first) — ${sentences.length} sentences`, () => {
-    expect(sentences.length).toBeGreaterThan(0);
+    it(`scores UD-EWT (run scripts/fetch-ud-ewt.sh first) — ${sentences.length} sentences`, () => {
+      expect(sentences.length).toBeGreaterThan(0);
 
-    for (const [name, createTagger] of Object.entries(candidates)) {
-      for (const auxIsVerb of [true, false]) {
-        const scores = scoreCandidate(createTagger(), sentences, { auxIsVerb });
-        const label = `${name} (auxIsVerb: ${auxIsVerb}${auxIsVerb ? ", primary" : ""})`;
-        // eslint-disable-next-line no-console
-        console.log(formatScoresTable(label, scores));
-        expect(scores.macroF1).toBeGreaterThanOrEqual(0);
+      for (const [name, createTagger] of Object.entries(candidates)) {
+        for (const auxIsVerb of [true, false]) {
+          const scores = scoreCandidate(createTagger(), sentences, { auxIsVerb });
+          const label = `${name} (auxIsVerb: ${auxIsVerb}${auxIsVerb ? ", primary" : ""})`;
+          // eslint-disable-next-line no-console
+          console.log(formatScoresTable(label, scores));
+          expect(scores.macroF1).toBeGreaterThanOrEqual(0);
+        }
       }
+    }, 60_000);
+  });
+}
+
+describe("required synthetic accuracy fixture", () => {
+  it("contains all three original sentences", () => {
+    expect(fixtureSentences.map((s) => s.surface)).toEqual([
+      "don't",
+      "The quick fox ran slowly and the bright bird sang.",
+      "She is calm but he was very loud.",
+    ]);
+  });
+
+  for (const [name, createTagger] of Object.entries(candidates)) {
+    for (const auxIsVerb of [true, false]) {
+      it(`${name}, auxIsVerb=${auxIsVerb}: pinned scorer counts`, () => {
+        const scores = scoreCandidate(createTagger(), fixtureSentences, { auxIsVerb });
+        const counts = Object.fromEntries(
+          Object.entries(scores.categories).map(([category, s]) => [
+            category, [s.truePositives, s.falsePositives, s.falseNegatives],
+          ]),
+        );
+        expect({ counts, macroF1: Number(scores.macroF1.toFixed(6)) }).toMatchSnapshot();
+      });
     }
-  }, 60_000);
+  }
 });

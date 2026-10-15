@@ -25,20 +25,31 @@ Each registered tagger in `bench/taggers.ts` runs two cases:
 
 ## Accuracy
 
-Scores each candidate tagger (`bench/taggers.ts`) against the UD_English-EWT
-test split (Universal Dependencies, CC BY-SA 4.0) instead of measuring speed.
+Every `pnpm test` (including CI) loads the small tracked
+`bench/fixtures/scorer.conllu` fixture and checks all three candidates under
+both AUX variants against committed count/macro-F1 snapshots. The contraction
+case additionally checks that a prediction spanning two gold subtokens is used
+only once. Missing fixture data throws at collection time; there is no skip or
+network dependency in this gate. These are regression baselines, not estimates
+of English-language accuracy.
+
+The three fixture sentences were authored for this repository under its MIT
+license; they are not extracted or adapted from UD-EWT. Only the CoNLL-U format
+is shared. The full research corpus is much larger (2,077 sentences) and remains
+an optional, checksum-pinned download:
 
 ```bash
 bash scripts/fetch-ud-ewt.sh   # downloads bench/data/en_ewt-ud-test.conllu (pinned commit, gitignored)
 pnpm bench:accuracy
 ```
 
-`bench/accuracy.test.ts` parses the CoNLL-U file (`bench/conllu.ts`), maps
-each gold UPOS tag to a yaae `POSCategory` (`bench/upos-map.ts`), and reports
-precision/recall/F1 per category plus macro-F1 (`bench/accuracy.ts`) for
-every candidate under both `auxIsVerb` variants. Without the data file the
-UD-EWT case is skipped (message: "run scripts/fetch-ud-ewt.sh first"); the
-parser and scorer unit tests still run.
+When present, `bench/accuracy.test.ts` also scores the full UD_English-EWT test
+split (Universal Dependencies, CC BY-SA 4.0) for both AUX variants and reports
+precision/recall/F1 per category plus macro-F1. CI does not download this corpus;
+the published 76.4 / 87.8 / 80.3% full-corpus measurements are local research
+results, not the fixture baselines. To reproduce them, fetch the corpus first.
+The required fixture and parser/scorer unit tests always run, with or without
+the full corpus.
 
 ## Side-by-side sample
 

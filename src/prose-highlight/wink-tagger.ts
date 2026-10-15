@@ -44,6 +44,15 @@ export class WinkTagger implements POSTagger {
   tag(text: string): POSTag[] {
     if (!text.trim()) return [];
 
+    // wink splits typographic ligatures from the rest of their word (ﬁne →
+    // ﬁ + ne). Even an exact offset match can therefore be a word fragment.
+    // Leave the entire unsupported word uncolored, but still advance the
+    // cursor through every token so surrounding ordinary words stay aligned.
+    const ligatureWords = Array.from(
+      text.matchAll(/[\p{L}\p{M}\p{N}_]*[\uFB00-\uFB06][\p{L}\p{M}\p{N}_]*/gu),
+      (match) => ({ start: match.index, end: match.index + match[0].length }),
+    );
+
     const nlp = getNlp();
     const its = nlp.its;
     const doc = nlp.readDoc(text);
@@ -77,6 +86,8 @@ export class WinkTagger implements POSTagger {
       }
 
       cursor = end;
+
+      if (ligatureWords.some((word) => start < word.end && end > word.start)) return;
 
       const pos = mapUpos(upos, { auxIsVerb: true });
       if (!pos) return;

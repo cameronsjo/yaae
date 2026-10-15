@@ -58,6 +58,14 @@ describe('WinkTagger', () => {
     expect(elapsed).toBeLessThan(200);
   });
 
+  it('does not highlight fragments of words containing ligatures', () => {
+    expect(tagger.tag('ﬁne ﬂow')).toEqual([]);
+    const line = 'The ﬁne ﬂowers and ﬃxtures ran quickly.';
+    const tags = tagger.tag(line);
+    expectTagContract(line, tags);
+    expect(tags.map((tag) => tag.text)).toEqual(['and', 'ran', 'quickly']);
+  });
+
   // The offset fallback: wink normalizes some characters, so a token's
   // reconstructed slice can disagree with the source text. Curly quotes and
   // ligatures are the realistic triggers, and no other test feeds them.

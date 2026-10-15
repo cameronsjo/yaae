@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+* **prose-highlight:** avoid highlighting word fragments split from typographic ligatures such as `ﬁne` and `ﬂow`
+
 ### Changed
 
 * **prose-highlight:** use wink-nlp in editor and reading view for more accurate part-of-speech colors; construct its pipeline on first use

@@ -305,11 +305,6 @@ export function createHighlighterExtension(plugin: YaaePlugin) {
       }
     }
 
-    /** Rebuild: recompile word lists if settings changed */
-    recompileIfNeeded() {
-      listMatcher.compile(plugin.settings.proseHighlight.customWordLists);
-    }
-
     /**
      * Look up a line's UNFILTERED tags by content, tagging and caching on a
      * miss. Pure function of `text` — no exclusion or heading logic here;

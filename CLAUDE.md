@@ -12,7 +12,7 @@ pnpm test                # Run all tests
 pnpm run test:watch      # Watch mode tests
 pnpm run test:coverage   # Coverage report
 pnpm bench               # POS tagger throughput + viewport latency
-pnpm bench:accuracy      # POS tagger accuracy (needs the treebank, below)
+pnpm bench:accuracy      # Required fixture baselines + full treebank if fetched
 ```
 
 ```bash
