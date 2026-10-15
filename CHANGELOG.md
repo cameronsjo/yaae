@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.1.2](https://github.com/cameronsjo/yaae/compare/0.1.1...0.1.2) (2026-10-15)
+
+
+### Bug Fixes
+
+* address prose highlight review findings ([cdd1c04](https://github.com/cameronsjo/yaae/commit/cdd1c040a36276c619123d95d6f3cecd04a31350))
+* **prose-highlight:** enforce scorer baselines and skip ligature fragments ([f5ef15e](https://github.com/cameronsjo/yaae/commit/f5ef15e99c5577773f705dbaaba9e1f28cc13aba))
+* **prose-highlight:** verify editor updates and correct bake-off scoring ([d860bd5](https://github.com/cameronsjo/yaae/commit/d860bd58eacce22b421c87279158c0ce6d23aeaf))
+* **test:** normalize scorer fixture terminal newline ([c933556](https://github.com/cameronsjo/yaae/commit/c9335562ad47413ae870c88e131974eb4e6ab681))
+* **tooling:** reject incomplete validation evidence ([abd1b23](https://github.com/cameronsjo/yaae/commit/abd1b23475036d611940f58886755b0787a5837a))
+
 ## [Unreleased]
 
 ### Fixed

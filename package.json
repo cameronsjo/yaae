@@ -1,6 +1,6 @@
 {
   "name": "yaae",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Why Author Anywhere Else — an Obsidian plugin",
   "main": "main.js",
   "scripts": {
