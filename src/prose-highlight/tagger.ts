@@ -1,4 +1,3 @@
-import nlp from 'compromise';
 import type { POSCategory } from '../types';
 
 /** A single tagged token with position info */
@@ -9,69 +8,34 @@ export interface POSTag {
   end: number;
 }
 
-/** Interface for pluggable POS tagging backends */
+/**
+ * Interface for pluggable POS tagging backends.
+ *
+ * This file is the seam and holds no NLP library import. The shipped
+ * implementation is `WinkTagger` in `./wink-tagger`; `CompromiseTagger`
+ * lives in the bench harness and is never bundled. Keeping a library
+ * import out of this file is what makes that true by construction rather
+ * than by tree-shaking luck.
+ */
 export interface POSTagger {
   tag(text: string): POSTag[];
 }
 
-interface CompromiseOffset {
-  offset: { start: number; length: number };
-  text: string;
-  terms: Array<{ text: string; offset: { start: number; length: number } }>;
-}
-
 /**
- * POS tagger backed by the compromise NLP library.
- * Rule-based, ~80 kB, runs synchronously on the main thread.
+ * Maps a term's compromise tag set to a POSCategory, or null if none apply.
+ * Precedence (first match wins): adjective, noun (never pronoun/possessive),
+ * adverb, verb, conjunction.
+ *
+ * Used by the bench-only compromise candidate. Kept here beside the seam
+ * because the tagger equivalence tests assert against it directly.
  */
-export class CompromiseTagger implements POSTagger {
-  tag(text: string): POSTag[] {
-    if (!text.trim()) return [];
-
-    const doc = nlp(text);
-    const results: POSTag[] = [];
-
-    const queries: Array<{ match: string; exclude?: string; pos: POSCategory }> = [
-      { match: '#Adjective', pos: 'adjective' },
-      { match: '#Noun', exclude: '#Pronoun #Possessive', pos: 'noun' },
-      { match: '#Adverb', pos: 'adverb' },
-      { match: '#Verb', pos: 'verb' },
-      { match: '#Conjunction', pos: 'conjunction' },
-    ];
-
-    for (const q of queries) {
-      let matched = doc.match(q.match);
-      if (q.exclude) {
-        matched = matched.not(q.exclude);
-      }
-
-      const offsets = matched.out('offset') as unknown as CompromiseOffset[];
-      for (const entry of offsets) {
-        for (const term of entry.terms) {
-          const start = term.offset.start;
-          const end = start + term.offset.length;
-          if (end > start) {
-            results.push({ text: term.text, pos: q.pos, start, end });
-          }
-        }
-      }
-    }
-
-    // Sort by start position, deduplicate overlaps (first match wins)
-    results.sort((a, b) => a.start - b.start);
-    return deduplicateOverlaps(results);
+export function categoryForTags(tags: readonly string[]): POSCategory | null {
+  if (tags.includes('Adjective')) return 'adjective';
+  if (tags.includes('Noun') && !tags.includes('Pronoun') && !tags.includes('Possessive')) {
+    return 'noun';
   }
-}
-
-/** Remove overlapping tags — earlier in the array wins */
-function deduplicateOverlaps(tags: POSTag[]): POSTag[] {
-  const result: POSTag[] = [];
-  let lastEnd = -1;
-  for (const tag of tags) {
-    if (tag.start >= lastEnd) {
-      result.push(tag);
-      lastEnd = tag.end;
-    }
-  }
-  return result;
+  if (tags.includes('Adverb')) return 'adverb';
+  if (tags.includes('Verb')) return 'verb';
+  if (tags.includes('Conjunction')) return 'conjunction';
+  return null;
 }

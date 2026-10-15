@@ -58,3 +58,10 @@ jobs:
           test -f manifest.json || (echo "manifest.json not found" && exit 1)
           test -f styles.css || (echo "styles.css not found" && exit 1)
           echo "All required artifacts present"
+
+      # Reads esbuild's metafile and fails on any input under bench/ or from
+      # the compromise package. Grepping the minified main.js cannot do this:
+      # minification renames every symbol, so a grep returns a confident
+      # negative whether or not the bench harness shipped.
+      - name: Verify the bundle excludes bench and compromise
+        run: pnpm run check:bundle

@@ -1,0 +1,199 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`required synthetic accuracy fixture > compromise, auxIsVerb=false: pinned scorer counts 1`] = `
+{
+  "counts": {
+    "adjective": [
+      4,
+      0,
+      0,
+    ],
+    "adverb": [
+      2,
+      0,
+      0,
+    ],
+    "conjunction": [
+      2,
+      0,
+      0,
+    ],
+    "noun": [
+      2,
+      0,
+      0,
+    ],
+    "verb": [
+      2,
+      3,
+      0,
+    ],
+  },
+  "macroF1": 0.914286,
+}
+`;
+
+exports[`required synthetic accuracy fixture > compromise, auxIsVerb=true: pinned scorer counts 1`] = `
+{
+  "counts": {
+    "adjective": [
+      4,
+      0,
+      0,
+    ],
+    "adverb": [
+      2,
+      0,
+      0,
+    ],
+    "conjunction": [
+      2,
+      0,
+      0,
+    ],
+    "noun": [
+      2,
+      0,
+      0,
+    ],
+    "verb": [
+      5,
+      0,
+      0,
+    ],
+  },
+  "macroF1": 1,
+}
+`;
+
+exports[`required synthetic accuracy fixture > en-pos, auxIsVerb=false: pinned scorer counts 1`] = `
+{
+  "counts": {
+    "adjective": [
+      4,
+      1,
+      0,
+    ],
+    "adverb": [
+      2,
+      0,
+      0,
+    ],
+    "conjunction": [
+      2,
+      0,
+      0,
+    ],
+    "noun": [
+      2,
+      0,
+      0,
+    ],
+    "verb": [
+      2,
+      2,
+      0,
+    ],
+  },
+  "macroF1": 0.911111,
+}
+`;
+
+exports[`required synthetic accuracy fixture > en-pos, auxIsVerb=true: pinned scorer counts 1`] = `
+{
+  "counts": {
+    "adjective": [
+      4,
+      1,
+      0,
+    ],
+    "adverb": [
+      2,
+      0,
+      0,
+    ],
+    "conjunction": [
+      2,
+      0,
+      0,
+    ],
+    "noun": [
+      2,
+      0,
+      0,
+    ],
+    "verb": [
+      4,
+      0,
+      1,
+    ],
+  },
+  "macroF1": 0.955556,
+}
+`;
+
+exports[`required synthetic accuracy fixture > wink, auxIsVerb=false: pinned scorer counts 1`] = `
+{
+  "counts": {
+    "adjective": [
+      4,
+      0,
+      0,
+    ],
+    "adverb": [
+      2,
+      0,
+      0,
+    ],
+    "conjunction": [
+      2,
+      0,
+      0,
+    ],
+    "noun": [
+      2,
+      0,
+      0,
+    ],
+    "verb": [
+      2,
+      3,
+      0,
+    ],
+  },
+  "macroF1": 0.914286,
+}
+`;
+
+exports[`required synthetic accuracy fixture > wink, auxIsVerb=true: pinned scorer counts 1`] = `
+{
+  "counts": {
+    "adjective": [
+      4,
+      0,
+      0,
+    ],
+    "adverb": [
+      2,
+      0,
+      0,
+    ],
+    "conjunction": [
+      2,
+      0,
+      0,
+    ],
+    "noun": [
+      2,
+      0,
+      0,
+    ],
+    "verb": [
+      5,
+      0,
+      0,
+    ],
+  },
+  "macroF1": 1,
+}
+`;

@@ -2,7 +2,15 @@
 
 ## [Unreleased]
 
+### Fixed
+
+* **prose-highlight:** avoid highlighting word fragments split from typographic ligatures such as `ﬁne` and `ﬂow`
+
 ### Changed
+
+* **prose-highlight:** use wink-nlp in editor and reading view for more accurate part-of-speech colors; construct its pipeline on first use
+* **prose-highlight:** cache tags by line content so Enter, paste and undo preserve unchanged lines, applying code/heading exclusions when decorations are emitted
+* **build:** minify the production plugin bundle and verify benchmark-only dependencies stay out of it
 
 * **ci:** releases are stable again: release-please no longer cuts prereleases, and the manual `Promote to Stable` workflow is removed; the per-push BRAT `beta` release stays
 * **ci:** the release PR is opened with the Forge Bellows App token so CI runs on it, and a nightly `ship.yml` gate verifies and merges it; `versions.json` now changes inside the release PR instead of by a post-release push to `main`; build and publish run in separate jobs; every action in the release workflows is pinned by SHA

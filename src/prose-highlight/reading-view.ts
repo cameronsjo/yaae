@@ -1,6 +1,6 @@
 import type { MarkdownPostProcessorContext } from "obsidian";
 import type YaaePlugin from "../../main";
-import { CompromiseTagger } from "./tagger";
+import { WinkTagger } from "./wink-tagger";
 import { WordListMatcher } from "./word-lists";
 import type { POSTag } from "./tagger";
 import type { WordListMatch } from "./word-lists";
@@ -45,7 +45,7 @@ const POS_CLASS: Record<POSCategory, string> = {
  * settings-stable run).
  */
 export function createReadingViewPostProcessor(plugin: YaaePlugin) {
-  const tagger = new CompromiseTagger();
+  const tagger = new WinkTagger();
   const listMatcher = new WordListMatcher();
   let compiledFor: CustomWordList[] | null = null;
 

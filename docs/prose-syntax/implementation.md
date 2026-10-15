@@ -217,7 +217,23 @@ nl-syntax-highlighting.
 
 ## 5. NLP: JavaScript Libraries
 
+**Combined PR #44 implements wink-nlp.** The swap was implemented on 2026-09-18
+(`docs/plans/2026-09-18-wink-tagger-swap.md`) after the head-to-head bake-off,
+on accuracy (+11.4 macro-F1 with the corrected 2026-10-15 scorer), viewport latency (1.0 ms against 14.2 ms), and
+startup (57–61 ms to a first tag against 122–126 ms). The cost is one 2.97 MB
+model file. `CompromiseTagger` still exists as a bench-only candidate in
+`bench/candidates/`; nothing in `src/` imports it.
+
+The subsections below keep the pre-swap survey, because the comparison is what
+justifies the choice. Read "Recommended for MVP" as historical.
+
 ### Comparison
+
+Vendor-reported figures, gathered during the original survey. The first three
+rows were measured head-to-head on 2026-09-17; where the two disagree, the
+measured numbers in `docs/research/2026-09-17-pos-tagger-bakeoff.md` win. The
+en-pos bundle estimate below was badly wrong: its word-list dependencies make
+it the largest of the three, at 1.4 MB gzip.
 
 | Library | Approach | Accuracy | Bundle (gzip) | Speed | Languages | Maintained |
 |---------|----------|----------|--------------|-------|-----------|------------|
@@ -227,7 +243,12 @@ nl-syntax-highlighting.
 | **natural** | Brill TBL | ~90-93% | Very large | Moderate | EN + some | Yes |
 | **pos-js** | HMM | 87.8% | Small | Fast | EN | Minimal |
 
-### compromise (Recommended for MVP)
+Measured on UD English EWT (macro-F1 across yaae's five categories, auxiliaries
+counted as verbs): compromise 76.4%, wink-nlp 87.8%, en-pos 80.3%. The vendor
+accuracy claims above are all-tagset figures on different treebanks and are not
+comparable with these.
+
+### compromise (the original MVP choice; no longer shipped)
 
 [github.com/spencermountain/compromise](https://github.com/spencermountain/compromise)
 
@@ -249,7 +270,7 @@ doc.conjunctions().out("offset");
 **Pros:** Zero-config, small bundle, fast enough for main thread, works on mobile.
 **Cons:** Rule-based accuracy can miss edge cases, English-centric.
 
-### wink-nlp (Accuracy Upgrade)
+### wink-nlp (shipped)
 
 [github.com/winkjs/wink-nlp](https://github.com/winkjs/wink-nlp)
 
@@ -269,6 +290,14 @@ doc.tokens().each((t) => {
 
 **Pros:** High accuracy, Universal POS tagset, TypeScript support.
 **Cons:** 1 MB model bundled into main.js (or loaded async), English only.
+
+yaae's `src/prose-highlight/wink-tagger.ts` differs from the snippet above in
+one way that matters: `winkNLP(model)` runs behind a lazy getter on first
+`tag()`, not at module scope. At module scope it constructs the wink pipeline at
+every Obsidian launch on every platform, including mobile, where prose
+highlighting is gated off and no tag is ever requested. The getter keeps the
+`POSTagger` seam synchronous, so the reading-view post-processor — which cannot
+await — is unaffected.
 
 ---
 
@@ -450,32 +479,26 @@ buildDecorations(view: EditorView): DecorationSet {
 
 ### 9.2 Line-Level Caching
 
-Cache POS results per line. On single-character typing, only retag the changed line:
+Cache POS results by line **content**, not line number. Tags are a pure function
+of the line's text, so an edit that shifts line numbers — Enter, paste, undo —
+leaves every unchanged line a cache hit, and no invalidation is needed:
 
 ```ts
 update(update: ViewUpdate) {
-  if (update.docChanged) {
-    if (update.startState.doc.lines === update.state.doc.lines) {
-      // Same line count — check for single-char insert
-      let singleChar = true;
-      let changedLine = 0;
-      update.changes.iterChangedRanges((fromA, toA, fromB, toB) => {
-        if (!((fromA === toA) && (toB === fromB + 1))) singleChar = false;
-        changedLine = update.view.state.doc.lineAt(toB).number;
-      });
-      if (singleChar) {
-        this.cache[changedLine] = tagLine(update.view, changedLine);
-      } else {
-        this.rebuildAll(update.view);
-      }
-    } else {
-      this.rebuildAll(update.view); // lines added/removed
-    }
-  } else if (update.viewportChanged) {
-    this.rebuildAll(update.view); // scrolled
+  const treeChanged =
+    syntaxTree(update.startState) !== syntaxTree(update.state);
+  if (update.docChanged || treeChanged || update.viewportChanged) {
+    // Only lines whose text changed are misses; the cache is never cleared.
+    this.decorations = this.buildDecorationSet(update.view);
   }
 }
 ```
+
+Keying by number instead forces a full clear on every structural edit, and bakes
+exclusion state (which depends on the async markdown parse) into the cached
+value. Exclusion is applied when decorations are emitted, so a parse-progress
+update re-emits without retagging. Shipped as `LineTagCache` (LRU by access,
+capacity 4096) in `src/prose-highlight/highlighter-plugin.ts`.
 
 ### 9.3 Debouncing
 
@@ -491,10 +514,20 @@ private scheduleUpdate(view: EditorView) {
 }
 ```
 
-For compromise (~1ms per paragraph), debouncing may be unnecessary. For wink-nlp or
-IPC backends, it's essential.
+Measured 2026-09-17 on an M3 Air (`pnpm bench`): compromise tags a cold 60-line
+viewport in 14.2 ms mean, 15.9 ms p99 — under the 16 ms frame budget, with no
+margin. Debouncing is unnecessary today because the content-keyed cache makes a
+keystroke a one-line miss, not a viewport retag. Full numbers and the candidate
+comparison: `docs/research/2026-09-17-pos-tagger-bakeoff.md`.
 
 ### 9.4 Web Workers
+
+**Closed. wink-nlp retires this question outright.** The shipped tagger tags a
+cold 60-line viewport in 1.0 ms mean against a 16 ms frame budget — a 16× margin,
+where compromise had almost none at 14.2 ms mean and 15.9 ms p99. A Worker would
+add Blob-URL plumbing and a message round-trip to save a millisecond, on a
+platform where Workers run 6–10× slower than Node anyway. The rest of this
+section is kept for the record, not as a proposal.
 
 Obsidian's environment does not natively support `new Worker()`. The workaround is
 `esbuild-plugin-inline-worker` to bundle worker code as a Blob URL.
@@ -513,7 +546,7 @@ self.onmessage = (event) => {
 
 **Caveat:** Web Workers in Obsidian run ~6-10x slower than standalone Node.js for
 CPU-intensive work ([forum discussion](https://forum.obsidian.md/t/how-to-speed-up-cpu-intensive-tasks-in-an-obsidian-plugin-workers-not-supported/103392)).
-For compromise (~1ms per viewport), a Worker is likely unnecessary overhead.
+For a tagger already under the frame budget, a Worker is unnecessary overhead.
 
 Reference: [obsidian-web-worker-example](https://github.com/RyotaUshio/obsidian-web-worker-example)
 

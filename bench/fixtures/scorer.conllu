@@ -1,0 +1,33 @@
+# Original synthetic fixture by Codex for cameronsjo/yaae; MIT (repository LICENSE).
+# Not copied or adapted from UD-EWT. CoNLL-U syntax only.
+# sent_id = synthetic-1
+# text = don't
+1-2	don't	_	_	_	_	_	_	_	_
+1	do	_	AUX	_	_	_	_	_	_
+2	n't	_	PART	_	_	_	_	_	_
+
+# sent_id = synthetic-2
+# text = The quick fox ran slowly and the bright bird sang.
+1	The	_	DET	_	_	_	_	_	_
+2	quick	_	ADJ	_	_	_	_	_	_
+3	fox	_	NOUN	_	_	_	_	_	_
+4	ran	_	VERB	_	_	_	_	_	_
+5	slowly	_	ADV	_	_	_	_	_	_
+6	and	_	CCONJ	_	_	_	_	_	_
+7	the	_	DET	_	_	_	_	_	_
+8	bright	_	ADJ	_	_	_	_	_	_
+9	bird	_	NOUN	_	_	_	_	_	_
+10	sang	_	VERB	_	_	_	_	_	SpaceAfter=No
+11	.	_	PUNCT	_	_	_	_	_	_
+
+# sent_id = synthetic-3
+# text = She is calm but he was very loud.
+1	She	_	PRON	_	_	_	_	_	_
+2	is	_	AUX	_	_	_	_	_	_
+3	calm	_	ADJ	_	_	_	_	_	_
+4	but	_	CCONJ	_	_	_	_	_	_
+5	he	_	PRON	_	_	_	_	_	_
+6	was	_	AUX	_	_	_	_	_	_
+7	very	_	ADV	_	_	_	_	_	_
+8	loud	_	ADJ	_	_	_	_	_	SpaceAfter=No
+9	.	_	PUNCT	_	_	_	_	_	_

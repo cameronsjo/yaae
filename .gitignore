@@ -1,5 +1,6 @@
 # Build output
 main.js
+meta.json
 packages/*/dist/
 
 # Dependencies
@@ -47,6 +48,9 @@ vectors/
 
 # Test coverage
 coverage/
+
+# Downloaded accuracy benchmark treebank (scripts/fetch-ud-ewt.sh)
+bench/data/
 mcp-sessions.json
 *.local.md
 
