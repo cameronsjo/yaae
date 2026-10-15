@@ -44,7 +44,7 @@ describe("prose highlighting in a real vault", () => {
     expect(tags.filter((t) => t.classes.includes("yaae-pos-noun")).map((t) => t.text)).toEqual(["house"]);
     expect(tags.filter((t) => t.classes.includes("yaae-pos-verb")).map((t) => t.text)).toEqual(["ran"]);
     expect(new Set(tags.map((t) => t.color)).size).toBeGreaterThan(1);
-    await browser.saveScreenshot("/private/tmp/yaae44-editor.png");
+    await browser.saveScreenshot(path.join(tmpdir(), "yaae44-editor.png"));
   });
 
   it("renders the same categories in reading view without coloring code", async () => {
@@ -61,6 +61,6 @@ describe("prose highlighting in a real vault", () => {
     expect(tags.filter((t) => t.classes.includes("yaae-pos-noun")).map((t) => t.text)).toEqual(["house"]);
     expect(tags.filter((t) => t.classes.includes("yaae-pos-verb")).map((t) => t.text)).toEqual(["ran"]);
     expect(await browser.execute(() => document.querySelectorAll("pre [class*='yaae-pos-']").length)).toBe(0);
-    await browser.saveScreenshot("/private/tmp/yaae44-reading-view.png");
+    await browser.saveScreenshot(path.join(tmpdir(), "yaae44-reading-view.png"));
   });
 });

@@ -185,7 +185,7 @@ wink       There/- was/V nothing/-* so/ADV *very*/- remarkable/ADJ in/- that,/- 
 en-pos     There/- was/V nothing/V* so/ADV *very*/- remarkable/ADJ in/- that,/- nor/CONJ did/V Alice/N think/V it/- so/ADV
 ```
 
-Felt read: compromise's visible misses are `to` colored as a conjunction (twice), `sitting` and `feel` as nouns, `the hot` as nouns, and `close` as a verb. wink-nlp's are `sitting/V` (arguably right), `worth/ADJ` (right), and a missed `nothing`. Three of the eight lines have a compromise error a reader would notice; wink-nlp has none that a reader would call wrong. The scorer's 12-point gap is the same story at scale.
+Felt read: compromise's visible misses are `to` colored as a conjunction (twice), `sitting` and `feel` as nouns, `the hot` as nouns, and `close` as a verb. wink-nlp's are `sitting/V` (arguably right), `worth/ADJ` (right), and a missed `nothing`. Three of the eight lines have a compromise error a reader would notice; wink-nlp has none that a reader would call wrong. The scorer's 11.4-point gap is the same story at scale.
 
 Markdown-wrapped words (`*very*`, `**White`, `_what`) get no category from any tagger because the marker is glued to the word. That is a tokenization gap in all three, not a tagger difference; it is out of scope here.
 
