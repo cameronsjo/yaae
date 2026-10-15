@@ -23,6 +23,30 @@ bash scripts/failing-test-names.sh   # Failing test names, for baseline diffs
 bash scripts/fetch-ud-ewt.sh         # One-time treebank fetch for pnpm bench:accuracy
 ```
 
+```bash
+bash scripts/mutate-structural-tests.sh   # Prove the structural tests can fail
+```
+
+## Structural tests
+
+Several suites (`main-lifecycle`, `commands`, `auto-toc`, `prose-highlight-debug`)
+check wiring by matching `main.ts` and `highlighter-plugin.ts` **as text**, because
+those files pull in CM6 imports that need browser DOM globals. Two consequences
+worth knowing before editing them:
+
+- They are sensitive to formatting, not just behavior. A quote-style reformat in
+  `31c2418` reddened 15 of them at once while nothing broke, and CI stayed red for
+  two weeks (#51). Every quoted literal in a pattern is therefore written
+  `["']…["']` so a future formatter cannot repeat it.
+- A pattern of the form `/ANCHOR[\s\S]*?TARGET/` run against a whole file will
+  happily match a `TARGET` that lives somewhere else entirely. That is how the
+  reading-view mobile gate ended up unguarded: deleting it left the suite green.
+  Bound such assertions by position (`indexOf` from the anchor, asserted to fall
+  before a known-inside marker) rather than by a lazy scan.
+
+`scripts/mutate-structural-tests.sh` deletes each pinned behavior in turn and
+fails if the suite stays green. Run it after changing one of these tests.
+
 ## Project Structure
 
 ```
@@ -98,5 +122,5 @@ Frontmatter-driven document management integrated into the plugin:
 
 ## Release Flow
 
-1. **Beta**: Add `[beta]` to commit message → BRAT prerelease
-2. **Stable**: Merge Release Please PR → GitHub release with assets
+1. **Beta**: every push to `main` rebuilds the `beta` prerelease (`beta-release.yml`) → BRAT beta channel
+2. **Stable**: the nightly `ship.yml` gate verifies and merges the Release Please PR (cadence-ecosystem ADR-0044) → stable GitHub release with assets. `gh workflow run ship.yml` ships now; the gate still applies

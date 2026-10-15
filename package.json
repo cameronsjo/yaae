@@ -1,6 +1,6 @@
 {
   "name": "yaae",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Why Author Anywhere Else — an Obsidian plugin",
   "main": "main.js",
   "scripts": {
@@ -38,11 +38,11 @@
     "builtin-modules": "^4.0.0",
     "compromise": "^14.14.5",
     "en-pos": "^1.0.16",
-    "esbuild": "^0.27.2",
+    "esbuild": "^0.28.2",
     "mocha": "^11.7.5",
     "obsidian": "^1.7.2",
     "typescript": "^5.7.2",
-    "vitest": "^4.0.16",
+    "vitest": "^5.0.3",
     "wdio-obsidian-reporter": "^2.4.0",
     "wdio-obsidian-service": "^2.4.0"
   },

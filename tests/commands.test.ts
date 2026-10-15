@@ -44,8 +44,12 @@ const EXPECTED_COMMANDS = [
   },
 ];
 
-// Extract all addCommand({ id: '...' }) calls from main.ts
-const COMMAND_ID_PATTERN = /this\.addCommand\(\{\s*id:\s*'([^']+)'/g;
+// Extract all addCommand({ id: "..." }) calls from main.ts.
+//
+// Quote-agnostic on purpose: a quote-style reformat in 31c2418 made this
+// pattern match nothing for two weeks, and the extraction failing silently is
+// what made it survive that long (#51).
+const COMMAND_ID_PATTERN = /this\.addCommand\(\{\s*id:\s*["']([^"']+)["']/g;
 const registeredIds: string[] = [];
 let m: RegExpExecArray | null;
 while ((m = COMMAND_ID_PATTERN.exec(MAIN_TS)) !== null) {
@@ -53,6 +57,15 @@ while ((m = COMMAND_ID_PATTERN.exec(MAIN_TS)) !== null) {
 }
 
 describe("command registration (structural)", () => {
+  // The extraction above is the thing most likely to break, and when it
+  // breaks it yields an empty list rather than an error. Assert it found
+  // something before any test reasons about what it found — otherwise
+  // "registers exactly the documented commands" could pass on a day when
+  // EXPECTED_COMMANDS is empty too.
+  it("extracts at least one command id from main.ts", () => {
+    expect(registeredIds.length).toBeGreaterThan(0);
+  });
+
   it("main.ts contains addCommand calls for all documented commands", () => {
     for (const cmd of EXPECTED_COMMANDS) {
       expect(registeredIds, `missing command: ${cmd.id}`).toContain(cmd.id);
@@ -65,7 +78,12 @@ describe("command registration (structural)", () => {
 
   it("every command has a name string in its addCommand call", () => {
     for (const cmd of EXPECTED_COMMANDS) {
-      expect(MAIN_TS).toContain(`name: '${cmd.name}'`);
+      // Quote-agnostic, and the name is escaped because it is prose that may
+      // contain regex metacharacters.
+      const escaped = cmd.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      expect(MAIN_TS, `missing name for: ${cmd.id}`).toMatch(
+        new RegExp(`name:\\s*["']${escaped}["']`),
+      );
     }
   });
 });

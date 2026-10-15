@@ -289,12 +289,12 @@ describe("auto TOC wiring in main.ts", () => {
 
   it("notifies the manager from the shared vault modify handler", () => {
     expect(MAIN_TS).toMatch(
-      /this\.app\.vault\.on\(\s*'modify'[\s\S]*?this\.autoTocManager\.notifyModified\(file\.path\)/,
+      /this\.app\.vault\.on\(\s*["']modify["'][\s\S]*?this\.autoTocManager\.notifyModified\(file\.path\)/,
     );
   });
 
   it("registers exactly one vault modify listener", () => {
-    const matches = MAIN_TS.match(/vault\.on\(\s*'modify'/g) ?? [];
+    const matches = MAIN_TS.match(/vault\.on\(\s*["']modify["']/g) ?? [];
     expect(matches).toHaveLength(1);
   });
 
