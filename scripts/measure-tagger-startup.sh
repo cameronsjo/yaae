@@ -16,7 +16,7 @@
 # a missing runner is a hard failure rather than a silent switch.
 #
 # Usage: bash scripts/measure-tagger-startup.sh [runs]   (default 5)
-# Exit: 0 all phases measured, 2 a phase could not be measured at all.
+# Exit: 0 every requested sample measured, 2 any sample was incomplete/failed.
 set -uo pipefail
 
 runs="${1:-5}"
@@ -45,12 +45,13 @@ fi
 failures=0
 
 run_phase() {
-  local label="$1" script="$2" i ms
+  local label="$1" script="$2" i ms runner_status
   local times=()
   local failed=0
   for ((i = 0; i < runs; i++)); do
-    ms=$("$RUNNER" --input-type=module --eval "$script" 2>/dev/null)
-    if [[ "$ms" =~ ^[0-9]+$ ]]; then
+    ms=$("$RUNNER" --input-type=module --eval "$script")
+    runner_status=$?
+    if [ "$runner_status" -eq 0 ] && [[ "$ms" =~ ^[0-9]+$ ]]; then
       times+=("$ms")
     else
       failed=$((failed + 1))
@@ -65,7 +66,11 @@ run_phase() {
   printf '%s ' "${times[@]}"
   printf 'ms'
   # Never report a short sample as if it were the full one.
-  [ "$failed" -gt 0 ] && printf '  (WARNING: %d of %d runs failed)' "$failed" "$runs"
+  if [ "$failed" -gt 0 ]; then
+    printf '  (WARNING: %d of %d runs failed)' "$failed" "$runs"
+    # A partial sample cannot support the comparison this script reports.
+    failures=$((failures + 1))
+  fi
   printf '\n'
 }
 
@@ -118,6 +123,6 @@ run_phase "wink      " "$WINK_FIRST_TAG"
 run_phase "compromise" "$COMPROMISE_FIRST_TAG"
 
 if [ "$failures" -gt 0 ]; then
-  echo "ERROR: $failures phase(s) produced no measurement" >&2
+  echo "ERROR: $failures phase(s) had incomplete measurements" >&2
   exit 2
 fi

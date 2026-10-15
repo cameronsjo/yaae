@@ -38,12 +38,20 @@ function stateView(doc: string): EditorView {
   if (!ensureSyntaxTree(state, doc.length, 5000)) {
     throw new Error("markdown parse did not complete within the test budget");
   }
-  return { state } as unknown as EditorView;
+  // ensureSyntaxTree advances the mutable parse context. Commit that tree to
+  // a new state before the production helper reads syntaxTree(view.state).
+  return { state: state.update({}).state } as unknown as EditorView;
 }
 
 describe("getExcludedRanges (real Lezer markdown tree)", () => {
   const view = stateView(DOC);
   const excluded = getExcludedRanges(view, 0, DOC.length);
+
+  it("reads exclusions beyond the initial parser budget from the committed tree", () => {
+    const doc = `${"plain paragraph\n\n".repeat(1000)}prose with \`inline code\``;
+    const parsed = stateView(doc);
+    expect(isExcluded(doc.indexOf("inline code"), getExcludedRanges(parsed, 0, doc.length))).toBe(true);
+  });
 
   it("covers the full fenced-code block", () => {
     const fenceOpen = DOC.indexOf("```js");

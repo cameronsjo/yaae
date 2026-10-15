@@ -23,18 +23,60 @@ cd "$(git rev-parse --show-toplevel)" || {
 tmpdir="$(mktemp -d -t yaae-vitest-XXXXXX)"
 trap 'rm -rf "$tmpdir" || true' EXIT
 out="$tmpdir/report.json"
+runlog="$tmpdir/vitest.log"
+shape_log="$tmpdir/report-shape.log"
 
-pnpm exec vitest run --reporter=json --outputFile="$out" > /dev/null 2>&1
+pnpm exec vitest run --reporter=json --outputFile="$out" > "$runlog" 2>&1
 rc=$?
 
-if [ ! -s "$out" ]; then
-  echo "ERROR: vitest produced no JSON report (exit $rc)" >&2
+emit_error() {
+  echo "$1" >&2
+  if [ -s "$runlog" ]; then
+    echo "--- vitest output ---" >&2
+    command cat "$runlog" >&2
+  fi
+  if [ -f "$shape_log" ] && [ -s "$shape_log" ]; then
+    echo "--- report validation output ---" >&2
+    command cat "$shape_log" >&2
+  fi
   exit 2
+}
+
+if [ ! -s "$out" ]; then
+  emit_error "ERROR: vitest produced no JSON report (exit $rc)"
 fi
 
-if ! jq -e 'type == "object" and has("testResults")' "$out" > /dev/null 2>&1; then
-  echo "ERROR: '$out' is not a vitest JSON report — the reporter's shape may have changed." >&2
-  exit 2
+if ! jq -e '
+  type == "object"
+  and (.testResults | type == "array")
+  and all(.testResults[]; type == "object" and (.assertionResults | type == "array"))
+' "$out" > /dev/null 2>"$shape_log"; then
+  emit_error "ERROR: '$out' is not a vitest JSON report — the reporter's shape may have changed."
+fi
+
+suite_count="$(jq -r '.testResults | length' "$out")" || {
+  emit_error "ERROR: could not count collected test suites in '$out'."
+}
+assertion_count="$(jq -r '[.testResults[].assertionResults[]] | length' "$out")" || {
+  emit_error "ERROR: could not count collected test assertions in '$out'."
+}
+runtime_failure_count="$(jq -r '[.testResults[] | select(.status == "failed" and (.assertionResults | length == 0))] | length' "$out")" || {
+  emit_error "ERROR: could not inspect collection/runtime failures in '$out'."
+}
+
+if [ "$runtime_failure_count" -gt 0 ]; then
+  emit_error "ERROR: vitest reported $runtime_failure_count collection/runtime failure(s) without test assertions (exit $rc)."
+fi
+
+if [ "$suite_count" -eq 0 ] || [ "$assertion_count" -eq 0 ]; then
+  emit_error "ERROR: vitest produced no collected test suites or assertions (exit $rc)."
+fi
+
+failed_assertion_count="$(jq -r '[.testResults[].assertionResults[] | select(.status == "failed")] | length' "$out")" || {
+  emit_error "ERROR: could not count failed assertions in '$out'."
+}
+if [ "$rc" -ne 0 ] && { [ "$rc" -ne 1 ] || [ "$failed_assertion_count" -eq 0 ]; }; then
+  emit_error "ERROR: vitest runner failed without a usable assertion-failure result (exit $rc)."
 fi
 
 jq -r '

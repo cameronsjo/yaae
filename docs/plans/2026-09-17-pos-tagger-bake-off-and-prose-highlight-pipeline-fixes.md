@@ -162,7 +162,7 @@ The bake-off lives in `bench/` (vitest `bench` mode for throughput, ordinary vit
 - [x] Move the `isExcluded` filtering and the `isHeadingLine` skip out of `retagLine` into `buildDecorationSet`, applied per line at emit time with that line's `getExcludedRanges`. `retagLine` becomes "tag text if not cached"
 - [x] Update `applyUpdate`: the single-char fast path stays (the changed line is a plain miss); delete the `cache.clear()` in the bulk-change branch; the syntaxTree-changed branch (`highlighter-plugin.ts:265`) calls `buildDecorationSet` only (no clear, no retag), because exclusion is now applied at emit time; the viewport branch is unchanged
 - [x] Run `tests/highlighter-cache.test.ts`, `tests/highlighter-exclusion.test.ts`, `tests/heading-skip.test.ts` — expect GREEN; adjust exclusion tests that asserted on cached-filtered values to assert on emitted decorations instead
-- [x] Manual check in `test-vault/`: type, press Enter mid-paragraph, paste, undo, scroll across a code block, open a note with two identical list items; highlights correct, no flicker, no code words colored
+- [ ] Cameron manual acceptance in an isolated test vault: type, press Enter mid-paragraph, paste, undo, scroll across a code block, open a note with two identical list items; highlights correct, no flicker, no code words colored. Automated decoration tests and real-Obsidian color screenshots now pass; those do not claim this human interaction pass.
 - [x] `CHANGELOG.md` `[Unreleased]`: "Prose highlighting no longer re-tags the whole view on Enter, paste, or undo"
 - [x] Commit: `perf(prose-highlight): cache tags by line content`
 

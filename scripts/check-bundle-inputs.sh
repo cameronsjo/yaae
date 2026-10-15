@@ -45,17 +45,23 @@ fi
 
 # Guard the check itself: a metafile with no inputs would pass every rule
 # below while proving nothing.
-input_count=$(jq -r '.inputs | length' "$meta" 2>/dev/null)
+if ! input_count=$(jq -er '.inputs | select(type == "object") | length' "$meta"); then
+  echo "FAIL: metafile inputs must be an object." >&2
+  exit 2
+fi
 if ! [[ "$input_count" =~ ^[0-9]+$ ]] || [ "$input_count" -lt 10 ]; then
   echo "FAIL: metafile has $input_count inputs — too few to be a real build." >&2
   exit 2
 fi
 
-forbidden=$(jq -r '
+if ! forbidden=$(jq -r '
   .inputs
   | keys[]
   | select(startswith("bench/") or test("(^|/)node_modules/compromise/"))
-' "$meta")
+' "$meta"); then
+  echo "FAIL: could not inspect metafile input paths." >&2
+  exit 2
+fi
 
 if [ -n "$forbidden" ]; then
   echo "FAIL: forbidden inputs in the production bundle:"
