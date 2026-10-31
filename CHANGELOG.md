@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.3](https://github.com/cameronsjo/yaae/compare/0.1.2...0.1.3) (2026-10-31)
+
+
+### Bug Fixes
+
+* hide heading gutter on phones; relabel dimming toggle ([f93bdee](https://github.com/cameronsjo/yaae/commit/f93bdee679db4aba644429cd5667954cf33e607a))
+* hide heading gutter on phones; relabel dimming toggle ([56b7218](https://github.com/cameronsjo/yaae/commit/56b72183ff7d94a2394bd5cb5037b1612eeaefb8))
+
 ## [0.1.2](https://github.com/cameronsjo/yaae/compare/0.1.1...0.1.2) (2026-10-15)
 
 
