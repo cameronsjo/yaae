@@ -129,6 +129,14 @@ run_mutation "vault modify listener notification removed" \
   main.ts tests/auto-toc.test.ts \
   's/      this\.autoTocManager\.notifyModified\(file\.path\);\n//'
 
+run_mutation "phone gate on guttered headings removed" \
+  main.ts tests/phone-gutter-and-labels.test.ts \
+  's/if \(!enabled \|\| Platform\.isPhone\) return EMPTY_EXTENSION;/if (!enabled) return EMPTY_EXTENSION;/'
+
+run_mutation "status bar dimming label reverted" \
+  main.ts tests/phone-gutter-and-labels.test.ts \
+  's/"Dimming: On" : "Dimming: Off"/"Syntax: Dim" : "Syntax: Off"/'
+
 echo
 echo "caught: $caught   survived: $survivors   stale: $stale"
 

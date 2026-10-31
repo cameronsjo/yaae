@@ -17,7 +17,7 @@ Color-code your writing by part of speech — adjectives, nouns, adverbs, verbs,
 ### Readability
 
 - **Dimming** — Reduce opacity of markdown formatting characters (`**`, `*`, `#`, etc.) while keeping them visible
-- **Guttered headings** — Outdent `#` markers into the left gutter so heading text aligns with body text (Source Mode only)
+- **Guttered headings** — Outdent `#` markers into the left gutter so heading text aligns with body text (Source Mode only; off on phones, where the gutter eats the narrow margin)
 - **Focus mode** — Dim all text except the active sentence or paragraph
 
 ### Document Management
