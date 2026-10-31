@@ -16,7 +16,7 @@ Color-code your writing by part of speech — adjectives, nouns, adverbs, verbs,
 
 ### Readability
 
-- **Syntax dimming** — Reduce opacity of markdown formatting characters (`**`, `*`, `#`, etc.) while keeping them visible
+- **Dimming** — Reduce opacity of markdown formatting characters (`**`, `*`, `#`, etc.) while keeping them visible
 - **Guttered headings** — Outdent `#` markers into the left gutter so heading text aligns with body text (Source Mode only)
 - **Focus mode** — Dim all text except the active sentence or paragraph
 
@@ -61,7 +61,7 @@ Plugin-injected styles for Obsidian's PDF export:
 | Toggle prose highlighting | Enable/disable part-of-speech coloring |
 | Copy prose highlighting debug info | Copy platform + last highlighter error to the clipboard (#32 diagnosis) |
 | Toggle prose highlighting mobile override (debug) | Lift the mobile block to re-test highlighting on a phone |
-| Toggle syntax dimming | Dim markdown formatting characters |
+| Toggle dimming | Dim markdown formatting characters |
 | Toggle guttered headings | Outdent heading markers to gutter (Source Mode) |
 | Cycle focus mode | Off → Sentence → Paragraph |
 | Validate frontmatter | Check active file against Zod schemas |
