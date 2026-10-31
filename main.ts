@@ -261,7 +261,7 @@ export default class YaaePlugin extends Plugin {
 
     this.addCommand({
       id: "toggle-syntax-dimming",
-      name: "Toggle syntax dimming",
+      name: "Toggle dimming",
       callback: () => this.toggleSyntaxDimming(),
     });
 
@@ -682,7 +682,10 @@ export default class YaaePlugin extends Plugin {
   private readonly focusContentCache = new Map<FocusMode, Extension>();
 
   private gutteredHeadingsContent(enabled: boolean): Extension {
-    if (!enabled) return EMPTY_EXTENSION;
+    // Phones get no heading gutter: it eats the left margin of a narrow screen.
+    // Returning the empty extension (not hiding via CSS) leaves the `#` markers
+    // inline in the line, exactly as when the setting is off. Tablets keep it.
+    if (!enabled || Platform.isPhone) return EMPTY_EXTENSION;
     this.gutteredHeadingsContentCache ??= gutteredHeadingsExtension();
     return this.gutteredHeadingsContentCache;
   }
@@ -764,9 +767,9 @@ export default class YaaePlugin extends Plugin {
   updateSyntaxDimmingStatus() {
     if (!this.syntaxDimmingStatusEl) return;
     this.syntaxDimmingStatusEl.setText(
-      this.settings.syntaxDimming ? "Syntax: Dim" : "Syntax: Off",
+      this.settings.syntaxDimming ? "Dimming: On" : "Dimming: Off",
     );
-    this.syntaxDimmingStatusEl.ariaLabel = "Click to toggle syntax dimming";
+    this.syntaxDimmingStatusEl.ariaLabel = "Click to toggle dimming";
   }
 
   // --- Document Methods ---
@@ -995,7 +998,7 @@ class YaaeSettingTab extends PluginSettingTab {
     );
 
     new Setting(readabilityContent)
-      .setName("Syntax dimming")
+      .setName("Dimming")
       .setDesc(
         "Reduce opacity of markdown formatting characters (**, *, #, etc.) while keeping them visible.",
       )
@@ -1013,7 +1016,7 @@ class YaaeSettingTab extends PluginSettingTab {
     new Setting(readabilityContent)
       .setName("Guttered headings")
       .setDesc(
-        "Outdent # heading markers into the left gutter so heading text aligns with body text.",
+        "Outdent # heading markers into the left gutter so heading text aligns with body text. Not shown on phones, where headings keep their inline # markers.",
       )
       .addToggle((toggle) =>
         toggle

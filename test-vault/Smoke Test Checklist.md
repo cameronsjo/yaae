@@ -63,8 +63,8 @@ Open each test document and follow the steps.
 ### Syntax dimming
 
 - [ ] **Source Mode:** Markdown formatting characters (`**`, `*`, `#`, `>`, `-`) are dimmed
-- [ ] Command palette: "YAAE: Toggle syntax dimming" — toggles dimming
-- [ ] Status bar shows "Syntax: Dim" or "Syntax: Off"
+- [ ] Command palette: "YAAE: Toggle dimming" — toggles dimming
+- [ ] Status bar shows "Dimming: On" or "Dimming: Off"
 - [ ] Clicking status bar text toggles the feature
 - [ ] Active line formatting is slightly less dimmed (still visible)
 

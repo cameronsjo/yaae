@@ -15,6 +15,8 @@
 
 ### Fixed
 
+* **guttered-headings:** hide the heading gutter on phones (`Platform.isPhone`) so it no longer eats the left margin; heading `#` markers stay inline as when the setting is off. Tablets and desktop keep the gutter
+* **status-bar:** relabel the dimming toggle from `Syntax: Off`/`Syntax: Dim` to `Dimming: Off`/`Dimming: On` (also the command name, settings label, and tooltip), so it is not mistaken for prose highlighting. Setting keys and command ids are unchanged
 * **prose-highlight:** avoid highlighting word fragments split from typographic ligatures such as `ﬁne` and `ﬂow`
 
 ### Changed

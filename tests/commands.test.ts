@@ -23,7 +23,7 @@ const EXPECTED_COMMANDS = [
     id: "toggle-prose-highlight-mobile-override",
     name: "Toggle prose highlighting mobile override (debug)",
   },
-  { id: "toggle-syntax-dimming", name: "Toggle syntax dimming" },
+  { id: "toggle-syntax-dimming", name: "Toggle dimming" },
   { id: "toggle-guttered-headings", name: "Toggle guttered headings" },
   { id: "cycle-focus-mode", name: "Cycle focus mode" },
   { id: "yaae-validate", name: "Validate frontmatter" },
